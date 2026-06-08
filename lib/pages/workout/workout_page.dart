@@ -763,7 +763,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _equipamentoSelecionado,
+                    initialValue: _equipamentoSelecionado,
                     decoration: const InputDecoration(
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -957,9 +957,9 @@ class _SetsList extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.06),
+        color: AppColors.primary.withValues(red: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -987,7 +987,7 @@ class _SetsList extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1035,13 +1035,61 @@ class _InputRow extends StatelessWidget {
         Row(
           children: [
             Expanded(
-                child: _NumberField(
-                    ctrl: pesoCtrl, label: 'Peso (kg)', decimal: true)),
+              child: _NumberField(
+                ctrl: pesoCtrl,
+                label: 'Peso (kg)',
+                decimal: true,
+                step: 0.5,
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _NumberField(ctrl: repsCtrl, label: 'Repetições')),
+            Expanded(
+              child: _NumberField(
+                ctrl: repsCtrl,
+                label: 'Repetições',
+                step: 1.0,
+              ),
+            ),
           ],
         ),
       ],
+    );
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _CircleButton({
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              size: 20,
+              color: AppColors.primaryLight,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1050,28 +1098,66 @@ class _NumberField extends StatelessWidget {
   final TextEditingController ctrl;
   final String label;
   final bool decimal;
+  final double step;
+
   const _NumberField({
     required this.ctrl,
     required this.label,
     this.decimal = false,
+    required this.step,
   });
+
+  void _adjustValue(double delta) {
+    final text = ctrl.text.replaceAll(',', '.');
+    double val = double.tryParse(text) ?? 0.0;
+    val += delta;
+    if (val < 0) val = 0;
+
+    if (decimal) {
+      if (val % 1 == 0) {
+        ctrl.text = val.toInt().toString();
+      } else {
+        if ((val * 2) % 1 == 0) {
+          ctrl.text = val.toStringAsFixed(1);
+        } else {
+          ctrl.text = val.toStringAsFixed(2);
+        }
+      }
+    } else {
+      ctrl.text = val.toInt().toString();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: ctrl,
-      textAlign: TextAlign.center,
-      keyboardType: TextInputType.numberWithOptions(decimal: decimal),
-      style: const TextStyle(
-        fontSize: 26,
-        fontWeight: FontWeight.w700,
-        color: AppColors.onBackground,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontSize: 12),
-        contentPadding: const EdgeInsets.symmetric(vertical: 18),
-      ),
+    return Row(
+      children: [
+        _CircleButton(
+          icon: Icons.remove_rounded,
+          onPressed: () => _adjustValue(-step),
+        ),
+        Expanded(
+          child: TextField(
+            controller: ctrl,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.numberWithOptions(decimal: decimal),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.onBackground,
+            ),
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: const TextStyle(fontSize: 11),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+        _CircleButton(
+          icon: Icons.add_rounded,
+          onPressed: () => _adjustValue(step),
+        ),
+      ],
     );
   }
 }
