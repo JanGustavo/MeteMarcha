@@ -269,6 +269,186 @@ class _RoutineSetupTab extends ConsumerStatefulWidget {
 class _RoutineSetupTabState extends ConsumerState<_RoutineSetupTab> {
   WorkoutDay? _selectedDay;
 
+  void _editDay(BuildContext context, WorkoutDay day) {
+    final letraCtrl = TextEditingController(text: day.letra);
+    final nomeCtrl = TextEditingController(text: day.nome);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Editar Dia de Treino'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: letraCtrl,
+              maxLength: 2,
+              decoration: const InputDecoration(
+                labelText: 'Letra (ex: A, B, C)',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nomeCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Nome / Músculos (ex: Peito e Tríceps)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final letra = letraCtrl.text.trim().toUpperCase();
+              final nome = nomeCtrl.text.trim();
+              if (letra.isEmpty || nome.isEmpty) return;
+
+              final updatedDay = day.copyWith(letra: letra, nome: nome);
+              await ref.read(workoutDaoProvider).updateDay(updatedDay);
+              
+              ref.invalidate(activeSplitDaysProvider);
+              
+              if (ctx.mounted) Navigator.pop(ctx);
+              setState(() {
+                _selectedDay = updatedDay;
+              });
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addDay(BuildContext context, int splitId, List<WorkoutDay> existingDays) {
+    String nextLetter = 'A';
+    if (existingDays.isNotEmpty) {
+      final lastLetter = existingDays.last.letra;
+      if (lastLetter.isNotEmpty) {
+        final lastLetterCode = lastLetter.codeUnitAt(0);
+        if (lastLetterCode >= 65 && lastLetterCode < 90) {
+          nextLetter = String.fromCharCode(lastLetterCode + 1);
+        } else if (lastLetterCode >= 97 && lastLetterCode < 122) {
+          nextLetter = String.fromCharCode(lastLetterCode + 1).toUpperCase();
+        }
+      }
+    }
+    final letraCtrl = TextEditingController(text: nextLetter);
+    final nomeCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Adicionar Dia de Treino'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: letraCtrl,
+              maxLength: 2,
+              decoration: const InputDecoration(
+                labelText: 'Letra (ex: A, B, C)',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nomeCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Nome / Músculos (ex: Perna Completa)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final letra = letraCtrl.text.trim().toUpperCase();
+              final nome = nomeCtrl.text.trim();
+              if (letra.isEmpty || nome.isEmpty) return;
+
+              await ref.read(workoutDaoProvider).insertDay(
+                WorkoutDaysCompanion.insert(
+                  splitId: splitId,
+                  letra: letra,
+                  nome: nome,
+                ),
+              );
+
+              ref.invalidate(activeSplitDaysProvider);
+
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Adicionar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteDay(BuildContext context, WorkoutDay day, List<WorkoutDay> allDays) {
+    if (allDays.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A divisão precisa ter pelo menos 1 dia de treino.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Excluir Dia de Treino?'),
+        content: Text(
+          'Deseja excluir permanentemente o "Dia ${day.letra} - ${day.nome}"? '
+          'Todos os históricos de treinos executados neste dia serão perdidos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              final dayId = day.id;
+              await ref.read(workoutDaoProvider).transaction(() async {
+                final db = ref.read(databaseProvider);
+                await (db.update(db.weeklySchedules)..where((s) => s.dayId.equals(dayId))).write(
+                  const WeeklySchedulesCompanion(dayId: Value(null)),
+                );
+                await (db.delete(db.workoutDayExercises)..where((de) => de.dayId.equals(dayId))).go();
+                final sessions = await (db.select(db.workoutSessions)..where((s) => s.dayId.equals(dayId))).get();
+                for (final session in sessions) {
+                  await (db.delete(db.exerciseLogs)..where((l) => l.sessionId.equals(session.id))).go();
+                  await (db.delete(db.workoutSessions)..where((s) => s.id.equals(session.id))).go();
+                }
+                await (db.delete(db.workoutDays)..where((d) => d.id.equals(dayId))).go();
+              });
+
+              ref.invalidate(activeSplitDaysProvider);
+
+              if (ctx.mounted) Navigator.pop(ctx);
+              setState(() {
+                _selectedDay = null;
+              });
+            },
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final daysAsync = ref.watch(activeSplitDaysProvider);
@@ -279,16 +459,21 @@ class _RoutineSetupTabState extends ConsumerState<_RoutineSetupTab> {
           if (days.isEmpty) {
             return const Center(
               child: Text(
-                'Nenhum dia de treino cadastrado na divis\u00e3o ativa.',
+                'Nenhum dia de treino cadastrado na divisão ativa.',
                 style: TextStyle(color: AppColors.onSurface),
               ),
             );
           }
 
-          // Se nenhum dia estiver selecionado, seleciona o primeiro por padr\u00e3o
-          if (_selectedDay == null ||
-              !days.any((d) => d.id == _selectedDay!.id)) {
+          if (_selectedDay == null) {
             _selectedDay = days.first;
+          } else {
+            final idx = days.indexWhere((d) => d.id == _selectedDay!.id);
+            if (idx != -1) {
+              _selectedDay = days[idx];
+            } else {
+              _selectedDay = days.first;
+            }
           }
 
           return Column(
@@ -321,6 +506,22 @@ class _RoutineSetupTabState extends ConsumerState<_RoutineSetupTab> {
                             .toList(),
                         onChanged: (d) => setState(() => _selectedDay = d),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.edit_rounded, color: AppColors.primaryLight, size: 20),
+                      tooltip: 'Editar Dia',
+                      onPressed: () => _editDay(context, _selectedDay!),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primaryLight, size: 20),
+                      tooltip: 'Adicionar Dia',
+                      onPressed: () => _addDay(context, _selectedDay!.splitId, days),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.primaryLight, size: 20),
+                      tooltip: 'Excluir Dia',
+                      onPressed: () => _deleteDay(context, _selectedDay!, days),
                     ),
                   ],
                 ),

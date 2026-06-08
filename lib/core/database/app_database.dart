@@ -155,8 +155,8 @@ class UserProfiles extends Table {
 class WeeklyWeights extends Table {
   IntColumn get id => integer().autoIncrement()();
 
-  /// "2025-W23" — chave única por semana
-  TextColumn get semana => text().unique()();
+  /// "2025-W23" — chave de semana
+  TextColumn get semana => text()();
 
   RealColumn get peso => real()();
 
@@ -341,6 +341,13 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
             ..orderBy([(s) => OrderingTerm.desc(s.data)])
             ..limit(limit))
           .watch();
+
+  Stream<List<WorkoutSession>> watchCompletedSessions() =>
+      (select(workoutSessions)
+            ..where((s) => s.status.equals('concluido'))
+            ..orderBy([(s) => OrderingTerm.desc(s.data)]))
+          .watch();
+
 
   Future<List<WorkoutSession>> getRecentSessions({int limit = 20}) =>
       (select(workoutSessions)
@@ -720,7 +727,7 @@ class ProfileDao {
 
   Future<void> upsertWeeklyWeight(String weekKey, double peso) async {
     final now = DateTime.now().toIso8601String();
-    await db.into(db.weeklyWeights).insertOnConflictUpdate(
+    await db.into(db.weeklyWeights).insert(
       WeeklyWeightsCompanion.insert(
         semana: weekKey,
         peso: peso,
@@ -754,7 +761,7 @@ class AppDatabase extends _$AppDatabase {
   late final ProfileDao profileDao = ProfileDao(this);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -772,9 +779,23 @@ class AppDatabase extends _$AppDatabase {
             await m.createAll();
             await _seedDatabase(this);
             await customStatement('PRAGMA foreign_keys = ON;');
-          } else if (from < 4) {
-            // Apenas adiciona a coluna de volume sem perder os dados do usuário
-            await m.addColumn(exercises, exercises.volume);
+          } else {
+            if (from < 4) {
+              // Apenas adiciona a coluna de volume sem perder os dados do usuário
+              await m.addColumn(exercises, exercises.volume);
+            }
+            if (from < 5) {
+              // Migração para remover a constraint UNIQUE de weekly_weights.semana
+              await customStatement('PRAGMA foreign_keys = OFF;');
+              await customStatement('ALTER TABLE weekly_weights RENAME TO weekly_weights_old;');
+              await m.createTable(weeklyWeights);
+              await customStatement(
+                'INSERT INTO weekly_weights (id, semana, peso, data) '
+                'SELECT id, semana, peso, data FROM weekly_weights_old;'
+              );
+              await customStatement('DROP TABLE weekly_weights_old;');
+              await customStatement('PRAGMA foreign_keys = ON;');
+            }
           }
         },
         beforeOpen: (details) async {

@@ -329,9 +329,9 @@ class _WeightRow extends StatelessWidget {
             fontWeight: isCurrentWeek ? FontWeight.w700 : FontWeight.w400,
           ),
         ),
-        subtitle: Text(WeekUtils.formatWeekKey(weight.semana)),
+        subtitle: Text(WeekUtils.formatDateWithWeekday(weight.data)),
         trailing: Text(
-          weight.data.length >= 10 ? weight.data.substring(0, 10) : weight.data,
+          WeekUtils.formatWeekKey(weight.semana),
           style: const TextStyle(color: AppColors.onSurface, fontSize: 12),
         ),
       ),

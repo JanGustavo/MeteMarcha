@@ -66,6 +66,12 @@ final recentSessionsProvider = StreamProvider<List<WorkoutSession>>(
   (ref) => ref.watch(workoutDaoProvider).watchRecentSessions(),
 );
 
+/// Todas as sessões concluídas (stream)
+final completedSessionsProvider = StreamProvider<List<WorkoutSession>>(
+  (ref) => ref.watch(workoutDaoProvider).watchCompletedSessions(),
+);
+
+
 /// Sessão em andamento (null se não há nenhuma)
 final activeSessionProvider = StreamProvider<WorkoutSession?>(
   (ref) => ref.watch(workoutDaoProvider).watchActiveSession(),
@@ -165,5 +171,57 @@ final progressReportProvider = FutureProvider<ProgressReportData>((ref) async {
     groupedByDay: groupedByDay,
     exercisesWithoutDay: exercisesWithoutDay,
   );
+});
+
+class MonthSessions {
+  final String monthKey;
+  final DateTime monthDate;
+  final List<WorkoutSession> sessions;
+
+  MonthSessions({
+    required this.monthKey,
+    required this.monthDate,
+    required this.sessions,
+  });
+}
+
+final monthlySessionsProvider = Provider<AsyncValue<List<MonthSessions>>>((ref) {
+  final sessionsAsync = ref.watch(completedSessionsProvider);
+  return sessionsAsync.when(
+    data: (sessions) {
+      final Map<String, List<WorkoutSession>> grouped = {};
+      for (final session in sessions) {
+        try {
+          final date = DateTime.parse(session.data);
+          final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+          grouped.putIfAbsent(key, () => []).add(session);
+        } catch (_) {}
+      }
+
+      final sortedKeys = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+
+      final List<MonthSessions> result = [];
+      for (final key in sortedKeys) {
+        final parts = key.split('-');
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        result.add(MonthSessions(
+          monthKey: key,
+          monthDate: DateTime(year, month, 1),
+          sessions: grouped[key]!,
+        ));
+      }
+      return AsyncValue.data(result);
+    },
+    loading: () => const AsyncValue.loading(),
+    error: (e, st) => AsyncValue.error(e, st),
+  );
+});
+
+final workoutDaysMapProvider = StreamProvider<Map<int, WorkoutDay>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.select(db.workoutDays).watch().map((days) {
+    return {for (final d in days) d.id: d};
+  });
 });
 

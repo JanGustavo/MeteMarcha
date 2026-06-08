@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -46,7 +49,7 @@ class SplitSelectionPage extends ConsumerWidget {
                     ),
                     const SizedBox(width: 12),
                     const Text(
-                      'GYM TRACKER',
+                      'MeteMacha',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
@@ -202,6 +205,32 @@ class SplitSelectionPage extends ConsumerWidget {
                       ],
                     ),
                   ],
+                ),
+              ),
+
+              // Botão Importar JSON
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primary, width: 1.2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () => _showImportJsonDialog(context, ref),
+                    icon: const Icon(Icons.code_rounded, color: AppColors.primaryLight),
+                    label: const Text(
+                      'IMPORTAR TREINO (JSON)',
+                      style: TextStyle(
+                        color: AppColors.primaryLight,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
                 ),
               ),
 
@@ -552,6 +581,281 @@ class SplitSelectionPage extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showImportJsonDialog(BuildContext context, WidgetRef ref) {
+    final textCtrl = TextEditingController();
+    bool showInstructions = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Row(
+            children: [
+              Icon(Icons.code_rounded, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Importar Treino (JSON)'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Cole o JSON contendo sua rotina abaixo. '
+                  'Você pode copiar esse padrão e pedir para um chat de IA estruturar o seu treino.',
+                  style: TextStyle(fontSize: 13, color: AppColors.onSurface),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () async {
+                    setState(() {
+                      showInstructions = !showInstructions;
+                    });
+                    
+                    const jsonTemplate = '{\n'
+                        '  "nome": "Minha Rotina",\n'
+                        '  "tipo": "CUSTOM",\n'
+                        '  "dias": [\n'
+                        '    {\n'
+                        '      "letra": "A",\n'
+                        '      "nome": "Peito e Tríceps",\n'
+                        '      "exercicios": [\n'
+                        '        {\n'
+                        '          "nome": "Supino Reto",\n'
+                        '          "grupoMuscular": "Peito",\n'
+                        '          "equipamento": "Barra",\n'
+                        '          "isUnilateral": false,\n'
+                        '          "tempoDescansoSegundos": 120,\n'
+                        '          "volume": "4x10"\n'
+                        '        }\n'
+                        '      ]\n'
+                        '    }\n'
+                        '  ]\n'
+                        '}';
+                    await Clipboard.setData(const ClipboardData(text: jsonTemplate));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Modelo JSON copiado para a área de transferência! ✓'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                  icon: Icon(showInstructions
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded),
+                  label: const Text('Instruções e Modelo JSON'),
+                ),
+                if (showInstructions) ...[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: const SelectionArea(
+                      child: Text(
+                        'Modelo de JSON esperado:\n\n'
+                        '{\n'
+                        '  "nome": "Minha Rotina",\n'
+                        '  "tipo": "CUSTOM", // ABC, ABCD, ABCDE ou CUSTOM\n'
+                        '  "dias": [\n'
+                        '    {\n'
+                        '      "letra": "A",\n'
+                        '      "nome": "Peito e Tríceps",\n'
+                        '      "exercicios": [\n'
+                        '        {\n'
+                        '          "nome": "Supino Reto",\n'
+                        '          "grupoMuscular": "Peito",\n'
+                        '          "equipamento": "Barra", // Opcional: Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith\n'
+                        '          "isUnilateral": false, // Opcional\n'
+                        '          "tempoDescansoSegundos": 120, // Opcional\n'
+                        '          "volume": "4x10" // Opcional\n'
+                        '        }\n'
+                        '      ]\n'
+                        '    }\n'
+                        '  ]\n'
+                        '}',
+                        style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 10,
+                            color: AppColors.onBackground),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextField(
+                  controller: textCtrl,
+                  maxLines: 10,
+                  style: const TextStyle(
+                      fontFamily: 'monospace', fontSize: 12),
+                  decoration: const InputDecoration(
+                    hintText: 'Cole o código JSON aqui...',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final input = textCtrl.text.trim();
+                if (input.isEmpty) return;
+
+                try {
+                  final data = jsonDecode(input);
+                  if (data is! Map<String, dynamic>) {
+                    throw const FormatException('O JSON deve ser um objeto.');
+                  }
+                  if (!data.containsKey('nome') || !data.containsKey('dias')) {
+                    throw const FormatException(
+                        'Campos obrigatórios ausentes ("nome" ou "dias").');
+                  }
+
+                  final dias = data['dias'];
+                  if (dias is! List) {
+                    throw const FormatException(
+                        'O campo "dias" deve ser uma lista.');
+                  }
+
+                  Navigator.pop(ctx);
+
+                  final db = ref.read(databaseProvider);
+                  await db.transaction(() async {
+                    final splitId = await ref.read(workoutDaoProvider).insertSplit(
+                          WorkoutSplitsCompanion.insert(
+                            tipo: data['tipo'] ?? 'CUSTOM',
+                            nome: data['nome'],
+                            ativo: const Value(false),
+                          ),
+                        );
+
+                    final allExercises =
+                        await ref.read(exerciseDaoProvider).getAll();
+
+                    for (final dayObj in dias) {
+                      if (dayObj is! Map<String, dynamic>) continue;
+                      
+                      final letra = dayObj['letra'] ?? 'A';
+                      final nomeDia = dayObj['nome'] ?? 'Treino';
+                      final dayId = await ref.read(workoutDaoProvider).insertDay(
+                            WorkoutDaysCompanion.insert(
+                              splitId: splitId,
+                              letra: letra,
+                              nome: nomeDia,
+                            ),
+                          );
+
+                      final exercisesList = dayObj['exercicios'];
+                      if (exercisesList is! List) continue;
+
+                      for (int i = 0; i < exercisesList.length; i++) {
+                        final exObj = exercisesList[i];
+                        if (exObj is! Map<String, dynamic>) continue;
+
+                        final exName = exObj['nome']?.toString().trim() ?? '';
+                        if (exName.isEmpty) continue;
+
+                        final normalizedSearchName = exName.toLowerCase();
+                        Exercise? foundEx;
+                        for (final e in allExercises) {
+                          if (e.nome.trim().toLowerCase() ==
+                              normalizedSearchName) {
+                            foundEx = e;
+                            break;
+                          }
+                        }
+
+                        int exId;
+                        if (foundEx != null) {
+                          exId = foundEx.id;
+                        } else {
+                          exId = await ref.read(exerciseDaoProvider).insertExercise(
+                                ExercisesCompanion.insert(
+                                  nome: exName,
+                                  grupoMuscular:
+                                      exObj['grupoMuscular']?.toString() ??
+                                          'Peito',
+                                  equipamento: Value(
+                                      exObj['equipamento']?.toString() ??
+                                          'Livre'),
+                                  isUnilateral: Value(
+                                      exObj['isUnilateral'] as bool? ?? false),
+                                  tempoDescansoSegundos: Value(
+                                      exObj['tempoDescansoSegundos'] as int? ??
+                                          90),
+                                  volume: Value(exObj['volume']?.toString()),
+                                  link: Value(exObj['link']?.toString()),
+                                  vezesFeito: const Value(0),
+                                ),
+                              );
+                        }
+
+                        await ref.read(exerciseDaoProvider).linkExerciseToDay(
+                              WorkoutDayExercisesCompanion.insert(
+                                dayId: dayId,
+                                exerciseId: exId,
+                                ordem: i,
+                              ),
+                            );
+                      }
+                    }
+
+                    await ref.read(workoutDaoProvider).setActiveSplit(splitId);
+                  });
+
+                  ref.invalidate(splitsProvider);
+                  ref.invalidate(activeSplitProvider);
+                  ref.invalidate(activeSplitDaysProvider);
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Treino importado e ativado com sucesso! ✓'),
+                      ),
+                    );
+                    if (!isOnboarding) {
+                      Navigator.pop(context);
+                    }
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (errCtx) => AlertDialog(
+                        backgroundColor: AppColors.card,
+                        title: const Text('Erro na Importação'),
+                        content: Text(
+                            'Não foi possível importar o treino. Detalhes:\n$e'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(errCtx),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Importar'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -79,13 +79,14 @@ class _TreinoTab extends ConsumerWidget {
   const _TreinoTab();
 
   void _confirmDeleteSplit(BuildContext context, WidgetRef ref, WorkoutSplit split) {
+    final displayName = split.nome.isNotEmpty ? split.nome : split.tipo;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         title: const Text('Excluir treino?'),
         content: Text(
-          'Deseja excluir permanentemente a rotina "${split.nome}" e todo o histórico de execuções vinculado a ela?',
+          'Deseja excluir permanentemente a rotina "$displayName" e todo o histórico de execuções vinculado a ela?',
         ),
         actions: [
           TextButton(
@@ -108,6 +109,97 @@ class _TreinoTab extends ConsumerWidget {
     );
   }
 
+  void _renameSplitDialog(BuildContext context, WidgetRef ref, WorkoutSplit split) {
+    final controller = TextEditingController(text: split.nome.isNotEmpty ? split.nome : split.tipo);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Renomear Treino'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Nome do Treino',
+            hintText: 'Ex: Treino V-Shape',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = controller.text.trim();
+              if (newName.isEmpty) return;
+
+              final db = ref.read(databaseProvider);
+              await (db.update(db.workoutSplits)..where((s) => s.id.equals(split.id))).write(
+                WorkoutSplitsCompanion(nome: Value(newName)),
+              );
+
+              ref.invalidate(splitsProvider);
+              ref.invalidate(activeSplitProvider);
+
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSplitOptions(BuildContext context, WidgetRef ref, WorkoutSplit split) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                split.nome.isNotEmpty ? split.nome : split.tipo,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Divisão do tipo: ${split.tipo}',
+                style: const TextStyle(color: AppColors.onSurface, fontSize: 12),
+              ),
+              const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.edit_rounded, color: AppColors.primaryLight),
+                title: const Text('Renomear Treino'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _renameSplitDialog(context, ref, split);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.primary),
+                title: const Text('Excluir Treino'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _confirmDeleteSplit(context, ref, split);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weightRegisteredAsync = ref.watch(weeklyWeightRegisteredProvider);
@@ -118,7 +210,7 @@ class _TreinoTab extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GYM TRACKER'),
+        title: const Text('MeteMacha'),
         actions: [
           IconButton(
             icon: const Icon(Icons.tune_rounded),
@@ -171,14 +263,26 @@ class _TreinoTab extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'SUA DIVISÃO',
-                    style: TextStyle(
-                      color: AppColors.onSurface,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'SUA DIVISÃO',
+                        style: TextStyle(
+                          color: AppColors.onSurface,
+                          fontSize: 11,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '(Segure para opções)',
+                        style: TextStyle(
+                          color: AppColors.onSurface.withOpacity(0.5),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   splitsAsync.when(
@@ -192,9 +296,9 @@ class _TreinoTab extends ConsumerWidget {
                           ...splits.map((split) {
                             final isSelected = activeSplit?.id == split.id;
                             return GestureDetector(
-                              onLongPress: () => _confirmDeleteSplit(context, ref, split),
+                              onLongPress: () => _showSplitOptions(context, ref, split),
                               child: ChoiceChip(
-                                label: Text(split.tipo == 'CUSTOM' ? split.nome : split.tipo),
+                                label: Text(split.nome.isNotEmpty ? split.nome : split.tipo),
                                 selected: isSelected,
                                 onSelected: (selected) {
                                   if (selected) {

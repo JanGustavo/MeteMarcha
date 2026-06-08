@@ -54,4 +54,23 @@ class WeekUtils {
       return iso.substring(0, 10);
     }
   }
+
+  static String formatDateWithWeekday(String iso) {
+    try {
+      final d = DateTime.parse(iso);
+      const days = [
+        'Segunda-feira',
+        'Terça-feira',
+        'Quarta-feira',
+        'Quinta-feira',
+        'Sexta-feira',
+        'Sábado',
+        'Domingo'
+      ];
+      final weekday = days[d.weekday - 1];
+      return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} ($weekday)';
+    } catch (_) {
+      return iso;
+    }
+  }
 }

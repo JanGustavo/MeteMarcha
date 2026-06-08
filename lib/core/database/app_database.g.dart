@@ -2468,9 +2468,7 @@ class $WeeklyWeightsTable extends WeeklyWeights
   @override
   late final GeneratedColumn<String> semana = GeneratedColumn<String>(
       'semana', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+      type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _pesoMeta = const VerificationMeta('peso');
   @override
   late final GeneratedColumn<double> peso = GeneratedColumn<double>(
@@ -2543,7 +2541,7 @@ class $WeeklyWeightsTable extends WeeklyWeights
 class WeeklyWeight extends DataClass implements Insertable<WeeklyWeight> {
   final int id;
 
-  /// "2025-W23" — chave única por semana
+  /// "2025-W23" — chave de semana
   final String semana;
   final double peso;
 
