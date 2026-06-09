@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
+import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
 import '../../widgets/weekly_weight_banner.dart';
@@ -203,14 +204,36 @@ class _TreinoTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weightRegisteredAsync = ref.watch(weeklyWeightRegisteredProvider);
+    final snoozed = ref.watch(weeklyWeightSnoozedProvider);
     final activeSessionAsync = ref.watch(activeSessionProvider);
     final activeSplitAsync = ref.watch(activeSplitProvider);
     final splitsAsync = ref.watch(splitsProvider);
     final daysAsync = ref.watch(activeSplitDaysProvider);
+    final streak = ref.watch(streakProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MeteMacha'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('MeteMacha'),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.local_fire_department_rounded,
+              color: streak > 0 ? Colors.orangeAccent : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 2),
+            Text(
+              '$streak',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: streak > 0 ? Colors.orangeAccent : Colors.grey,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.tune_rounded),
@@ -240,7 +263,7 @@ class _TreinoTab extends ConsumerWidget {
 
             // ── Banner de peso corporal ────────────────────────────────
             weightRegisteredAsync.when(
-              data: (registered) => registered
+              data: (registered) => (registered || snoozed)
                   ? const SizedBox.shrink()
                   : const WeeklyWeightBanner(),
               loading: () => const SizedBox.shrink(),

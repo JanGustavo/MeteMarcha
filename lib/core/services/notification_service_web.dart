@@ -1,6 +1,12 @@
+// lib/core/services/notification_service_web.dart
+
 import 'dart:js' as js;
 
 class NotificationService {
+  static final NotificationService _instance = NotificationService._internal();
+  factory NotificationService() => _instance;
+  NotificationService._internal();
+
   /// Solicita permissão para exibir notificações no navegador
   static void requestPermission() {
     try {
@@ -27,5 +33,29 @@ class NotificationService {
         }
       }
     } catch (_) {}
+  }
+
+  Future<void> init() async {
+    requestPermission();
+  }
+
+  Future<void> showRestTimer(int secondsLeft) async {
+    // No-op on web
+  }
+
+  Future<void> showRestEnded() async {
+    showNotification('Descanso Concluído! 🔥', 'Hora de meter marcha na próxima série!');
+  }
+
+  Future<void> cancelNotification() async {
+    // No-op on web
+  }
+
+  Future<void> showMusicNotification(String channelName, bool isPlaying) async {
+    // No-op on web
+  }
+
+  Future<void> cancelMusicNotification() async {
+    // No-op on web
   }
 }

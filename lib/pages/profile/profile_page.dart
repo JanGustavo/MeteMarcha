@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
+import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
 
@@ -74,6 +75,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileProvider);
     final weeklyWeightsAsync = ref.watch(weeklyWeightsProvider);
+    final streak = ref.watch(streakProvider);
+    final evolution = ref.watch(evolutionProvider);
+    final firstUseDate = ref.watch(firstUseDateProvider);
+    final weeklySchedule = ref.watch(weeklyScheduleProvider).value ?? [];
+    final scheduledWorkoutsCount = weeklySchedule.where((s) => s.dayId != null).length;
+    final weeklyTarget = scheduledWorkoutsCount > 0 ? scheduledWorkoutsCount : 1;
 
     return SafeArea(
       child: CustomScrollView(
@@ -85,6 +92,117 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               child: Text(
                 'PERFIL',
                 style: Theme.of(context).textTheme.headlineMedium,
+              ),
+            ),
+          ),
+
+          // ── Stats Row ────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  // Card 1: Streak
+                  Expanded(
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'OFENSIVA',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.onSurface,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.local_fire_department_rounded,
+                                  color: Colors.orangeAccent,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '$streak ${streak == 1 ? "semana" : "semanas"}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Meta: $weeklyTarget ${weeklyTarget == 1 ? "treino" : "treinos"}/sem',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Card 2: Evolution
+                  Expanded(
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'FORÇA GERAL',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.onSurface,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.trending_up_rounded,
+                                  color: AppColors.success,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${evolution >= 0 ? "+" : ""}${evolution.toStringAsFixed(1)}%',
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: evolution >= 0 ? AppColors.success : Colors.redAccent),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Carga média desde: $firstUseDate',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

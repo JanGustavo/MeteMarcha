@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
-        android:label="gym"
+        android:label="MeteMacha"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -41,5 +42,27 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="tiktok" />
+        </intent>
+        <package android:name="com.spotify.music" /> <!-- Spotify -->
+        <package android:name="com.google.android.apps.youtube.music" /> <!-- YouTube Music -->
+        <package android:name="deezer.android.app" /> <!-- Deezer -->
+        <package android:name="com.sec.android.app.music" /> <!-- Samsung Music -->
+        <package android:name="com.miui.player" /> <!-- Xiaomi Music -->
+        <package android:name="com.zhiliaoapp.musically" /> <!-- TikTok -->
+        <package android:name="com.ss.android.ugc.trill" /> <!-- TikTok Lite -->
     </queries>
 </manifest>

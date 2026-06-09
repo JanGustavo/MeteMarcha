@@ -10,7 +10,8 @@ import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 
 class SetupPage extends ConsumerStatefulWidget {
-  const SetupPage({super.key});
+  final int initialTab;
+  const SetupPage({super.key, this.initialTab = 0});
 
   @override
   ConsumerState<SetupPage> createState() => _SetupPageState();
@@ -23,7 +24,11 @@ class _SetupPageState extends ConsumerState<SetupPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
   }
 
   @override
@@ -1084,11 +1089,18 @@ Future<void> _openLink(String url) async {
 // TAB DE PLANEJAMENTO SEMANAL (KANBAN / PAREAMENTO)
 // ═══════════════════════════════════════════════════════════════════
 
-class _WeeklyScheduleTab extends ConsumerWidget {
+class _WeeklyScheduleTab extends ConsumerStatefulWidget {
   const _WeeklyScheduleTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_WeeklyScheduleTab> createState() => _WeeklyScheduleTabState();
+}
+
+class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
+  int? _selectedWorkoutDayId; // null = none, -1 = rest, positive = workout day id
+
+  @override
+  Widget build(BuildContext context) {
     final scheduleAsync = ref.watch(weeklyScheduleProvider);
     final daysAsync = ref.watch(activeSplitDaysProvider);
     final splitAsync = ref.watch(activeSplitProvider);
@@ -1158,13 +1170,13 @@ class _WeeklyScheduleTab extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Arraste um treino para o dia da semana ou clique no card para associar.',
+                        'Toque em um treino abaixo para selecioná-lo e depois toque nos dias da semana para vinculá-lo rapidamente, ou use arrastar e soltar.',
                         style:
                             TextStyle(color: AppColors.onSurface, fontSize: 13),
                       ),
                       const SizedBox(height: 20),
 
-                      // ── Draggable Workouts Row ──
+                      // ── Draggable & Selectable Workouts Row ──
                       const Text(
                         'Treinos Disponíveis',
                         style: TextStyle(
@@ -1176,7 +1188,7 @@ class _WeeklyScheduleTab extends ConsumerWidget {
                         spacing: 8,
                         runSpacing: 10,
                         children: [
-                          // Descanso Draggable
+                          // Descanso Draggable/Selectable
                           _buildDraggableItem(
                             context: context,
                             label: 'Descanso 💧',
@@ -1194,6 +1206,51 @@ class _WeeklyScheduleTab extends ConsumerWidget {
                           }),
                         ],
                       ),
+
+                      if (_selectedWorkoutDayId != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.primary.withOpacity(0.25),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                size: 18,
+                                color: AppColors.primaryLight,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _selectedWorkoutDayId == -1
+                                      ? 'Modo Seleção Rápida: Toque em qualquer dia abaixo para defini-lo como Descanso.'
+                                      : 'Modo Seleção Rápida: Toque nos dias abaixo para vincular o treino selecionado.',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.primaryLight,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => setState(() => _selectedWorkoutDayId = null),
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 16,
+                                  color: AppColors.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
 
                       // ── Weekly Schedule Grid/List ──
@@ -1235,12 +1292,25 @@ class _WeeklyScheduleTab extends ConsumerWidget {
                               builder: (context, candidateData, rejectedData) {
                                 final isHovered = candidateData.isNotEmpty;
                                 return GestureDetector(
-                                  onTap: () => _showDayAssignmentPicker(
-                                    context,
-                                    ref,
-                                    schedule,
-                                    workoutDays,
-                                  ),
+                                  onTap: () async {
+                                    if (_selectedWorkoutDayId != null) {
+                                      final selectedId = _selectedWorkoutDayId == -1
+                                          ? null
+                                          : _selectedWorkoutDayId;
+                                      await ref
+                                          .read(workoutDaoProvider)
+                                          .updateWeeklyDay(
+                                            schedule.id,
+                                            selectedId,
+                                          );
+                                    } else {
+                                      _showDayAssignmentPicker(
+                                        context,
+                                        schedule,
+                                        workoutDays,
+                                      );
+                                    }
+                                  },
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 200),
                                     padding: const EdgeInsets.all(16),
@@ -1441,7 +1511,10 @@ class _WeeklyScheduleTab extends ConsumerWidget {
     required int id,
     required Color color,
   }) {
-    final chip = Container(
+    final isSelected = _selectedWorkoutDayId == id;
+    
+    final chip = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       constraints: BoxConstraints(
         maxWidth: MediaQuery.of(context).size.width - 48,
       ),
@@ -1449,10 +1522,15 @@ class _WeeklyScheduleTab extends ConsumerWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? Colors.white : Colors.transparent,
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 6,
+            color: isSelected ? color.withOpacity(0.6) : color.withOpacity(0.3),
+            blurRadius: isSelected ? 10 : 6,
+            spreadRadius: isSelected ? 1 : 0,
             offset: const Offset(0, 3),
           ),
         ],
@@ -1460,12 +1538,21 @@ class _WeeklyScheduleTab extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            id == -1 ? Icons.nightlight_round : Icons.fitness_center_rounded,
-            size: 16,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 8),
+          if (isSelected) ...[
+            const Icon(
+              Icons.check_circle_rounded,
+              size: 16,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 6),
+          ] else ...[
+            Icon(
+              id == -1 ? Icons.nightlight_round : Icons.fitness_center_rounded,
+              size: 16,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+          ],
           Flexible(
             child: Text(
               label,
@@ -1482,26 +1569,36 @@ class _WeeklyScheduleTab extends ConsumerWidget {
       ),
     );
 
-    return Draggable<int>(
-      data: id,
-      feedback: Opacity(
-        opacity: 0.8,
-        child: Material(
-          color: Colors.transparent,
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (_selectedWorkoutDayId == id) {
+            _selectedWorkoutDayId = null;
+          } else {
+            _selectedWorkoutDayId = id;
+          }
+        });
+      },
+      child: Draggable<int>(
+        data: id,
+        feedback: Opacity(
+          opacity: 0.8,
+          child: Material(
+            color: Colors.transparent,
+            child: chip,
+          ),
+        ),
+        childWhenDragging: Opacity(
+          opacity: 0.4,
           child: chip,
         ),
-      ),
-      childWhenDragging: Opacity(
-        opacity: 0.4,
         child: chip,
       ),
-      child: chip,
     );
   }
 
   void _showDayAssignmentPicker(
     BuildContext context,
-    WidgetRef ref,
     WeeklySchedule schedule,
     List<WorkoutDay> workoutDays,
   ) {

@@ -87,10 +87,34 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   void initState() {
     super.initState();
     _loadExercises();
-    _startSessionTimer();
+    _initSessionDuration().whenComplete(() {
+      _startSessionTimer();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(restTimerProvider.notifier).setInWorkoutPage(true);
     });
+  }
+
+  Future<void> _initSessionDuration() async {
+    try {
+      final db = ref.read(databaseProvider);
+      final session = await (db.select(db.workoutSessions)
+            ..where((s) => s.id.equals(widget.sessionId)))
+          .getSingleOrNull();
+      if (session != null) {
+        final startTime = DateTime.tryParse(session.data);
+        if (startTime != null) {
+          final diff = DateTime.now().difference(startTime).inSeconds;
+          if (mounted) {
+            setState(() {
+              _sessionSecs = diff >= 0 ? diff : 0;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro ao carregar duracao da sessao: $e');
+    }
   }
 
   @override
@@ -2015,17 +2039,49 @@ class _AddReferencePanelState extends State<_AddReferencePanel> with WidgetsBind
     final query = 'como fazer ${widget.exercise.nome}';
     final url = 'https://www.youtube.com/results?search_query=${Uri.encodeComponent(query)}';
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível abrir o YouTube')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao abrir o YouTube: $e')),
+        );
+      }
     }
   }
 
   void _searchTikTok() async {
     final query = 'como fazer ${widget.exercise.nome}';
-    final url = 'https://www.tiktok.com/search?q=${Uri.encodeComponent(query)}';
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final appUrl = 'tiktok://search?keyword=${Uri.encodeComponent(query)}';
+    final webUrl = 'https://www.tiktok.com/search?q=${Uri.encodeComponent(query)}';
+
+    // Tenta abrir direto no app do TikTok
+    try {
+      final success = await launchUrl(Uri.parse(appUrl), mode: LaunchMode.externalApplication);
+      if (success) return;
+    } catch (_) {
+      // Ignora erro e tenta o fallback web
+    }
+
+    // Fallback: abre no browser (ou no app caso o Android resolva o link HTTPS)
+    try {
+      final success = await launchUrl(Uri.parse(webUrl), mode: LaunchMode.externalApplication);
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível abrir o TikTok')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao abrir o TikTok: $e')),
+        );
+      }
     }
   }
 
@@ -2073,23 +2129,39 @@ class _AddReferencePanelState extends State<_AddReferencePanel> with WidgetsBind
                 child: ElevatedButton.icon(
                   onPressed: _searchYouTube,
                   icon: const Icon(Icons.play_circle_fill, color: Colors.white, size: 18),
-                  label: const Text('Buscar no YouTube'),
+                  label: const Text('YouTube'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF0000),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Colors.white10, width: 1),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        bottomLeft: Radius.circular(12),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _searchTikTok,
                   icon: const Icon(Icons.music_note, color: Colors.white, size: 18),
-                  label: const Text('Buscar no TikTok'),
+                  label: const Text('TikTok'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF010101),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: const BorderSide(color: AppColors.divider),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Colors.white10, width: 1),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
                   ),
                 ),
               ),

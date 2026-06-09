@@ -7,6 +7,8 @@ import '../core/providers/providers.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/week_utils.dart';
 
+final weeklyWeightSnoozedProvider = StateProvider<bool>((ref) => false);
+
 class WeeklyWeightBanner extends ConsumerWidget {
   const WeeklyWeightBanner({super.key});
 
@@ -27,12 +29,20 @@ class WeeklyWeightBanner extends ConsumerWidget {
           onPressed: () => _showDialog(context, ref),
           child: const Text('REGISTRAR'),
         ),
-        IconButton(
-          icon: const Icon(Icons.close, size: 18, color: AppColors.onSurface),
+        TextButton(
           onPressed: () {
-            // Dismiss visualmente sem registrar
-            ScaffoldMessenger.of(context).clearMaterialBanners();
+            ref.read(weeklyWeightSnoozedProvider.notifier).state = true;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Lembre-me em 24 horas'),
+                duration: Duration(seconds: 3),
+              ),
+            );
           },
+          child: const Text(
+            'LEMBRAR EM 24H',
+            style: TextStyle(color: AppColors.onSurface),
+          ),
         ),
       ],
     );
