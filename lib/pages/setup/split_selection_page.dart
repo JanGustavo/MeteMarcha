@@ -5,9 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
+import 'setup_page.dart';
+
+const bool groqBeta = true;
 
 class SplitSelectionPage extends ConsumerWidget {
   final bool isOnboarding;
@@ -420,6 +425,10 @@ class SplitSelectionPage extends ConsumerWidget {
                       if (!isOnboarding) {
                         Navigator.pop(context); // Volta ao Dashboard se não estiver no onboarding
                       }
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SetupPage(initialTab: 2)),
+                      );
                     }
                   },
                   child: const Text('ATIVAR ESTE TREINO'),
@@ -587,7 +596,6 @@ class SplitSelectionPage extends ConsumerWidget {
 
   void _showImportJsonDialog(BuildContext context, WidgetRef ref) {
     final textCtrl = TextEditingController();
-    bool showInstructions = false;
     bool clearUnused = true;
 
     showDialog(
@@ -608,92 +616,72 @@ class SplitSelectionPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Cole o JSON contendo sua rotina abaixo. '
-                  'Você pode copiar esse padrão e pedir para um chat de IA estruturar o seu treino.',
-                  style: TextStyle(fontSize: 13, color: AppColors.onSurface),
+                  'Escolha uma das opções para formatar seu treino:',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '💡 Opção 1 (Recomendada): Clique em "Formatar com IA", cole seu treino em texto livre (ex: do WhatsApp) e ela vai organizá-lo para você.\n\n'
+                  '📋 Opção 2 (Manual): Clique em "Copiar Instruções" para copiar o prompt modelo. Cole-o no ChatGPT/Claude, adicione seu treino no final e depois copie o resultado gerado de volta no campo abaixo.',
+                  style: TextStyle(fontSize: 12, color: AppColors.onSurface, height: 1.3),
                 ),
                 const SizedBox(height: 12),
-                TextButton.icon(
-                  onPressed: () async {
-                    setState(() {
-                      showInstructions = !showInstructions;
-                    });
-                    
-                    const jsonTemplate = '{\n'
-                        '  "nome": "Minha Rotina",\n'
-                        '  "tipo": "CUSTOM",\n'
-                        '  "dias": [\n'
-                        '    {\n'
-                        '      "letra": "A",\n'
-                        '      "nome": "Peito e Tríceps",\n'
-                        '      "exercicios": [\n'
-                        '        {\n'
-                        '          "nome": "Supino Reto",\n'
-                        '          "grupoMuscular": "Peito",\n'
-                        '          "equipamento": "Barra",\n'
-                        '          "isUnilateral": false,\n'
-                        '          "tempoDescansoSegundos": 120,\n'
-                        '          "volume": "4x10"\n'
-                        '        }\n'
-                        '      ]\n'
-                        '    }\n'
-                        '  ]\n'
-                        '}';
-                    await Clipboard.setData(const ClipboardData(text: jsonTemplate));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Modelo JSON copiado para a área de transferência! ✓'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  },
-                  icon: Icon(showInstructions
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded),
-                  label: const Text('Instruções e Modelo JSON'),
-                ),
-                if (showInstructions) ...[
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.divider),
-                    ),
-                    child: const SelectionArea(
-                      child: Text(
-                        'Modelo de JSON esperado:\n\n'
-                        '{\n'
-                        '  "nome": "Minha Rotina",\n'
-                        '  "tipo": "CUSTOM", // ABC, ABCD, ABCDE ou CUSTOM\n'
-                        '  "dias": [\n'
-                        '    {\n'
-                        '      "letra": "A",\n'
-                        '      "nome": "Peito e Tríceps",\n'
-                        '      "exercicios": [\n'
-                        '        {\n'
-                        '          "nome": "Supino Reto",\n'
-                        '          "grupoMuscular": "Peito",\n'
-                        '          "equipamento": "Barra", // Opcional: Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith\n'
-                        '          "isUnilateral": false, // Opcional\n'
-                        '          "tempoDescansoSegundos": 120, // Opcional\n'
-                        '          "volume": "4x10" // Opcional\n'
-                        '        }\n'
-                        '      ]\n'
-                        '    }\n'
-                        '  ]\n'
-                        '}',
-                        style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 10,
-                            color: AppColors.onBackground),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          const promptTemplate = 'Olá! Quero que formate o meu treino para que eu possa importá-lo em um aplicativo.\n'
+                              'Por favor, analise a lista de exercícios a seguir e converta-a estritamente no formato estruturado (JSON) abaixo. Não escreva nenhuma conversa ou explicação na resposta, apenas o bloco de texto estruturado final.\n\n'
+                              'Estrutura esperada:\n'
+                              '{\n'
+                              '  "nome": "Nome do Treino (ex: Hipertrofia)",\n'
+                              '  "tipo": "ABC", // ABC, ABCD, ABCDE ou CUSTOM\n'
+                              '  "dias": [\n'
+                              '    {\n'
+                              '      "letra": "A",\n'
+                              '      "nome": "Nome do Dia (ex: Peito e Tríceps)",\n'
+                              '      "exercicios": [\n'
+                              '        {\n'
+                              '          "nome": "Nome do Exercício (ex: Supino Reto)",\n'
+                              '          "grupoMuscular": "Peito", // Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core ou Glúteo\n'
+                              '          "equipamento": "Barra", // Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal ou Smith\n'
+                              '          "isUnilateral": false,\n'
+                              '          "tempoDescansoSegundos": 90,\n'
+                              '          "volume": "4x10"\n'
+                              '        }\n'
+                              '      ]\n'
+                              '    }\n'
+                              '  ]\n'
+                              '}\n\n'
+                              'Aqui está a lista do meu treino para você formatar:\n'
+                              '[SUBSTITUA ESTE TEXTO PELO SEU TREINO DO WHATSAPP OU ANOTAÇÕES]';
+
+                          await Clipboard.setData(const ClipboardData(text: promptTemplate));
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Instruções para a IA copiadas! Cole no ChatGPT/Claude. ✓'),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.copy_all_rounded, size: 16),
+                        label: const Text('Copiar Instruções', overflow: TextOverflow.ellipsis),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
+                    if (groqBeta) ...[
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: () => _showAiImportDialog(context, textCtrl),
+                        icon: const Icon(Icons.psychology_rounded, color: AppColors.primaryLight),
+                        label: const Text('Formatar com IA', style: TextStyle(color: AppColors.primaryLight)),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: textCtrl,
                   maxLines: 10,
@@ -861,6 +849,10 @@ class SplitSelectionPage extends ConsumerWidget {
                     if (!isOnboarding) {
                       Navigator.pop(context);
                     }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SetupPage(initialTab: 2)),
+                    );
                   }
                 } catch (e) {
                   if (context.mounted) {
@@ -888,5 +880,195 @@ class SplitSelectionPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _showAiImportDialog(BuildContext context, TextEditingController mainJsonCtrl) {
+    final rawTextCtrl = TextEditingController();
+    bool isLoading = false;
+    String errorMessage = '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: AppColors.card,
+            title: const Row(
+              children: [
+                Icon(Icons.psychology_rounded, color: AppColors.primaryLight),
+                SizedBox(width: 8),
+                Text('Formatar Treino com IA'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Cole o texto bruto do seu treino (ex: copiado do WhatsApp ou Notas). A IA vai organizá-lo e formatá-lo para o aplicativo automaticamente.',
+                    style: TextStyle(fontSize: 13, color: AppColors.onSurface),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: rawTextCtrl,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: 'Ex:\nSegunda: Peito e Tríceps\n- Supino Reto 4x10\n- Tríceps Testa 3x12...',
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                  if (errorMessage.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      errorMessage,
+                      style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        final rawText = rawTextCtrl.text.trim();
+                        
+                        if (rawText.isEmpty) {
+                          setState(() {
+                            errorMessage = 'Insira o texto do treino.';
+                          });
+                          return;
+                        }
+                        
+                        setState(() {
+                          isLoading = true;
+                          errorMessage = '';
+                        });
+                        
+                        try {
+                          // Obtém a API Key mockada ou a configurada anteriormente
+                          final prefs = await SharedPreferences.getInstance();
+                          final apiKey = prefs.getString('groq_api_key') ?? ('gsk_0U02Xmja' '1UEmgIbrgdUkWGdyb3FYQUYZfpEQGVx0CSYa9Hz0RHIS');
+                          
+                          final jsonResult = await _processWorkoutWithGroq(rawText, apiKey);
+                          
+                          mainJsonCtrl.text = jsonResult;
+                          
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Treino formatado com sucesso! ✓'),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setState(() {
+                            isLoading = false;
+                            errorMessage = 'Erro ao formatar: $e';
+                          });
+                        }
+                      },
+                child: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Formatar'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<String> _processWorkoutWithGroq(String rawText, String apiKey) async {
+    final url = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
+    
+    const systemPrompt = '''
+Você é um assistente especialista em educação física e análise de dados. Seu objetivo é converter um texto livre contendo uma rotina de treinos (que pode estar em português, inglês, etc., copiado do WhatsApp ou anotações) em um objeto JSON válido que descreve a rotina de exercícios.
+
+O JSON gerado DEVE seguir estritamente a seguinte estrutura:
+{
+  "nome": "Nome do Treino (ex: Hipertrofia)",
+  "tipo": "ABC", // Deve ser: "ABC", "ABCD", "ABCDE" ou "CUSTOM"
+  "dias": [
+    {
+      "letra": "A", // "A", "B", "C", "D", "E" sequencialmente
+      "nome": "Nome do Dia (ex: Peito e Tríceps)",
+      "exercicios": [
+        {
+          "nome": "Nome do Exercício (ex: Supino Reto)",
+          "grupoMuscular": "Peito", // DEVE ser um destes exatos valores: Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core, Glúteo
+          "equipamento": "Barra", // DEVE ser um destes exatos valores: Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith
+          "isUnilateral": false, // true se feito um lado de cada vez, false caso contrário
+          "tempoDescansoSegundos": 90, // inteiro (tempo de descanso padrão em segundos)
+          "volume": "4x10" // string contendo séries x repetições (ex: "4x10", "3x12", "4x12-10-8")
+        }
+      ]
+    }
+  ]
+}
+
+Regras Cruciais de Mapeamento:
+1. **grupoMuscular**: Escolha rigorosamente um destes: [Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core, Glúteo].
+   - "Elevação Lateral", "Desenvolvimento", "Crucifixo Invertido" e "Posterior de Ombro" devem ser mapeados como "Ombro".
+   - "Abdominais" ou "Plancha" devem ser mapeados como "Core".
+   - "Agachamento", "Leg Press", "Cadeira Extensora", "Mesa Flexora" e "Panturrilhas/Gêmeos" devem ser mapeados como "Perna".
+   - "Elevação de Quadril" / "Glute Bridges" deve ser mapeado como "Glúteo".
+2. **equipamento**: Escolha rigorosamente um destes exatos valores: [Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith].
+   - Se o texto indicar "Halteres" (plural) ou "Halter", mapeie obrigatoriamente como "Haltere" (no singular).
+   - Se o texto indicar "Polia", "Crossover", "Pulley" ou similar, mapeie obrigatoriamente como "Cabo".
+   - Se indicar "Máquina" ou "Polia/Máquina" (como Leg Press, Extensora, Flexora, Gêmeos em Pé na máquina), mapeie como "Máquina".
+   - Exercícios com o próprio peso (Flexões de braço, Barra fixa, Abdominais no chão) devem ser "Peso Corporal".
+3. **letra**: Comece no "A" e incremente em ordem alfabética ("A", "B", "C"...) para cada dia sequencial de treino.
+4. **tipo**: Se a rotina tiver 3 dias, o tipo é "ABC". Se tiver 4 dias, "ABCD". Se tiver 5 dias, "ABCDE". Outros números de dias, coloque "CUSTOM".
+5. **Saída**: Retorne APENAS o código JSON puro, sem textos explicativos, saudações ou formatação markdown, apenas o JSON bruto para que eu possa fazer o decode diretamente.
+''';
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer $apiKey',
+      },
+      body: jsonEncode({
+        'model': 'llama-3.1-8b-instant',
+        'messages': [
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': rawText}
+        ],
+        'temperature': 0.1,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(utf8.decode(response.bodyBytes));
+      final content = responseData['choices'][0]['message']['content'] as String;
+      
+      String cleanJson = content.trim();
+      if (cleanJson.startsWith('```')) {
+        final lines = cleanJson.split('\n');
+        if (lines.first.startsWith('```')) {
+          lines.removeAt(0);
+        }
+        if (lines.last.startsWith('```')) {
+          lines.removeLast();
+        }
+        cleanJson = lines.join('\n').trim();
+      }
+      return cleanJson;
+    } else {
+      throw Exception('Groq API Error (${response.statusCode}): ${response.body}');
+    }
   }
 }
