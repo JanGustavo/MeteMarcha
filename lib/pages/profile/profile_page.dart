@@ -8,6 +8,7 @@ import '../../core/providers/providers.dart';
 import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
+import '../../core/widgets/streak_badge.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -75,7 +76,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileProvider);
     final weeklyWeightsAsync = ref.watch(weeklyWeightsProvider);
-    final streak = ref.watch(streakProvider);
     final evolution = ref.watch(evolutionProvider);
     final firstUseDate = ref.watch(firstUseDateProvider);
     final weeklySchedule = ref.watch(weeklyScheduleProvider).value ?? [];
@@ -111,34 +111,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'OFENSIVA',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.onSurface,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.local_fire_department_rounded,
-                                  color: Colors.orangeAccent,
-                                  size: 20,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$streak ${streak == 1 ? "semana" : "semanas"}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            ),
+                            const StreakBadge(style: StreakStyle.profile),
                             const SizedBox(height: 4),
                             Text(
                               'Meta: $weeklyTarget ${weeklyTarget == 1 ? "treino" : "treinos"}/sem',

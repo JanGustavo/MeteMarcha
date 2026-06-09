@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
 import '../../widgets/weekly_weight_banner.dart';
 import '../../widgets/weekly_schedule_banner.dart';
+import '../../core/widgets/streak_badge.dart';
 import '../profile/profile_page.dart';
 import '../progress/progress_page.dart';
 import '../setup/setup_page.dart';
@@ -209,29 +210,15 @@ class _TreinoTab extends ConsumerWidget {
     final activeSplitAsync = ref.watch(activeSplitProvider);
     final splitsAsync = ref.watch(splitsProvider);
     final daysAsync = ref.watch(activeSplitDaysProvider);
-    final streak = ref.watch(streakProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
+        title: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('MeteMacha'),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.local_fire_department_rounded,
-              color: streak > 0 ? Colors.orangeAccent : Colors.grey,
-              size: 20,
-            ),
-            const SizedBox(width: 2),
-            Text(
-              '$streak',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: streak > 0 ? Colors.orangeAccent : Colors.grey,
-              ),
-            ),
+            Text('MeteMacha'),
+            SizedBox(width: 8),
+            StreakBadge(style: StreakStyle.appBar),
           ],
         ),
         actions: [
