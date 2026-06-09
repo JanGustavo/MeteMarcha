@@ -34,12 +34,14 @@ class _SetEntry {
   final int reps;
   final String lado;
   final String? equipamento;
+  final String? observacoes;
   _SetEntry({
     required this.serie,
     required this.peso,
     required this.reps,
     required this.lado,
     this.equipamento,
+    this.observacoes,
   });
 }
 
@@ -73,6 +75,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   // ── Inputs ──────────────────────────────────────────────────────
   final _pesoCtrl = TextEditingController(text: '0');
   final _repsCtrl = TextEditingController(text: '10');
+  final _obsCtrl = TextEditingController();
   String _lado = 'ambos';
   String? _equipamentoSelecionado;
   bool _executandoUnilateral = false;
@@ -122,6 +125,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     _sessionTimer?.cancel();
     _pesoCtrl.dispose();
     _repsCtrl.dispose();
+    _obsCtrl.dispose();
     try {
       ref.read(restTimerProvider.notifier).setInWorkoutPage(false);
     } catch (_) {}
@@ -133,8 +137,26 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   Future<void> _loadExercises() async {
     final exs =
         await ref.read(exerciseDaoProvider).getExercisesForDay(widget.dayId);
+    
+    int initialIndex = 0;
+    try {
+      final currentLogs = await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
+      if (currentLogs.isNotEmpty) {
+        final sortedLogs = List<ExerciseLog>.from(currentLogs)..sort((a, b) => a.id.compareTo(b.id));
+        final lastLog = sortedLogs.last;
+        final lastActiveId = lastLog.exerciseId;
+        final idx = exs.indexWhere((e) => e.id == lastActiveId);
+        if (idx != -1) {
+          initialIndex = idx;
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro ao restaurar indice do exercicio: $e');
+    }
+
     setState(() {
       _exercises = exs;
+      _currentIndex = initialIndex;
       _loading = false;
     });
     if (exs.isNotEmpty) await _loadExerciseContext();
@@ -163,6 +185,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
             reps: l.repeticoes,
             lado: l.lado,
             equipamento: l.equipamento,
+            observacoes: l.observacoes,
           )));
       _lado = 'ambos';
       _executandoUnilateral = ex.isUnilateral;
@@ -231,8 +254,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   Future<void> _salvarSerie() async {
     final peso = double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0;
     final reps = int.tryParse(_repsCtrl.text) ?? 0;
+    final obs = _obsCtrl.text.trim();
     final logDao = ref.read(logDaoProvider);
     final now = DateTime.now().toIso8601String();
+    final Value<String?> valueObs = obs.isNotEmpty ? Value<String?>(obs) : const Value<String?>.absent();
 
     if (_executandoUnilateral && _lado == 'ambos') {
       // Grava dois logs: esquerdo e direito
@@ -246,6 +271,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
           serie: Value(_currentSerie),
           lado: Value(l),
           equipamento: Value(_equipamentoSelecionado),
+          observacoes: valueObs,
         ));
       }
     } else {
@@ -258,8 +284,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
         serie: Value(_currentSerie),
         lado: Value(_lado),
         equipamento: Value(_equipamentoSelecionado),
+        observacoes: valueObs,
       ));
     }
+
+    _obsCtrl.clear();
 
     AudioService().beep();
 
@@ -270,6 +299,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
         reps: reps,
         lado: _lado,
         equipamento: _equipamentoSelecionado,
+        observacoes: obs.isNotEmpty ? obs : null,
       ));
       _currentSerie++;
     });
@@ -1034,6 +1064,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                     serie: _currentSerie,
                     pesoCtrl: _pesoCtrl,
                     repsCtrl: _repsCtrl,
+                    obsCtrl: _obsCtrl,
                   ),
 
                   // ── Modo de Execução ──
@@ -1230,6 +1261,11 @@ class _RestBanner extends StatelessWidget {
             onPressed: onSkip,
             child: const Text('Pular'),
           ),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, color: AppColors.onSurface, size: 20),
+            onPressed: onSkip,
+            tooltip: 'Fechar',
+          ),
         ],
       ),
     );
@@ -1332,6 +1368,9 @@ class _SetsList extends StatelessWidget {
                       s.equipamento != exercise.equipamento)
                   ? ' [${s.equipamento}]'
                   : '';
+              final obsStr = (s.observacoes != null && s.observacoes!.isNotEmpty)
+                  ? ' (${s.observacoes})'
+                  : '';
               return Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1340,7 +1379,7 @@ class _SetsList extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'S${s.serie}: ${s.peso}kg × ${s.reps}$ladoStr$eqStr',
+                  'S${s.serie}: ${s.peso}kg × ${s.reps}$ladoStr$eqStr$obsStr',
                   style: const TextStyle(
                     color: AppColors.onBackground,
                     fontSize: 12,
@@ -1360,10 +1399,12 @@ class _InputRow extends StatelessWidget {
   final int serie;
   final TextEditingController pesoCtrl;
   final TextEditingController repsCtrl;
+  final TextEditingController obsCtrl;
   const _InputRow({
     required this.serie,
     required this.pesoCtrl,
     required this.repsCtrl,
+    required this.obsCtrl,
   });
 
   @override
@@ -1400,6 +1441,16 @@ class _InputRow extends StatelessWidget {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: obsCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Observações (ex: banco 80°, drop set)',
+            labelStyle: TextStyle(fontSize: 12),
+            prefixIcon: Icon(Icons.edit_note_rounded, size: 20),
+          ),
+          style: const TextStyle(fontSize: 14),
         ),
       ],
     );

@@ -1755,6 +1755,12 @@ class $ExerciseLogsTable extends ExerciseLogs
   late final GeneratedColumn<String> equipamento = GeneratedColumn<String>(
       'equipamento', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _observacoesMeta =
+      const VerificationMeta('observacoes');
+  @override
+  late final GeneratedColumn<String> observacoes = GeneratedColumn<String>(
+      'observacoes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1766,7 +1772,8 @@ class $ExerciseLogsTable extends ExerciseLogs
         serie,
         lado,
         concluido,
-        equipamento
+        equipamento,
+        observacoes
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1833,6 +1840,12 @@ class $ExerciseLogsTable extends ExerciseLogs
           equipamento.isAcceptableOrUnknown(
               data['equipamento']!, _equipamentoMeta));
     }
+    if (data.containsKey('observacoes')) {
+      context.handle(
+          _observacoesMeta,
+          observacoes.isAcceptableOrUnknown(
+              data['observacoes']!, _observacoesMeta));
+    }
     return context;
   }
 
@@ -1862,6 +1875,8 @@ class $ExerciseLogsTable extends ExerciseLogs
           .read(DriftSqlType.bool, data['${effectivePrefix}concluido'])!,
       equipamento: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}equipamento']),
+      observacoes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}observacoes']),
     );
   }
 
@@ -1893,6 +1908,9 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
 
   /// O equipamento utilizado na execução (pode sobrescrever a recomendação do exercício)
   final String? equipamento;
+
+  /// Observações adicionais sobre a série (ex: banco 80°, rest-pause, drop set)
+  final String? observacoes;
   const ExerciseLog(
       {required this.id,
       required this.exerciseId,
@@ -1903,7 +1921,8 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
       required this.serie,
       required this.lado,
       required this.concluido,
-      this.equipamento});
+      this.equipamento,
+      this.observacoes});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1918,6 +1937,9 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
     map['concluido'] = Variable<bool>(concluido);
     if (!nullToAbsent || equipamento != null) {
       map['equipamento'] = Variable<String>(equipamento);
+    }
+    if (!nullToAbsent || observacoes != null) {
+      map['observacoes'] = Variable<String>(observacoes);
     }
     return map;
   }
@@ -1936,6 +1958,9 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
       equipamento: equipamento == null && nullToAbsent
           ? const Value.absent()
           : Value(equipamento),
+      observacoes: observacoes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(observacoes),
     );
   }
 
@@ -1953,6 +1978,7 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
       lado: serializer.fromJson<String>(json['lado']),
       concluido: serializer.fromJson<bool>(json['concluido']),
       equipamento: serializer.fromJson<String?>(json['equipamento']),
+      observacoes: serializer.fromJson<String?>(json['observacoes']),
     );
   }
   @override
@@ -1969,6 +1995,7 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
       'lado': serializer.toJson<String>(lado),
       'concluido': serializer.toJson<bool>(concluido),
       'equipamento': serializer.toJson<String?>(equipamento),
+      'observacoes': serializer.toJson<String?>(observacoes),
     };
   }
 
@@ -1982,7 +2009,8 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
           int? serie,
           String? lado,
           bool? concluido,
-          Value<String?> equipamento = const Value.absent()}) =>
+          Value<String?> equipamento = const Value.absent(),
+          Value<String?> observacoes = const Value.absent()}) =>
       ExerciseLog(
         id: id ?? this.id,
         exerciseId: exerciseId ?? this.exerciseId,
@@ -1994,6 +2022,7 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
         lado: lado ?? this.lado,
         concluido: concluido ?? this.concluido,
         equipamento: equipamento.present ? equipamento.value : this.equipamento,
+        observacoes: observacoes.present ? observacoes.value : this.observacoes,
       );
   ExerciseLog copyWithCompanion(ExerciseLogsCompanion data) {
     return ExerciseLog(
@@ -2010,6 +2039,8 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
       concluido: data.concluido.present ? data.concluido.value : this.concluido,
       equipamento:
           data.equipamento.present ? data.equipamento.value : this.equipamento,
+      observacoes:
+          data.observacoes.present ? data.observacoes.value : this.observacoes,
     );
   }
 
@@ -2025,14 +2056,15 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
           ..write('serie: $serie, ')
           ..write('lado: $lado, ')
           ..write('concluido: $concluido, ')
-          ..write('equipamento: $equipamento')
+          ..write('equipamento: $equipamento, ')
+          ..write('observacoes: $observacoes')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, exerciseId, sessionId, data, peso,
-      repeticoes, serie, lado, concluido, equipamento);
+      repeticoes, serie, lado, concluido, equipamento, observacoes);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2046,7 +2078,8 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
           other.serie == this.serie &&
           other.lado == this.lado &&
           other.concluido == this.concluido &&
-          other.equipamento == this.equipamento);
+          other.equipamento == this.equipamento &&
+          other.observacoes == this.observacoes);
 }
 
 class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
@@ -2060,6 +2093,7 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
   final Value<String> lado;
   final Value<bool> concluido;
   final Value<String?> equipamento;
+  final Value<String?> observacoes;
   const ExerciseLogsCompanion({
     this.id = const Value.absent(),
     this.exerciseId = const Value.absent(),
@@ -2071,6 +2105,7 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
     this.lado = const Value.absent(),
     this.concluido = const Value.absent(),
     this.equipamento = const Value.absent(),
+    this.observacoes = const Value.absent(),
   });
   ExerciseLogsCompanion.insert({
     this.id = const Value.absent(),
@@ -2083,6 +2118,7 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
     this.lado = const Value.absent(),
     this.concluido = const Value.absent(),
     this.equipamento = const Value.absent(),
+    this.observacoes = const Value.absent(),
   })  : exerciseId = Value(exerciseId),
         sessionId = Value(sessionId),
         data = Value(data),
@@ -2099,6 +2135,7 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
     Expression<String>? lado,
     Expression<bool>? concluido,
     Expression<String>? equipamento,
+    Expression<String>? observacoes,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2111,6 +2148,7 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
       if (lado != null) 'lado': lado,
       if (concluido != null) 'concluido': concluido,
       if (equipamento != null) 'equipamento': equipamento,
+      if (observacoes != null) 'observacoes': observacoes,
     });
   }
 
@@ -2124,7 +2162,8 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
       Value<int>? serie,
       Value<String>? lado,
       Value<bool>? concluido,
-      Value<String?>? equipamento}) {
+      Value<String?>? equipamento,
+      Value<String?>? observacoes}) {
     return ExerciseLogsCompanion(
       id: id ?? this.id,
       exerciseId: exerciseId ?? this.exerciseId,
@@ -2136,6 +2175,7 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
       lado: lado ?? this.lado,
       concluido: concluido ?? this.concluido,
       equipamento: equipamento ?? this.equipamento,
+      observacoes: observacoes ?? this.observacoes,
     );
   }
 
@@ -2172,6 +2212,9 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
     if (equipamento.present) {
       map['equipamento'] = Variable<String>(equipamento.value);
     }
+    if (observacoes.present) {
+      map['observacoes'] = Variable<String>(observacoes.value);
+    }
     return map;
   }
 
@@ -2187,7 +2230,8 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
           ..write('serie: $serie, ')
           ..write('lado: $lado, ')
           ..write('concluido: $concluido, ')
-          ..write('equipamento: $equipamento')
+          ..write('equipamento: $equipamento, ')
+          ..write('observacoes: $observacoes')
           ..write(')'))
         .toString();
   }
@@ -4775,6 +4819,7 @@ typedef $$ExerciseLogsTableCreateCompanionBuilder = ExerciseLogsCompanion
   Value<String> lado,
   Value<bool> concluido,
   Value<String?> equipamento,
+  Value<String?> observacoes,
 });
 typedef $$ExerciseLogsTableUpdateCompanionBuilder = ExerciseLogsCompanion
     Function({
@@ -4788,6 +4833,7 @@ typedef $$ExerciseLogsTableUpdateCompanionBuilder = ExerciseLogsCompanion
   Value<String> lado,
   Value<bool> concluido,
   Value<String?> equipamento,
+  Value<String?> observacoes,
 });
 
 final class $$ExerciseLogsTableReferences
@@ -4858,6 +4904,9 @@ class $$ExerciseLogsTableFilterComposer
 
   ColumnFilters<String> get equipamento => $composableBuilder(
       column: $table.equipamento, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get observacoes => $composableBuilder(
+      column: $table.observacoes, builder: (column) => ColumnFilters(column));
 
   $$ExercisesTableFilterComposer get exerciseId {
     final $$ExercisesTableFilterComposer composer = $composerBuilder(
@@ -4933,6 +4982,9 @@ class $$ExerciseLogsTableOrderingComposer
   ColumnOrderings<String> get equipamento => $composableBuilder(
       column: $table.equipamento, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get observacoes => $composableBuilder(
+      column: $table.observacoes, builder: (column) => ColumnOrderings(column));
+
   $$ExercisesTableOrderingComposer get exerciseId {
     final $$ExercisesTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5006,6 +5058,9 @@ class $$ExerciseLogsTableAnnotationComposer
 
   GeneratedColumn<String> get equipamento => $composableBuilder(
       column: $table.equipamento, builder: (column) => column);
+
+  GeneratedColumn<String> get observacoes => $composableBuilder(
+      column: $table.observacoes, builder: (column) => column);
 
   $$ExercisesTableAnnotationComposer get exerciseId {
     final $$ExercisesTableAnnotationComposer composer = $composerBuilder(
@@ -5081,6 +5136,7 @@ class $$ExerciseLogsTableTableManager extends RootTableManager<
             Value<String> lado = const Value.absent(),
             Value<bool> concluido = const Value.absent(),
             Value<String?> equipamento = const Value.absent(),
+            Value<String?> observacoes = const Value.absent(),
           }) =>
               ExerciseLogsCompanion(
             id: id,
@@ -5093,6 +5149,7 @@ class $$ExerciseLogsTableTableManager extends RootTableManager<
             lado: lado,
             concluido: concluido,
             equipamento: equipamento,
+            observacoes: observacoes,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5105,6 +5162,7 @@ class $$ExerciseLogsTableTableManager extends RootTableManager<
             Value<String> lado = const Value.absent(),
             Value<bool> concluido = const Value.absent(),
             Value<String?> equipamento = const Value.absent(),
+            Value<String?> observacoes = const Value.absent(),
           }) =>
               ExerciseLogsCompanion.insert(
             id: id,
@@ -5117,6 +5175,7 @@ class $$ExerciseLogsTableTableManager extends RootTableManager<
             lado: lado,
             concluido: concluido,
             equipamento: equipamento,
+            observacoes: observacoes,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

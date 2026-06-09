@@ -1,11 +1,15 @@
 const List<String> equipmentOptions = [
   'Livre',
   'Barra',
+  'Barra Grande',
+  'Barra Pequena',
+  'Barra em V',
+  'Barra W',
   'Haltere',
   'Cabo',
   'Máquina',
   'Peso Corporal',
   'Smith',
   'Corda',
-  'Barra em V',
+  'Triângulo',
 ];

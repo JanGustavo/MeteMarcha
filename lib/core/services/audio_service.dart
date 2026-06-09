@@ -10,7 +10,32 @@ import 'package:audioplayers/audioplayers.dart';
 class AudioService {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
-  AudioService._internal();
+  AudioService._internal() {
+    _configureAudioContext();
+  }
+
+  void _configureAudioContext() {
+    try {
+      AudioPlayer.global.setAudioContext(AudioContext(
+        android: AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: true,
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.assistanceSonification,
+          audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+        ),
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.ambient,
+          options: const {
+            AVAudioSessionOptions.mixWithOthers,
+            AVAudioSessionOptions.duckOthers,
+          },
+        ),
+      ));
+    } catch (e) {
+      debugPrint('Erro ao configurar AudioContext: $e');
+    }
+  }
 
   AudioPlayer? __player;
   AudioPlayer get _player => __player ??= AudioPlayer();

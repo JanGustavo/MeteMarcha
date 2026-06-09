@@ -52,6 +52,7 @@ class RestTimerNotifier extends StateNotifier<RestTimerState> with WidgetsBindin
   }
 
   Timer? _timer;
+  DateTime? _endTime;
   bool _isMinimized = false;
 
   @override
@@ -61,6 +62,9 @@ class RestTimerNotifier extends StateNotifier<RestTimerState> with WidgetsBindin
 
     if (lifecycleState == AppLifecycleState.resumed) {
       NotificationService().cancelNotification();
+      if (state.isActive) {
+        _updateRemainingTime();
+      }
     } else if (_isMinimized && state.isActive) {
       NotificationService().showRestTimer(state.remainingSeconds);
     }
@@ -68,6 +72,8 @@ class RestTimerNotifier extends StateNotifier<RestTimerState> with WidgetsBindin
 
   void startRest(int seconds, {required int dayId, required String dayName, required int sessionId}) {
     _timer?.cancel();
+    _endTime = DateTime.now().add(Duration(seconds: seconds));
+
     state = RestTimerState(
       isActive: true,
       totalSeconds: seconds,
@@ -79,17 +85,7 @@ class RestTimerNotifier extends StateNotifier<RestTimerState> with WidgetsBindin
     );
 
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (state.remainingSeconds <= 1) {
-        t.cancel();
-        _onTimerFinished();
-      } else {
-        final newRemaining = state.remainingSeconds - 1;
-        state = state.copyWith(remainingSeconds: newRemaining);
-
-        if (_isMinimized) {
-          NotificationService().showRestTimer(newRemaining);
-        }
-      }
+      _updateRemainingTime();
     });
 
     if (_isMinimized) {
@@ -97,8 +93,30 @@ class RestTimerNotifier extends StateNotifier<RestTimerState> with WidgetsBindin
     }
   }
 
+  void _updateRemainingTime() {
+    if (_endTime == null) {
+      _timer?.cancel();
+      return;
+    }
+
+    final now = DateTime.now();
+    final difference = _endTime!.difference(now).inSeconds;
+
+    if (difference <= 0) {
+      _timer?.cancel();
+      _onTimerFinished();
+    } else {
+      state = state.copyWith(remainingSeconds: difference);
+
+      if (_isMinimized) {
+        NotificationService().showRestTimer(difference);
+      }
+    }
+  }
+
   void cancelRest() {
     _timer?.cancel();
+    _endTime = null;
     state = RestTimerState(inWorkoutPage: state.inWorkoutPage);
     NotificationService().cancelNotification();
   }
@@ -108,6 +126,7 @@ class RestTimerNotifier extends StateNotifier<RestTimerState> with WidgetsBindin
   }
 
   void _onTimerFinished() {
+    _endTime = null;
     state = state.copyWith(isActive: false, remainingSeconds: 0);
     
     // Reproduz áudio e vibração

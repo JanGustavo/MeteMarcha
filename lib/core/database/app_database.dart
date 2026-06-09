@@ -139,6 +139,9 @@ class ExerciseLogs extends Table {
 
   /// O equipamento utilizado na execução (pode sobrescrever a recomendação do exercício)
   TextColumn get equipamento => text().nullable()();
+
+  /// Observações adicionais sobre a série (ex: banco 80°, rest-pause, drop set)
+  TextColumn get observacoes => text().nullable()();
 }
 
 /// Perfil do usuário (única linha)
@@ -786,7 +789,7 @@ class AppDatabase extends _$AppDatabase {
   late final ProfileDao profileDao = ProfileDao(this);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -820,6 +823,9 @@ class AppDatabase extends _$AppDatabase {
               );
               await customStatement('DROP TABLE weekly_weights_old;');
               await customStatement('PRAGMA foreign_keys = ON;');
+            }
+            if (from < 6) {
+              await m.addColumn(exerciseLogs, exerciseLogs.observacoes);
             }
           }
         },

@@ -998,9 +998,14 @@ class SplitSelectionPage extends ConsumerWidget {
                             );
                           }
                         } catch (e) {
+                          String errorMsg = 'Erro ao formatar: $e';
+                          final errStr = e.toString();
+                          if (errStr.contains('SocketException') || errStr.contains('Failed host lookup') || errStr.contains('errno = 7')) {
+                            errorMsg = 'Sem conexão com a internet. Verifique sua conexão e tente novamente.';
+                          }
                           setState(() {
                             isLoading = false;
-                            errorMessage = 'Erro ao formatar: $e';
+                            errorMessage = errorMsg;
                           });
                         }
                       },
