@@ -62,7 +62,7 @@ Tela 1
 
 Introdução
 
-🏋️ Gym Tracker
+🏋️ MeteMacha
 
 Acompanhe treinos
 Registre cargas
