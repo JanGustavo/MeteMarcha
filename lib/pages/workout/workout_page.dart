@@ -1831,6 +1831,7 @@ class _WorkoutMusicPanelState extends ConsumerState<_WorkoutMusicPanel> {
     });
   }
 
+  /*
   void _showAddCustomAppDialog() {
     final nameCtrl = TextEditingController();
     final packageCtrl = TextEditingController();
@@ -1889,6 +1890,7 @@ class _WorkoutMusicPanelState extends ConsumerState<_WorkoutMusicPanel> {
       ),
     );
   }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -2160,6 +2162,7 @@ class _WorkoutMusicPanelState extends ConsumerState<_WorkoutMusicPanel> {
                       ],
                     ),
                   ],
+                  /*
                   const SizedBox(width: 8),
                   InkWell(
                     onTap: _showAddCustomAppDialog,
@@ -2195,6 +2198,7 @@ class _WorkoutMusicPanelState extends ConsumerState<_WorkoutMusicPanel> {
                       ),
                     ),
                   ),
+                  */
                 ],
               ),
             ),

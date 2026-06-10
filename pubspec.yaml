@@ -34,6 +34,8 @@ dependencies:
   http: ^1.6.0
   image_picker: ^1.2.2
   path_provider: ^2.1.5
+  package_info_plus: ^8.0.0
+  ota_update: ^7.1.0
 
 dev_dependencies:
   flutter_test:

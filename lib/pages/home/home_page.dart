@@ -16,6 +16,7 @@ import '../progress/progress_page.dart';
 import '../setup/setup_page.dart';
 import '../setup/split_selection_page.dart';
 import '../workout/workout_page.dart';
+import '../../core/services/ota_update_service.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -26,6 +27,14 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   int _currentTab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      OtaUpdateService().checkForUpdates(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

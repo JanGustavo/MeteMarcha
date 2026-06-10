@@ -7,12 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
 import '../../core/widgets/streak_badge.dart';
+import '../../core/services/ota_update_service.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -505,6 +507,87 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               error: (e, _) => Center(child: Text('Erro: $e')),
             ),
           ),
+          
+          if (!kIsWeb && Platform.isAndroid)
+            SliverToBoxAdapter(
+              child: Card(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: AppColors.divider),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.system_update_rounded,
+                          color: AppColors.primaryLight,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Atualizações OTA',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            FutureBuilder<PackageInfo>(
+                              future: PackageInfo.fromPlatform(),
+                              builder: (context, snapshot) {
+                                final version = snapshot.data?.version ?? '...';
+                                return Text(
+                                  'Versão atual: v$version',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.onSurface,
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          OtaUpdateService().checkForUpdates(context, forceShowNoUpdate: true);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          backgroundColor: AppColors.surface,
+                          side: const BorderSide(color: AppColors.divider),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Verificar',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
           // ── Histórico de peso semanal ─────────────────────────
           SliverToBoxAdapter(
