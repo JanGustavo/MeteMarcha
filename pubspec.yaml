@@ -2,7 +2,7 @@ name: gym_tracker
 description: Gym workout tracker – sem backend, sem Firebase, só SQLite.
 
 publish_to: "none"
-version: 1.0.7+8
+version: 1.0.8+9
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -51,7 +51,7 @@ flutter_launcher_icons:
   ios: false
   image_path: "assets/metemacha_app_icon.png"
   adaptive_icon_background: "#E22D24"
-  adaptive_icon_foreground: "assets/metemacha_standalone_icon.png"
+  adaptive_icon_foreground: "assets/metemacha_adaptive_foreground.png"
 
 flutter:
   uses-material-design: true
