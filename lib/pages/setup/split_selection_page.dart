@@ -1008,10 +1008,25 @@ class SplitSelectionPage extends ConsumerWidget {
                             );
                           }
                         } catch (e) {
-                          String errorMsg = 'Erro ao formatar: $e';
+                          String errorMsg = 'Ocorreu um erro ao formatar com IA. Verifique o texto e tente novamente.';
                           final errStr = e.toString();
-                          if (errStr.contains('SocketException') || errStr.contains('Failed host lookup') || errStr.contains('errno = 7')) {
-                            errorMsg = 'Sem conexão com a internet. Verifique sua conexão e tente novamente.';
+                          if (errStr.contains('SocketException') || 
+                              errStr.contains('Failed host lookup') || 
+                              errStr.contains('Network') ||
+                              errStr.contains('errno = 7')) {
+                            errorMsg = 'Sem conexão com a internet. Verifique sua rede e tente novamente.';
+                          } else if (errStr.contains('rate_limit') || 
+                                     errStr.contains('rate limit') || 
+                                     errStr.contains('Rate limit') ||
+                                     errStr.contains('429') || 
+                                     errStr.contains('413') ||
+                                     errStr.contains('Limit 6000') ||
+                                     errStr.contains('limit_exceeded')) {
+                            errorMsg = 'O limite temporário de requisições da IA foi atingido. Por favor, aguarde 1 minuto e tente novamente.';
+                          } else if (errStr.contains('invalid_api_key') || 
+                                     errStr.contains('401') ||
+                                     errStr.contains('Unauthorized')) {
+                            errorMsg = 'A chave de API da IA está inválida ou expirada. Verifique as configurações.';
                           }
                           setState(() {
                             isLoading = false;
@@ -1038,46 +1053,36 @@ class SplitSelectionPage extends ConsumerWidget {
     final url = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
     
     const systemPrompt = '''
-Você é um assistente especialista em educação física e análise de dados. Seu objetivo é converter um texto livre contendo uma rotina de treinos (que pode estar em português, inglês, etc., copiado do WhatsApp ou anotações) em um objeto JSON válido que descreve a rotina de exercícios.
-
-O JSON gerado DEVE seguir estritamente a seguinte estrutura:
+Converta o texto de treino em um objeto JSON válido seguindo esta estrutura:
 {
-  "nome": "Nome do Treino (ex: Hipertrofia)",
-  "tipo": "ABC", // Deve ser: "ABC", "ABCD", "ABCDE" ou "CUSTOM"
+  "nome": "Nome do Treino",
+  "tipo": "ABC", // "ABC", "ABCD", "ABCDE" ou "CUSTOM"
   "dias": [
     {
       "letra": "A", // "A", "B", "C", "D", "E" sequencialmente
-      "nome": "Nome do Dia (ex: Peito e Tríceps)",
+      "nome": "Nome do Dia",
       "exercicios": [
         {
-          "nome": "Nome do Exercício (ex: Supino Reto)",
-          "grupoMuscular": "Peito", // DEVE ser um destes exatos valores: Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core, Glúteo
-          "equipamento": "Barra", // DEVE ser um destes exatos valores: Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith
-          "isUnilateral": false, // true se feito um lado de cada vez, false caso contrário
-          "tempoDescansoSegundos": 90, // inteiro (tempo de descanso padrão em segundos)
-          "volume": "4x10", // string contendo séries x repetições (ex: "4x10", "3x12", "4x12-10-8")
-          "observacoes": "Instruções específicas, biomecânica do movimento ou observações sobre a execução (ex: Pegada pronada ou neutra. Estufe o peito...)" // string ou nulo
+          "nome": "Nome do Exercício",
+          "grupoMuscular": "Peito", // Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core, Glúteo
+          "equipamento": "Barra", // Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith
+          "isUnilateral": false,
+          "tempoDescansoSegundos": 90,
+          "volume": "4x10", // séries x repetições
+          "observacoes": "Instruções específicas, biomecânica ou dicas de execução" // ou null
         }
       ]
     }
   ]
 }
 
-Regras Cruciais de Mapeamento:
-1. **grupoMuscular**: Escolha rigorosamente um destes: [Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core, Glúteo].
-   - "Elevação Lateral", "Desenvolvimento", "Crucifixo Invertido" e "Posterior de Ombro" devem ser mapeados como "Ombro".
-   - "Abdominais" ou "Plancha" devem ser mapeados como "Core".
-   - "Agachamento", "Leg Press", "Cadeira Extensora", "Mesa Flexora" e "Panturrilhas/Gêmeos" devem ser mapeados como "Perna".
-   - "Elevação de Quadril" / "Glute Bridges" deve ser mapeado como "Glúteo".
-2. **equipamento**: Escolha rigorosamente um destes exatos valores: [Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith].
-   - Se o texto indicar "Halteres" (plural) ou "Halter", mapeie obrigatoriamente como "Haltere" (no singular).
-   - Se o texto indicar "Polia", "Crossover", "Pulley" ou similar, mapeie obrigatoriamente como "Cabo".
-   - Se indicar "Máquina" ou "Polia/Máquina" (como Leg Press, Extensora, Flexora, Gêmeos em Pé na máquina), mapeie como "Máquina".
-   - Exercícios com o próprio peso (Flexões de braço, Barra fixa, Abdominais no chão) devem ser "Peso Corporal".
-3. **letra**: Comece no "A" e incremente em ordem alfabética ("A", "B", "C"...) para cada dia sequencial de treino.
-4. **tipo**: Se a rotina tiver 3 dias, o tipo é "ABC". Se tiver 4 dias, "ABCD". Se tiver 5 dias, "ABCDE". Outros números de dias, coloque "CUSTOM".
-5. **observacoes**: Se o texto original contiver observações, biomecânica, segredos do shape, dicas de execução ou informações adicionais específicas sobre como executar o exercício, extraia e coloque-as neste campo (ex: 'Pegada pronada ou neutra. Estufe o peito e puxe com os cotovelos...'). Mantenha o texto limpo, sem marcas desnecessárias.
-6. **Saída**: Retorne APENAS o código JSON puro, sem textos explicativos, saudações ou formatação markdown, apenas o JSON bruto para que eu possa fazer o decode diretamente.
+Regras:
+1. grupoMuscular deve ser exatamente um destes: [Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core, Glúteo]. Mapeie Elevação Lateral/Crucifixo Invertido/Posterior de Ombro como "Ombro"; Abdominais como "Core"; Agachamento/Leg Press/Extensora/Flexora/Panturrilha como "Perna"; Elevação de Quadril como "Glúteo".
+2. equipamento deve ser exatamente um destes: [Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith]. Mapeie "Halteres" como "Haltere"; "Polia/Crossover/Pulley" como "Cabo"; Leg Press/Extensora/Flexora/Hack/Gêmeos na máquina como "Máquina"; Flexão/Barra Fixa/Abdominais como "Peso Corporal".
+3. letra começa em "A" e segue sequencialmente.
+4. tipo: 3 dias = "ABC", 4 dias = "ABCD", 5 dias = "ABCDE", outro = "CUSTOM".
+5. observacoes: extraia detalhes, biomecânica ou observações do texto original para este campo.
+6. Retorne APENAS o código JSON bruto sem markdown ou textos explicativos.
 ''';
 
     final response = await http.post(
@@ -1093,7 +1098,7 @@ Regras Cruciais de Mapeamento:
           {'role': 'user', 'content': rawText}
         ],
         'temperature': 0.1,
-        'max_tokens': 4000,
+        'max_tokens': 2000,
         'response_format': {'type': 'json_object'},
       }),
     );
