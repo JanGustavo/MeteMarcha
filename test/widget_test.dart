@@ -16,6 +16,6 @@ void main() {
 
     // Verify that the splash page is rendered and contains the METE MARCHA! button and title.
     expect(find.text('METE MARCHA!'), findsOneWidget);
-    expect(find.text('METE\nMACHA'), findsOneWidget);
+    expect(find.text('METE\nMARCHA'), findsOneWidget);
   });
 }

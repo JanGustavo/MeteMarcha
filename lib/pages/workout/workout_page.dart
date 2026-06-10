@@ -577,7 +577,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Mais um treino pra conta, Mete Macha! 🔥',
+                      'Mais um treino pra conta, Mete Marcha! 🔥',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,

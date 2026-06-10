@@ -106,7 +106,7 @@ class SplashPage extends StatelessWidget {
                           ),
                         ),
                         const TextSpan(
-                          text: 'MACHA',
+                          text: 'MARCHA',
                           style: TextStyle(
                             color: AppColors.primaryLight,
                             fontWeight: FontWeight.w900,

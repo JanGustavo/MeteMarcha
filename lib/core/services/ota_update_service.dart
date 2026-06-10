@@ -28,9 +28,27 @@ class OtaUpdateService {
       final response = await http.get(Uri.parse('https://api.github.com/repos/JanGustavo/MeteMachaFit/releases/latest'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final tagName = data['tag_name'] as String;
-        // Limpa a tag para extrair apenas a versão SemVer (ex: v1.0.0 -> 1.0.0)
-        final cleanLatestVersion = tagName.replaceAll('v', '').trim();
+        final tagName = data['tag_name'] as String? ?? 'latest';
+        
+        String cleanLatestVersion = '0.0.0';
+        
+        // Se a tag for 'latest' (release automático do CI), extraímos a maior versão semver do nome dos arquivos apk nas assets
+        if (tagName == 'latest') {
+          final assets = data['assets'] as List<dynamic>? ?? [];
+          final regex = RegExp(r'mete-marcha-v(\d+\.\d+\.\d+)');
+          for (final asset in assets) {
+            final assetName = asset['name'] as String? ?? '';
+            final match = regex.firstMatch(assetName);
+            if (match != null) {
+              final versionStr = match.group(1)!;
+              if (_isNewerVersion(cleanLatestVersion, versionStr)) {
+                cleanLatestVersion = versionStr;
+              }
+            }
+          }
+        } else {
+          cleanLatestVersion = tagName.replaceAll('v', '').trim();
+        }
 
         if (_isNewerVersion(currentVersion, cleanLatestVersion)) {
           if (context.mounted) {
