@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão do App (ex: 1.2.0 ou 1.2.0+13). Se em branco, incrementa o build number (+1).'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -14,6 +20,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Busca todo o histórico para o git push funcionar
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -29,12 +37,60 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Bump Version (Manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION_LINE=$(grep 'version:' pubspec.yaml | head -n1)
+          echo "Versão atual no pubspec: $VERSION_LINE"
+          
+          CURRENT_FULL_VERSION=$(echo "$VERSION_LINE" | awk '{print $2}')
+          CURRENT_VERSION_NAME=$(echo "$CURRENT_FULL_VERSION" | cut -d'+' -f1)
+          CURRENT_BUILD_NUMBER=$(echo "$CURRENT_FULL_VERSION" | cut -d'+' -f2)
+          
+          if [ -z "$CURRENT_BUILD_NUMBER" ]; then
+            CURRENT_BUILD_NUMBER="1"
+          fi
+          
+          INPUT_VERSION="${{ github.event.inputs.version }}"
+          
+          if [ -n "$INPUT_VERSION" ]; then
+            if [[ "$INPUT_VERSION" == *"+"* ]]; then
+              NEW_FULL_VERSION="$INPUT_VERSION"
+            else
+              NEW_BUILD_NUMBER=$((CURRENT_BUILD_NUMBER + 1))
+              NEW_FULL_VERSION="${INPUT_VERSION}+${NEW_BUILD_NUMBER}"
+            fi
+          else
+            NEW_BUILD_NUMBER=$((CURRENT_BUILD_NUMBER + 1))
+            NEW_FULL_VERSION="${CURRENT_VERSION_NAME}+${NEW_BUILD_NUMBER}"
+          fi
+          
+          echo "Nova versão: $NEW_FULL_VERSION"
+          sed -i "s/version: .*/version: $NEW_FULL_VERSION/g" pubspec.yaml
+          
+          NEW_VERSION_NAME=$(echo "$NEW_FULL_VERSION" | cut -d'+' -f1)
+          echo "APP_VERSION=$NEW_VERSION_NAME" >> $GITHUB_ENV
+          echo "APP_VERSION_FULL=$NEW_FULL_VERSION" >> $GITHUB_ENV
+
+      - name: Read Version (Push trigger only)
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | head -n1 | awk '{print $2}' | cut -d'+' -f1)
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Commit and Push version bump
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add pubspec.yaml
+          git commit -m "chore: bump version to ${{ env.APP_VERSION_FULL }}"
+          git push origin main
+
       - name: Build APK
         run: |
           flutter build apk --release
-          VERSION=$(grep 'version:' pubspec.yaml | head -n1 | awk '{print $2}' | cut -d'+' -f1)
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/mete-marcha-v$VERSION.apk
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/mete-marcha-v${{ env.APP_VERSION }}.apk
           cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/mete-marcha.apk
 
       - name: Create or Update Release
