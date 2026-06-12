@@ -1,5 +1,6 @@
 // lib/core/providers/providers.dart
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/app_database.dart';
@@ -86,6 +87,11 @@ final profileProvider = StreamProvider<UserProfile?>(
 /// Histórico de pesos semanais
 final weeklyWeightsProvider = StreamProvider<List<WeeklyWeight>>(
   (ref) => ref.watch(profileDaoProvider).watchWeeklyWeights(),
+);
+
+/// Histórico de medidas corporais
+final bodyMeasurementsProvider = StreamProvider<List<BodyMeasurement>>(
+  (ref) => ref.watch(profileDaoProvider).watchAllMeasurements(),
 );
 
 /// Planejamento semanal
@@ -250,4 +256,49 @@ class ProfilePhotoNotifier extends StateNotifier<String?> {
     state = path;
   }
 }
+
+// ── Theme Mode ────────────────────────────────────────────────────────────────
+
+class ThemeModeNotifier extends StateNotifier<ThemeMode> {
+  ThemeModeNotifier() : super(ThemeMode.dark) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString('theme_mode');
+    if (val != null) {
+      if (val == 'light') {
+        state = ThemeMode.light;
+      } else if (val == 'system') {
+        state = ThemeMode.system;
+      } else {
+        state = ThemeMode.dark;
+      }
+    }
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String val;
+    switch (mode) {
+      case ThemeMode.light:
+        val = 'light';
+        break;
+      case ThemeMode.system:
+        val = 'system';
+        break;
+      case ThemeMode.dark:
+      default:
+        val = 'dark';
+        break;
+    }
+    await prefs.setString('theme_mode', val);
+    state = mode;
+  }
+}
+
+final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+  return ThemeModeNotifier();
+});
 

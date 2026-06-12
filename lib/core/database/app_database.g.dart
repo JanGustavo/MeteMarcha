@@ -3021,6 +3021,1202 @@ class WeeklySchedulesCompanion extends UpdateCompanion<WeeklySchedule> {
   }
 }
 
+class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GoalsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _tipoMeta = const VerificationMeta('tipo');
+  @override
+  late final GeneratedColumn<String> tipo = GeneratedColumn<String>(
+      'tipo', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _exercicioNomeMeta =
+      const VerificationMeta('exercicioNome');
+  @override
+  late final GeneratedColumn<String> exercicioNome = GeneratedColumn<String>(
+      'exercicio_nome', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _exercicioIdMeta =
+      const VerificationMeta('exercicioId');
+  @override
+  late final GeneratedColumn<int> exercicioId = GeneratedColumn<int>(
+      'exercicio_id', aliasedName, true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES exercises (id)'));
+  static const VerificationMeta _valorAlvoMeta =
+      const VerificationMeta('valorAlvo');
+  @override
+  late final GeneratedColumn<double> valorAlvo = GeneratedColumn<double>(
+      'valor_alvo', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _valorInicialMeta =
+      const VerificationMeta('valorInicial');
+  @override
+  late final GeneratedColumn<double> valorInicial = GeneratedColumn<double>(
+      'valor_inicial', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _dataCriacaoMeta =
+      const VerificationMeta('dataCriacao');
+  @override
+  late final GeneratedColumn<String> dataCriacao = GeneratedColumn<String>(
+      'data_criacao', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _concluidoMeta =
+      const VerificationMeta('concluido');
+  @override
+  late final GeneratedColumn<bool> concluido = GeneratedColumn<bool>(
+      'concluido', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("concluido" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        tipo,
+        exercicioNome,
+        exercicioId,
+        valorAlvo,
+        valorInicial,
+        dataCriacao,
+        concluido
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'goals';
+  @override
+  VerificationContext validateIntegrity(Insertable<Goal> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('tipo')) {
+      context.handle(
+          _tipoMeta, tipo.isAcceptableOrUnknown(data['tipo']!, _tipoMeta));
+    } else if (isInserting) {
+      context.missing(_tipoMeta);
+    }
+    if (data.containsKey('exercicio_nome')) {
+      context.handle(
+          _exercicioNomeMeta,
+          exercicioNome.isAcceptableOrUnknown(
+              data['exercicio_nome']!, _exercicioNomeMeta));
+    }
+    if (data.containsKey('exercicio_id')) {
+      context.handle(
+          _exercicioIdMeta,
+          exercicioId.isAcceptableOrUnknown(
+              data['exercicio_id']!, _exercicioIdMeta));
+    }
+    if (data.containsKey('valor_alvo')) {
+      context.handle(_valorAlvoMeta,
+          valorAlvo.isAcceptableOrUnknown(data['valor_alvo']!, _valorAlvoMeta));
+    } else if (isInserting) {
+      context.missing(_valorAlvoMeta);
+    }
+    if (data.containsKey('valor_inicial')) {
+      context.handle(
+          _valorInicialMeta,
+          valorInicial.isAcceptableOrUnknown(
+              data['valor_inicial']!, _valorInicialMeta));
+    }
+    if (data.containsKey('data_criacao')) {
+      context.handle(
+          _dataCriacaoMeta,
+          dataCriacao.isAcceptableOrUnknown(
+              data['data_criacao']!, _dataCriacaoMeta));
+    } else if (isInserting) {
+      context.missing(_dataCriacaoMeta);
+    }
+    if (data.containsKey('concluido')) {
+      context.handle(_concluidoMeta,
+          concluido.isAcceptableOrUnknown(data['concluido']!, _concluidoMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Goal map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Goal(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      tipo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tipo'])!,
+      exercicioNome: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}exercicio_nome']),
+      exercicioId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}exercicio_id']),
+      valorAlvo: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}valor_alvo'])!,
+      valorInicial: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}valor_inicial']),
+      dataCriacao: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}data_criacao'])!,
+      concluido: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}concluido'])!,
+    );
+  }
+
+  @override
+  $GoalsTable createAlias(String alias) {
+    return $GoalsTable(attachedDatabase, alias);
+  }
+}
+
+class Goal extends DataClass implements Insertable<Goal> {
+  final String id;
+  final String tipo;
+  final String? exercicioNome;
+  final int? exercicioId;
+  final double valorAlvo;
+  final double? valorInicial;
+  final String dataCriacao;
+  final bool concluido;
+  const Goal(
+      {required this.id,
+      required this.tipo,
+      this.exercicioNome,
+      this.exercicioId,
+      required this.valorAlvo,
+      this.valorInicial,
+      required this.dataCriacao,
+      required this.concluido});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['tipo'] = Variable<String>(tipo);
+    if (!nullToAbsent || exercicioNome != null) {
+      map['exercicio_nome'] = Variable<String>(exercicioNome);
+    }
+    if (!nullToAbsent || exercicioId != null) {
+      map['exercicio_id'] = Variable<int>(exercicioId);
+    }
+    map['valor_alvo'] = Variable<double>(valorAlvo);
+    if (!nullToAbsent || valorInicial != null) {
+      map['valor_inicial'] = Variable<double>(valorInicial);
+    }
+    map['data_criacao'] = Variable<String>(dataCriacao);
+    map['concluido'] = Variable<bool>(concluido);
+    return map;
+  }
+
+  GoalsCompanion toCompanion(bool nullToAbsent) {
+    return GoalsCompanion(
+      id: Value(id),
+      tipo: Value(tipo),
+      exercicioNome: exercicioNome == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exercicioNome),
+      exercicioId: exercicioId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exercicioId),
+      valorAlvo: Value(valorAlvo),
+      valorInicial: valorInicial == null && nullToAbsent
+          ? const Value.absent()
+          : Value(valorInicial),
+      dataCriacao: Value(dataCriacao),
+      concluido: Value(concluido),
+    );
+  }
+
+  factory Goal.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Goal(
+      id: serializer.fromJson<String>(json['id']),
+      tipo: serializer.fromJson<String>(json['tipo']),
+      exercicioNome: serializer.fromJson<String?>(json['exercicioNome']),
+      exercicioId: serializer.fromJson<int?>(json['exercicioId']),
+      valorAlvo: serializer.fromJson<double>(json['valorAlvo']),
+      valorInicial: serializer.fromJson<double?>(json['valorInicial']),
+      dataCriacao: serializer.fromJson<String>(json['dataCriacao']),
+      concluido: serializer.fromJson<bool>(json['concluido']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'tipo': serializer.toJson<String>(tipo),
+      'exercicioNome': serializer.toJson<String?>(exercicioNome),
+      'exercicioId': serializer.toJson<int?>(exercicioId),
+      'valorAlvo': serializer.toJson<double>(valorAlvo),
+      'valorInicial': serializer.toJson<double?>(valorInicial),
+      'dataCriacao': serializer.toJson<String>(dataCriacao),
+      'concluido': serializer.toJson<bool>(concluido),
+    };
+  }
+
+  Goal copyWith(
+          {String? id,
+          String? tipo,
+          Value<String?> exercicioNome = const Value.absent(),
+          Value<int?> exercicioId = const Value.absent(),
+          double? valorAlvo,
+          Value<double?> valorInicial = const Value.absent(),
+          String? dataCriacao,
+          bool? concluido}) =>
+      Goal(
+        id: id ?? this.id,
+        tipo: tipo ?? this.tipo,
+        exercicioNome:
+            exercicioNome.present ? exercicioNome.value : this.exercicioNome,
+        exercicioId: exercicioId.present ? exercicioId.value : this.exercicioId,
+        valorAlvo: valorAlvo ?? this.valorAlvo,
+        valorInicial:
+            valorInicial.present ? valorInicial.value : this.valorInicial,
+        dataCriacao: dataCriacao ?? this.dataCriacao,
+        concluido: concluido ?? this.concluido,
+      );
+  Goal copyWithCompanion(GoalsCompanion data) {
+    return Goal(
+      id: data.id.present ? data.id.value : this.id,
+      tipo: data.tipo.present ? data.tipo.value : this.tipo,
+      exercicioNome: data.exercicioNome.present
+          ? data.exercicioNome.value
+          : this.exercicioNome,
+      exercicioId:
+          data.exercicioId.present ? data.exercicioId.value : this.exercicioId,
+      valorAlvo: data.valorAlvo.present ? data.valorAlvo.value : this.valorAlvo,
+      valorInicial: data.valorInicial.present
+          ? data.valorInicial.value
+          : this.valorInicial,
+      dataCriacao:
+          data.dataCriacao.present ? data.dataCriacao.value : this.dataCriacao,
+      concluido: data.concluido.present ? data.concluido.value : this.concluido,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Goal(')
+          ..write('id: $id, ')
+          ..write('tipo: $tipo, ')
+          ..write('exercicioNome: $exercicioNome, ')
+          ..write('exercicioId: $exercicioId, ')
+          ..write('valorAlvo: $valorAlvo, ')
+          ..write('valorInicial: $valorInicial, ')
+          ..write('dataCriacao: $dataCriacao, ')
+          ..write('concluido: $concluido')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, tipo, exercicioNome, exercicioId,
+      valorAlvo, valorInicial, dataCriacao, concluido);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Goal &&
+          other.id == this.id &&
+          other.tipo == this.tipo &&
+          other.exercicioNome == this.exercicioNome &&
+          other.exercicioId == this.exercicioId &&
+          other.valorAlvo == this.valorAlvo &&
+          other.valorInicial == this.valorInicial &&
+          other.dataCriacao == this.dataCriacao &&
+          other.concluido == this.concluido);
+}
+
+class GoalsCompanion extends UpdateCompanion<Goal> {
+  final Value<String> id;
+  final Value<String> tipo;
+  final Value<String?> exercicioNome;
+  final Value<int?> exercicioId;
+  final Value<double> valorAlvo;
+  final Value<double?> valorInicial;
+  final Value<String> dataCriacao;
+  final Value<bool> concluido;
+  final Value<int> rowid;
+  const GoalsCompanion({
+    this.id = const Value.absent(),
+    this.tipo = const Value.absent(),
+    this.exercicioNome = const Value.absent(),
+    this.exercicioId = const Value.absent(),
+    this.valorAlvo = const Value.absent(),
+    this.valorInicial = const Value.absent(),
+    this.dataCriacao = const Value.absent(),
+    this.concluido = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  GoalsCompanion.insert({
+    required String id,
+    required String tipo,
+    this.exercicioNome = const Value.absent(),
+    this.exercicioId = const Value.absent(),
+    required double valorAlvo,
+    this.valorInicial = const Value.absent(),
+    required String dataCriacao,
+    this.concluido = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        tipo = Value(tipo),
+        valorAlvo = Value(valorAlvo),
+        dataCriacao = Value(dataCriacao);
+  static Insertable<Goal> custom({
+    Expression<String>? id,
+    Expression<String>? tipo,
+    Expression<String>? exercicioNome,
+    Expression<int>? exercicioId,
+    Expression<double>? valorAlvo,
+    Expression<double>? valorInicial,
+    Expression<String>? dataCriacao,
+    Expression<bool>? concluido,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (tipo != null) 'tipo': tipo,
+      if (exercicioNome != null) 'exercicio_nome': exercicioNome,
+      if (exercicioId != null) 'exercicio_id': exercicioId,
+      if (valorAlvo != null) 'valor_alvo': valorAlvo,
+      if (valorInicial != null) 'valor_inicial': valorInicial,
+      if (dataCriacao != null) 'data_criacao': dataCriacao,
+      if (concluido != null) 'concluido': concluido,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  GoalsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? tipo,
+      Value<String?>? exercicioNome,
+      Value<int?>? exercicioId,
+      Value<double>? valorAlvo,
+      Value<double?>? valorInicial,
+      Value<String>? dataCriacao,
+      Value<bool>? concluido,
+      Value<int>? rowid}) {
+    return GoalsCompanion(
+      id: id ?? this.id,
+      tipo: tipo ?? this.tipo,
+      exercicioNome: exercicioNome ?? this.exercicioNome,
+      exercicioId: exercicioId ?? this.exercicioId,
+      valorAlvo: valorAlvo ?? this.valorAlvo,
+      valorInicial: valorInicial ?? this.valorInicial,
+      dataCriacao: dataCriacao ?? this.dataCriacao,
+      concluido: concluido ?? this.concluido,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (tipo.present) {
+      map['tipo'] = Variable<String>(tipo.value);
+    }
+    if (exercicioNome.present) {
+      map['exercicio_nome'] = Variable<String>(exercicioNome.value);
+    }
+    if (exercicioId.present) {
+      map['exercicio_id'] = Variable<int>(exercicioId.value);
+    }
+    if (valorAlvo.present) {
+      map['valor_alvo'] = Variable<double>(valorAlvo.value);
+    }
+    if (valorInicial.present) {
+      map['valor_inicial'] = Variable<double>(valorInicial.value);
+    }
+    if (dataCriacao.present) {
+      map['data_criacao'] = Variable<String>(dataCriacao.value);
+    }
+    if (concluido.present) {
+      map['concluido'] = Variable<bool>(concluido.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GoalsCompanion(')
+          ..write('id: $id, ')
+          ..write('tipo: $tipo, ')
+          ..write('exercicioNome: $exercicioNome, ')
+          ..write('exercicioId: $exercicioId, ')
+          ..write('valorAlvo: $valorAlvo, ')
+          ..write('valorInicial: $valorInicial, ')
+          ..write('dataCriacao: $dataCriacao, ')
+          ..write('concluido: $concluido, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BodyMeasurementsTable extends BodyMeasurements
+    with TableInfo<$BodyMeasurementsTable, BodyMeasurement> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BodyMeasurementsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+      'data', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _pesoMeta = const VerificationMeta('peso');
+  @override
+  late final GeneratedColumn<double> peso = GeneratedColumn<double>(
+      'peso', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _gorduraPercentualMeta =
+      const VerificationMeta('gorduraPercentual');
+  @override
+  late final GeneratedColumn<double> gorduraPercentual =
+      GeneratedColumn<double>('gordura_percentual', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _massaMagraMeta =
+      const VerificationMeta('massaMagra');
+  @override
+  late final GeneratedColumn<double> massaMagra = GeneratedColumn<double>(
+      'massa_magra', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _imcMeta = const VerificationMeta('imc');
+  @override
+  late final GeneratedColumn<double> imc = GeneratedColumn<double>(
+      'imc', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _peitoMeta = const VerificationMeta('peito');
+  @override
+  late final GeneratedColumn<double> peito = GeneratedColumn<double>(
+      'peito', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _cinturaMeta =
+      const VerificationMeta('cintura');
+  @override
+  late final GeneratedColumn<double> cintura = GeneratedColumn<double>(
+      'cintura', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _bracoEsquerdoMeta =
+      const VerificationMeta('bracoEsquerdo');
+  @override
+  late final GeneratedColumn<double> bracoEsquerdo = GeneratedColumn<double>(
+      'braco_esquerdo', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _bracoDireitoMeta =
+      const VerificationMeta('bracoDireito');
+  @override
+  late final GeneratedColumn<double> bracoDireito = GeneratedColumn<double>(
+      'braco_direito', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _coxaEsquerdaMeta =
+      const VerificationMeta('coxaEsquerda');
+  @override
+  late final GeneratedColumn<double> coxaEsquerda = GeneratedColumn<double>(
+      'coxa_esquerda', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _coxaDireitaMeta =
+      const VerificationMeta('coxaDireita');
+  @override
+  late final GeneratedColumn<double> coxaDireita = GeneratedColumn<double>(
+      'coxa_direita', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _panturrilhaEsquerdaMeta =
+      const VerificationMeta('panturrilhaEsquerda');
+  @override
+  late final GeneratedColumn<double> panturrilhaEsquerda =
+      GeneratedColumn<double>('panturrilha_esquerda', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _panturrilhaDireitaMeta =
+      const VerificationMeta('panturrilhaDireita');
+  @override
+  late final GeneratedColumn<double> panturrilhaDireita =
+      GeneratedColumn<double>('panturrilha_direita', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _fotoPathMeta =
+      const VerificationMeta('fotoPath');
+  @override
+  late final GeneratedColumn<String> fotoPath = GeneratedColumn<String>(
+      'foto_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        data,
+        peso,
+        gorduraPercentual,
+        massaMagra,
+        imc,
+        peito,
+        cintura,
+        bracoEsquerdo,
+        bracoDireito,
+        coxaEsquerda,
+        coxaDireita,
+        panturrilhaEsquerda,
+        panturrilhaDireita,
+        fotoPath
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'body_measurements';
+  @override
+  VerificationContext validateIntegrity(Insertable<BodyMeasurement> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+          _dataMeta, this.data.isAcceptableOrUnknown(data['data']!, _dataMeta));
+    } else if (isInserting) {
+      context.missing(_dataMeta);
+    }
+    if (data.containsKey('peso')) {
+      context.handle(
+          _pesoMeta, peso.isAcceptableOrUnknown(data['peso']!, _pesoMeta));
+    }
+    if (data.containsKey('gordura_percentual')) {
+      context.handle(
+          _gorduraPercentualMeta,
+          gorduraPercentual.isAcceptableOrUnknown(
+              data['gordura_percentual']!, _gorduraPercentualMeta));
+    }
+    if (data.containsKey('massa_magra')) {
+      context.handle(
+          _massaMagraMeta,
+          massaMagra.isAcceptableOrUnknown(
+              data['massa_magra']!, _massaMagraMeta));
+    }
+    if (data.containsKey('imc')) {
+      context.handle(
+          _imcMeta, imc.isAcceptableOrUnknown(data['imc']!, _imcMeta));
+    }
+    if (data.containsKey('peito')) {
+      context.handle(
+          _peitoMeta, peito.isAcceptableOrUnknown(data['peito']!, _peitoMeta));
+    }
+    if (data.containsKey('cintura')) {
+      context.handle(_cinturaMeta,
+          cintura.isAcceptableOrUnknown(data['cintura']!, _cinturaMeta));
+    }
+    if (data.containsKey('braco_esquerdo')) {
+      context.handle(
+          _bracoEsquerdoMeta,
+          bracoEsquerdo.isAcceptableOrUnknown(
+              data['braco_esquerdo']!, _bracoEsquerdoMeta));
+    }
+    if (data.containsKey('braco_direito')) {
+      context.handle(
+          _bracoDireitoMeta,
+          bracoDireito.isAcceptableOrUnknown(
+              data['braco_direito']!, _bracoDireitoMeta));
+    }
+    if (data.containsKey('coxa_esquerda')) {
+      context.handle(
+          _coxaEsquerdaMeta,
+          coxaEsquerda.isAcceptableOrUnknown(
+              data['coxa_esquerda']!, _coxaEsquerdaMeta));
+    }
+    if (data.containsKey('coxa_direita')) {
+      context.handle(
+          _coxaDireitaMeta,
+          coxaDireita.isAcceptableOrUnknown(
+              data['coxa_direita']!, _coxaDireitaMeta));
+    }
+    if (data.containsKey('panturrilha_esquerda')) {
+      context.handle(
+          _panturrilhaEsquerdaMeta,
+          panturrilhaEsquerda.isAcceptableOrUnknown(
+              data['panturrilha_esquerda']!, _panturrilhaEsquerdaMeta));
+    }
+    if (data.containsKey('panturrilha_direita')) {
+      context.handle(
+          _panturrilhaDireitaMeta,
+          panturrilhaDireita.isAcceptableOrUnknown(
+              data['panturrilha_direita']!, _panturrilhaDireitaMeta));
+    }
+    if (data.containsKey('foto_path')) {
+      context.handle(_fotoPathMeta,
+          fotoPath.isAcceptableOrUnknown(data['foto_path']!, _fotoPathMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BodyMeasurement map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BodyMeasurement(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      data: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}data'])!,
+      peso: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}peso']),
+      gorduraPercentual: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}gordura_percentual']),
+      massaMagra: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}massa_magra']),
+      imc: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}imc']),
+      peito: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}peito']),
+      cintura: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cintura']),
+      bracoEsquerdo: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}braco_esquerdo']),
+      bracoDireito: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}braco_direito']),
+      coxaEsquerda: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}coxa_esquerda']),
+      coxaDireita: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}coxa_direita']),
+      panturrilhaEsquerda: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}panturrilha_esquerda']),
+      panturrilhaDireita: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}panturrilha_direita']),
+      fotoPath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}foto_path']),
+    );
+  }
+
+  @override
+  $BodyMeasurementsTable createAlias(String alias) {
+    return $BodyMeasurementsTable(attachedDatabase, alias);
+  }
+}
+
+class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
+  final int id;
+  final String data;
+  final double? peso;
+  final double? gorduraPercentual;
+  final double? massaMagra;
+  final double? imc;
+  final double? peito;
+  final double? cintura;
+  final double? bracoEsquerdo;
+  final double? bracoDireito;
+  final double? coxaEsquerda;
+  final double? coxaDireita;
+  final double? panturrilhaEsquerda;
+  final double? panturrilhaDireita;
+  final String? fotoPath;
+  const BodyMeasurement(
+      {required this.id,
+      required this.data,
+      this.peso,
+      this.gorduraPercentual,
+      this.massaMagra,
+      this.imc,
+      this.peito,
+      this.cintura,
+      this.bracoEsquerdo,
+      this.bracoDireito,
+      this.coxaEsquerda,
+      this.coxaDireita,
+      this.panturrilhaEsquerda,
+      this.panturrilhaDireita,
+      this.fotoPath});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['data'] = Variable<String>(data);
+    if (!nullToAbsent || peso != null) {
+      map['peso'] = Variable<double>(peso);
+    }
+    if (!nullToAbsent || gorduraPercentual != null) {
+      map['gordura_percentual'] = Variable<double>(gorduraPercentual);
+    }
+    if (!nullToAbsent || massaMagra != null) {
+      map['massa_magra'] = Variable<double>(massaMagra);
+    }
+    if (!nullToAbsent || imc != null) {
+      map['imc'] = Variable<double>(imc);
+    }
+    if (!nullToAbsent || peito != null) {
+      map['peito'] = Variable<double>(peito);
+    }
+    if (!nullToAbsent || cintura != null) {
+      map['cintura'] = Variable<double>(cintura);
+    }
+    if (!nullToAbsent || bracoEsquerdo != null) {
+      map['braco_esquerdo'] = Variable<double>(bracoEsquerdo);
+    }
+    if (!nullToAbsent || bracoDireito != null) {
+      map['braco_direito'] = Variable<double>(bracoDireito);
+    }
+    if (!nullToAbsent || coxaEsquerda != null) {
+      map['coxa_esquerda'] = Variable<double>(coxaEsquerda);
+    }
+    if (!nullToAbsent || coxaDireita != null) {
+      map['coxa_direita'] = Variable<double>(coxaDireita);
+    }
+    if (!nullToAbsent || panturrilhaEsquerda != null) {
+      map['panturrilha_esquerda'] = Variable<double>(panturrilhaEsquerda);
+    }
+    if (!nullToAbsent || panturrilhaDireita != null) {
+      map['panturrilha_direita'] = Variable<double>(panturrilhaDireita);
+    }
+    if (!nullToAbsent || fotoPath != null) {
+      map['foto_path'] = Variable<String>(fotoPath);
+    }
+    return map;
+  }
+
+  BodyMeasurementsCompanion toCompanion(bool nullToAbsent) {
+    return BodyMeasurementsCompanion(
+      id: Value(id),
+      data: Value(data),
+      peso: peso == null && nullToAbsent ? const Value.absent() : Value(peso),
+      gorduraPercentual: gorduraPercentual == null && nullToAbsent
+          ? const Value.absent()
+          : Value(gorduraPercentual),
+      massaMagra: massaMagra == null && nullToAbsent
+          ? const Value.absent()
+          : Value(massaMagra),
+      imc: imc == null && nullToAbsent ? const Value.absent() : Value(imc),
+      peito:
+          peito == null && nullToAbsent ? const Value.absent() : Value(peito),
+      cintura: cintura == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cintura),
+      bracoEsquerdo: bracoEsquerdo == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bracoEsquerdo),
+      bracoDireito: bracoDireito == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bracoDireito),
+      coxaEsquerda: coxaEsquerda == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coxaEsquerda),
+      coxaDireita: coxaDireita == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coxaDireita),
+      panturrilhaEsquerda: panturrilhaEsquerda == null && nullToAbsent
+          ? const Value.absent()
+          : Value(panturrilhaEsquerda),
+      panturrilhaDireita: panturrilhaDireita == null && nullToAbsent
+          ? const Value.absent()
+          : Value(panturrilhaDireita),
+      fotoPath: fotoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fotoPath),
+    );
+  }
+
+  factory BodyMeasurement.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BodyMeasurement(
+      id: serializer.fromJson<int>(json['id']),
+      data: serializer.fromJson<String>(json['data']),
+      peso: serializer.fromJson<double?>(json['peso']),
+      gorduraPercentual:
+          serializer.fromJson<double?>(json['gorduraPercentual']),
+      massaMagra: serializer.fromJson<double?>(json['massaMagra']),
+      imc: serializer.fromJson<double?>(json['imc']),
+      peito: serializer.fromJson<double?>(json['peito']),
+      cintura: serializer.fromJson<double?>(json['cintura']),
+      bracoEsquerdo: serializer.fromJson<double?>(json['bracoEsquerdo']),
+      bracoDireito: serializer.fromJson<double?>(json['bracoDireito']),
+      coxaEsquerda: serializer.fromJson<double?>(json['coxaEsquerda']),
+      coxaDireita: serializer.fromJson<double?>(json['coxaDireita']),
+      panturrilhaEsquerda:
+          serializer.fromJson<double?>(json['panturrilhaEsquerda']),
+      panturrilhaDireita:
+          serializer.fromJson<double?>(json['panturrilhaDireita']),
+      fotoPath: serializer.fromJson<String?>(json['fotoPath']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'data': serializer.toJson<String>(data),
+      'peso': serializer.toJson<double?>(peso),
+      'gorduraPercentual': serializer.toJson<double?>(gorduraPercentual),
+      'massaMagra': serializer.toJson<double?>(massaMagra),
+      'imc': serializer.toJson<double?>(imc),
+      'peito': serializer.toJson<double?>(peito),
+      'cintura': serializer.toJson<double?>(cintura),
+      'bracoEsquerdo': serializer.toJson<double?>(bracoEsquerdo),
+      'bracoDireito': serializer.toJson<double?>(bracoDireito),
+      'coxaEsquerda': serializer.toJson<double?>(coxaEsquerda),
+      'coxaDireita': serializer.toJson<double?>(coxaDireita),
+      'panturrilhaEsquerda': serializer.toJson<double?>(panturrilhaEsquerda),
+      'panturrilhaDireita': serializer.toJson<double?>(panturrilhaDireita),
+      'fotoPath': serializer.toJson<String?>(fotoPath),
+    };
+  }
+
+  BodyMeasurement copyWith(
+          {int? id,
+          String? data,
+          Value<double?> peso = const Value.absent(),
+          Value<double?> gorduraPercentual = const Value.absent(),
+          Value<double?> massaMagra = const Value.absent(),
+          Value<double?> imc = const Value.absent(),
+          Value<double?> peito = const Value.absent(),
+          Value<double?> cintura = const Value.absent(),
+          Value<double?> bracoEsquerdo = const Value.absent(),
+          Value<double?> bracoDireito = const Value.absent(),
+          Value<double?> coxaEsquerda = const Value.absent(),
+          Value<double?> coxaDireita = const Value.absent(),
+          Value<double?> panturrilhaEsquerda = const Value.absent(),
+          Value<double?> panturrilhaDireita = const Value.absent(),
+          Value<String?> fotoPath = const Value.absent()}) =>
+      BodyMeasurement(
+        id: id ?? this.id,
+        data: data ?? this.data,
+        peso: peso.present ? peso.value : this.peso,
+        gorduraPercentual: gorduraPercentual.present
+            ? gorduraPercentual.value
+            : this.gorduraPercentual,
+        massaMagra: massaMagra.present ? massaMagra.value : this.massaMagra,
+        imc: imc.present ? imc.value : this.imc,
+        peito: peito.present ? peito.value : this.peito,
+        cintura: cintura.present ? cintura.value : this.cintura,
+        bracoEsquerdo:
+            bracoEsquerdo.present ? bracoEsquerdo.value : this.bracoEsquerdo,
+        bracoDireito:
+            bracoDireito.present ? bracoDireito.value : this.bracoDireito,
+        coxaEsquerda:
+            coxaEsquerda.present ? coxaEsquerda.value : this.coxaEsquerda,
+        coxaDireita: coxaDireita.present ? coxaDireita.value : this.coxaDireita,
+        panturrilhaEsquerda: panturrilhaEsquerda.present
+            ? panturrilhaEsquerda.value
+            : this.panturrilhaEsquerda,
+        panturrilhaDireita: panturrilhaDireita.present
+            ? panturrilhaDireita.value
+            : this.panturrilhaDireita,
+        fotoPath: fotoPath.present ? fotoPath.value : this.fotoPath,
+      );
+  BodyMeasurement copyWithCompanion(BodyMeasurementsCompanion data) {
+    return BodyMeasurement(
+      id: data.id.present ? data.id.value : this.id,
+      data: data.data.present ? data.data.value : this.data,
+      peso: data.peso.present ? data.peso.value : this.peso,
+      gorduraPercentual: data.gorduraPercentual.present
+          ? data.gorduraPercentual.value
+          : this.gorduraPercentual,
+      massaMagra:
+          data.massaMagra.present ? data.massaMagra.value : this.massaMagra,
+      imc: data.imc.present ? data.imc.value : this.imc,
+      peito: data.peito.present ? data.peito.value : this.peito,
+      cintura: data.cintura.present ? data.cintura.value : this.cintura,
+      bracoEsquerdo: data.bracoEsquerdo.present
+          ? data.bracoEsquerdo.value
+          : this.bracoEsquerdo,
+      bracoDireito: data.bracoDireito.present
+          ? data.bracoDireito.value
+          : this.bracoDireito,
+      coxaEsquerda: data.coxaEsquerda.present
+          ? data.coxaEsquerda.value
+          : this.coxaEsquerda,
+      coxaDireita:
+          data.coxaDireita.present ? data.coxaDireita.value : this.coxaDireita,
+      panturrilhaEsquerda: data.panturrilhaEsquerda.present
+          ? data.panturrilhaEsquerda.value
+          : this.panturrilhaEsquerda,
+      panturrilhaDireita: data.panturrilhaDireita.present
+          ? data.panturrilhaDireita.value
+          : this.panturrilhaDireita,
+      fotoPath: data.fotoPath.present ? data.fotoPath.value : this.fotoPath,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BodyMeasurement(')
+          ..write('id: $id, ')
+          ..write('data: $data, ')
+          ..write('peso: $peso, ')
+          ..write('gorduraPercentual: $gorduraPercentual, ')
+          ..write('massaMagra: $massaMagra, ')
+          ..write('imc: $imc, ')
+          ..write('peito: $peito, ')
+          ..write('cintura: $cintura, ')
+          ..write('bracoEsquerdo: $bracoEsquerdo, ')
+          ..write('bracoDireito: $bracoDireito, ')
+          ..write('coxaEsquerda: $coxaEsquerda, ')
+          ..write('coxaDireita: $coxaDireita, ')
+          ..write('panturrilhaEsquerda: $panturrilhaEsquerda, ')
+          ..write('panturrilhaDireita: $panturrilhaDireita, ')
+          ..write('fotoPath: $fotoPath')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      data,
+      peso,
+      gorduraPercentual,
+      massaMagra,
+      imc,
+      peito,
+      cintura,
+      bracoEsquerdo,
+      bracoDireito,
+      coxaEsquerda,
+      coxaDireita,
+      panturrilhaEsquerda,
+      panturrilhaDireita,
+      fotoPath);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BodyMeasurement &&
+          other.id == this.id &&
+          other.data == this.data &&
+          other.peso == this.peso &&
+          other.gorduraPercentual == this.gorduraPercentual &&
+          other.massaMagra == this.massaMagra &&
+          other.imc == this.imc &&
+          other.peito == this.peito &&
+          other.cintura == this.cintura &&
+          other.bracoEsquerdo == this.bracoEsquerdo &&
+          other.bracoDireito == this.bracoDireito &&
+          other.coxaEsquerda == this.coxaEsquerda &&
+          other.coxaDireita == this.coxaDireita &&
+          other.panturrilhaEsquerda == this.panturrilhaEsquerda &&
+          other.panturrilhaDireita == this.panturrilhaDireita &&
+          other.fotoPath == this.fotoPath);
+}
+
+class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
+  final Value<int> id;
+  final Value<String> data;
+  final Value<double?> peso;
+  final Value<double?> gorduraPercentual;
+  final Value<double?> massaMagra;
+  final Value<double?> imc;
+  final Value<double?> peito;
+  final Value<double?> cintura;
+  final Value<double?> bracoEsquerdo;
+  final Value<double?> bracoDireito;
+  final Value<double?> coxaEsquerda;
+  final Value<double?> coxaDireita;
+  final Value<double?> panturrilhaEsquerda;
+  final Value<double?> panturrilhaDireita;
+  final Value<String?> fotoPath;
+  const BodyMeasurementsCompanion({
+    this.id = const Value.absent(),
+    this.data = const Value.absent(),
+    this.peso = const Value.absent(),
+    this.gorduraPercentual = const Value.absent(),
+    this.massaMagra = const Value.absent(),
+    this.imc = const Value.absent(),
+    this.peito = const Value.absent(),
+    this.cintura = const Value.absent(),
+    this.bracoEsquerdo = const Value.absent(),
+    this.bracoDireito = const Value.absent(),
+    this.coxaEsquerda = const Value.absent(),
+    this.coxaDireita = const Value.absent(),
+    this.panturrilhaEsquerda = const Value.absent(),
+    this.panturrilhaDireita = const Value.absent(),
+    this.fotoPath = const Value.absent(),
+  });
+  BodyMeasurementsCompanion.insert({
+    this.id = const Value.absent(),
+    required String data,
+    this.peso = const Value.absent(),
+    this.gorduraPercentual = const Value.absent(),
+    this.massaMagra = const Value.absent(),
+    this.imc = const Value.absent(),
+    this.peito = const Value.absent(),
+    this.cintura = const Value.absent(),
+    this.bracoEsquerdo = const Value.absent(),
+    this.bracoDireito = const Value.absent(),
+    this.coxaEsquerda = const Value.absent(),
+    this.coxaDireita = const Value.absent(),
+    this.panturrilhaEsquerda = const Value.absent(),
+    this.panturrilhaDireita = const Value.absent(),
+    this.fotoPath = const Value.absent(),
+  }) : data = Value(data);
+  static Insertable<BodyMeasurement> custom({
+    Expression<int>? id,
+    Expression<String>? data,
+    Expression<double>? peso,
+    Expression<double>? gorduraPercentual,
+    Expression<double>? massaMagra,
+    Expression<double>? imc,
+    Expression<double>? peito,
+    Expression<double>? cintura,
+    Expression<double>? bracoEsquerdo,
+    Expression<double>? bracoDireito,
+    Expression<double>? coxaEsquerda,
+    Expression<double>? coxaDireita,
+    Expression<double>? panturrilhaEsquerda,
+    Expression<double>? panturrilhaDireita,
+    Expression<String>? fotoPath,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (data != null) 'data': data,
+      if (peso != null) 'peso': peso,
+      if (gorduraPercentual != null) 'gordura_percentual': gorduraPercentual,
+      if (massaMagra != null) 'massa_magra': massaMagra,
+      if (imc != null) 'imc': imc,
+      if (peito != null) 'peito': peito,
+      if (cintura != null) 'cintura': cintura,
+      if (bracoEsquerdo != null) 'braco_esquerdo': bracoEsquerdo,
+      if (bracoDireito != null) 'braco_direito': bracoDireito,
+      if (coxaEsquerda != null) 'coxa_esquerda': coxaEsquerda,
+      if (coxaDireita != null) 'coxa_direita': coxaDireita,
+      if (panturrilhaEsquerda != null)
+        'panturrilha_esquerda': panturrilhaEsquerda,
+      if (panturrilhaDireita != null) 'panturrilha_direita': panturrilhaDireita,
+      if (fotoPath != null) 'foto_path': fotoPath,
+    });
+  }
+
+  BodyMeasurementsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? data,
+      Value<double?>? peso,
+      Value<double?>? gorduraPercentual,
+      Value<double?>? massaMagra,
+      Value<double?>? imc,
+      Value<double?>? peito,
+      Value<double?>? cintura,
+      Value<double?>? bracoEsquerdo,
+      Value<double?>? bracoDireito,
+      Value<double?>? coxaEsquerda,
+      Value<double?>? coxaDireita,
+      Value<double?>? panturrilhaEsquerda,
+      Value<double?>? panturrilhaDireita,
+      Value<String?>? fotoPath}) {
+    return BodyMeasurementsCompanion(
+      id: id ?? this.id,
+      data: data ?? this.data,
+      peso: peso ?? this.peso,
+      gorduraPercentual: gorduraPercentual ?? this.gorduraPercentual,
+      massaMagra: massaMagra ?? this.massaMagra,
+      imc: imc ?? this.imc,
+      peito: peito ?? this.peito,
+      cintura: cintura ?? this.cintura,
+      bracoEsquerdo: bracoEsquerdo ?? this.bracoEsquerdo,
+      bracoDireito: bracoDireito ?? this.bracoDireito,
+      coxaEsquerda: coxaEsquerda ?? this.coxaEsquerda,
+      coxaDireita: coxaDireita ?? this.coxaDireita,
+      panturrilhaEsquerda: panturrilhaEsquerda ?? this.panturrilhaEsquerda,
+      panturrilhaDireita: panturrilhaDireita ?? this.panturrilhaDireita,
+      fotoPath: fotoPath ?? this.fotoPath,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (peso.present) {
+      map['peso'] = Variable<double>(peso.value);
+    }
+    if (gorduraPercentual.present) {
+      map['gordura_percentual'] = Variable<double>(gorduraPercentual.value);
+    }
+    if (massaMagra.present) {
+      map['massa_magra'] = Variable<double>(massaMagra.value);
+    }
+    if (imc.present) {
+      map['imc'] = Variable<double>(imc.value);
+    }
+    if (peito.present) {
+      map['peito'] = Variable<double>(peito.value);
+    }
+    if (cintura.present) {
+      map['cintura'] = Variable<double>(cintura.value);
+    }
+    if (bracoEsquerdo.present) {
+      map['braco_esquerdo'] = Variable<double>(bracoEsquerdo.value);
+    }
+    if (bracoDireito.present) {
+      map['braco_direito'] = Variable<double>(bracoDireito.value);
+    }
+    if (coxaEsquerda.present) {
+      map['coxa_esquerda'] = Variable<double>(coxaEsquerda.value);
+    }
+    if (coxaDireita.present) {
+      map['coxa_direita'] = Variable<double>(coxaDireita.value);
+    }
+    if (panturrilhaEsquerda.present) {
+      map['panturrilha_esquerda'] = Variable<double>(panturrilhaEsquerda.value);
+    }
+    if (panturrilhaDireita.present) {
+      map['panturrilha_direita'] = Variable<double>(panturrilhaDireita.value);
+    }
+    if (fotoPath.present) {
+      map['foto_path'] = Variable<String>(fotoPath.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BodyMeasurementsCompanion(')
+          ..write('id: $id, ')
+          ..write('data: $data, ')
+          ..write('peso: $peso, ')
+          ..write('gorduraPercentual: $gorduraPercentual, ')
+          ..write('massaMagra: $massaMagra, ')
+          ..write('imc: $imc, ')
+          ..write('peito: $peito, ')
+          ..write('cintura: $cintura, ')
+          ..write('bracoEsquerdo: $bracoEsquerdo, ')
+          ..write('bracoDireito: $bracoDireito, ')
+          ..write('coxaEsquerda: $coxaEsquerda, ')
+          ..write('coxaDireita: $coxaDireita, ')
+          ..write('panturrilhaEsquerda: $panturrilhaEsquerda, ')
+          ..write('panturrilhaDireita: $panturrilhaDireita, ')
+          ..write('fotoPath: $fotoPath')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3036,6 +4232,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $WeeklyWeightsTable weeklyWeights = $WeeklyWeightsTable(this);
   late final $WeeklySchedulesTable weeklySchedules =
       $WeeklySchedulesTable(this);
+  late final $GoalsTable goals = $GoalsTable(this);
+  late final $BodyMeasurementsTable bodyMeasurements =
+      $BodyMeasurementsTable(this);
   late final ExerciseDao exerciseDao = ExerciseDao(this as AppDatabase);
   late final WorkoutDao workoutDao = WorkoutDao(this as AppDatabase);
   late final LogDao logDao = LogDao(this as AppDatabase);
@@ -3052,7 +4251,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         exerciseLogs,
         userProfiles,
         weeklyWeights,
-        weeklySchedules
+        weeklySchedules,
+        goals,
+        bodyMeasurements
       ];
 }
 
@@ -3114,6 +4315,21 @@ final class $$ExercisesTableReferences
         .filter((f) => f.exerciseId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_exerciseLogsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$GoalsTable, List<Goal>> _goalsRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.goals,
+          aliasName:
+              $_aliasNameGenerator(db.exercises.id, db.goals.exercicioId));
+
+  $$GoalsTableProcessedTableManager get goalsRefs {
+    final manager = $$GoalsTableTableManager($_db, $_db.goals)
+        .filter((f) => f.exercicioId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_goalsRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -3193,6 +4409,27 @@ class $$ExercisesTableFilterComposer
             $$ExerciseLogsTableFilterComposer(
               $db: $db,
               $table: $db.exerciseLogs,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> goalsRefs(
+      Expression<bool> Function($$GoalsTableFilterComposer f) f) {
+    final $$GoalsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.goals,
+        getReferencedColumn: (t) => t.exercicioId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$GoalsTableFilterComposer(
+              $db: $db,
+              $table: $db.goals,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -3327,6 +4564,27 @@ class $$ExercisesTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> goalsRefs<T extends Object>(
+      Expression<T> Function($$GoalsTableAnnotationComposer a) f) {
+    final $$GoalsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.goals,
+        getReferencedColumn: (t) => t.exercicioId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$GoalsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.goals,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$ExercisesTableTableManager extends RootTableManager<
@@ -3341,7 +4599,9 @@ class $$ExercisesTableTableManager extends RootTableManager<
     (Exercise, $$ExercisesTableReferences),
     Exercise,
     PrefetchHooks Function(
-        {bool workoutDayExercisesRefs, bool exerciseLogsRefs})> {
+        {bool workoutDayExercisesRefs,
+        bool exerciseLogsRefs,
+        bool goalsRefs})> {
   $$ExercisesTableTableManager(_$AppDatabase db, $ExercisesTable table)
       : super(TableManagerState(
           db: db,
@@ -3407,12 +4667,15 @@ class $$ExercisesTableTableManager extends RootTableManager<
                   ))
               .toList(),
           prefetchHooksCallback: (
-              {workoutDayExercisesRefs = false, exerciseLogsRefs = false}) {
+              {workoutDayExercisesRefs = false,
+              exerciseLogsRefs = false,
+              goalsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (workoutDayExercisesRefs) db.workoutDayExercises,
-                if (exerciseLogsRefs) db.exerciseLogs
+                if (exerciseLogsRefs) db.exerciseLogs,
+                if (goalsRefs) db.goals
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -3442,6 +4705,17 @@ class $$ExercisesTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.exerciseId == item.id),
+                        typedResults: items),
+                  if (goalsRefs)
+                    await $_getPrefetchedData<Exercise, $ExercisesTable, Goal>(
+                        currentTable: table,
+                        referencedTable:
+                            $$ExercisesTableReferences._goalsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ExercisesTableReferences(db, table, p0).goalsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.exercicioId == item.id),
                         typedResults: items)
                 ];
               },
@@ -3462,7 +4736,7 @@ typedef $$ExercisesTableProcessedTableManager = ProcessedTableManager<
     (Exercise, $$ExercisesTableReferences),
     Exercise,
     PrefetchHooks Function(
-        {bool workoutDayExercisesRefs, bool exerciseLogsRefs})>;
+        {bool workoutDayExercisesRefs, bool exerciseLogsRefs, bool goalsRefs})>;
 typedef $$WorkoutSplitsTableCreateCompanionBuilder = WorkoutSplitsCompanion
     Function({
   Value<int> id,
@@ -5847,6 +7121,649 @@ typedef $$WeeklySchedulesTableProcessedTableManager = ProcessedTableManager<
     (WeeklySchedule, $$WeeklySchedulesTableReferences),
     WeeklySchedule,
     PrefetchHooks Function({bool dayId})>;
+typedef $$GoalsTableCreateCompanionBuilder = GoalsCompanion Function({
+  required String id,
+  required String tipo,
+  Value<String?> exercicioNome,
+  Value<int?> exercicioId,
+  required double valorAlvo,
+  Value<double?> valorInicial,
+  required String dataCriacao,
+  Value<bool> concluido,
+  Value<int> rowid,
+});
+typedef $$GoalsTableUpdateCompanionBuilder = GoalsCompanion Function({
+  Value<String> id,
+  Value<String> tipo,
+  Value<String?> exercicioNome,
+  Value<int?> exercicioId,
+  Value<double> valorAlvo,
+  Value<double?> valorInicial,
+  Value<String> dataCriacao,
+  Value<bool> concluido,
+  Value<int> rowid,
+});
+
+final class $$GoalsTableReferences
+    extends BaseReferences<_$AppDatabase, $GoalsTable, Goal> {
+  $$GoalsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ExercisesTable _exercicioIdTable(_$AppDatabase db) => db.exercises
+      .createAlias($_aliasNameGenerator(db.goals.exercicioId, db.exercises.id));
+
+  $$ExercisesTableProcessedTableManager? get exercicioId {
+    final $_column = $_itemColumn<int>('exercicio_id');
+    if ($_column == null) return null;
+    final manager = $$ExercisesTableTableManager($_db, $_db.exercises)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_exercicioIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
+  $$GoalsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get tipo => $composableBuilder(
+      column: $table.tipo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get exercicioNome => $composableBuilder(
+      column: $table.exercicioNome, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get valorAlvo => $composableBuilder(
+      column: $table.valorAlvo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get valorInicial => $composableBuilder(
+      column: $table.valorInicial, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get dataCriacao => $composableBuilder(
+      column: $table.dataCriacao, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get concluido => $composableBuilder(
+      column: $table.concluido, builder: (column) => ColumnFilters(column));
+
+  $$ExercisesTableFilterComposer get exercicioId {
+    final $$ExercisesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.exercicioId,
+        referencedTable: $db.exercises,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ExercisesTableFilterComposer(
+              $db: $db,
+              $table: $db.exercises,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$GoalsTableOrderingComposer
+    extends Composer<_$AppDatabase, $GoalsTable> {
+  $$GoalsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get tipo => $composableBuilder(
+      column: $table.tipo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get exercicioNome => $composableBuilder(
+      column: $table.exercicioNome,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get valorAlvo => $composableBuilder(
+      column: $table.valorAlvo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get valorInicial => $composableBuilder(
+      column: $table.valorInicial,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get dataCriacao => $composableBuilder(
+      column: $table.dataCriacao, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get concluido => $composableBuilder(
+      column: $table.concluido, builder: (column) => ColumnOrderings(column));
+
+  $$ExercisesTableOrderingComposer get exercicioId {
+    final $$ExercisesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.exercicioId,
+        referencedTable: $db.exercises,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ExercisesTableOrderingComposer(
+              $db: $db,
+              $table: $db.exercises,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$GoalsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GoalsTable> {
+  $$GoalsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get tipo =>
+      $composableBuilder(column: $table.tipo, builder: (column) => column);
+
+  GeneratedColumn<String> get exercicioNome => $composableBuilder(
+      column: $table.exercicioNome, builder: (column) => column);
+
+  GeneratedColumn<double> get valorAlvo =>
+      $composableBuilder(column: $table.valorAlvo, builder: (column) => column);
+
+  GeneratedColumn<double> get valorInicial => $composableBuilder(
+      column: $table.valorInicial, builder: (column) => column);
+
+  GeneratedColumn<String> get dataCriacao => $composableBuilder(
+      column: $table.dataCriacao, builder: (column) => column);
+
+  GeneratedColumn<bool> get concluido =>
+      $composableBuilder(column: $table.concluido, builder: (column) => column);
+
+  $$ExercisesTableAnnotationComposer get exercicioId {
+    final $$ExercisesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.exercicioId,
+        referencedTable: $db.exercises,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ExercisesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.exercises,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$GoalsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $GoalsTable,
+    Goal,
+    $$GoalsTableFilterComposer,
+    $$GoalsTableOrderingComposer,
+    $$GoalsTableAnnotationComposer,
+    $$GoalsTableCreateCompanionBuilder,
+    $$GoalsTableUpdateCompanionBuilder,
+    (Goal, $$GoalsTableReferences),
+    Goal,
+    PrefetchHooks Function({bool exercicioId})> {
+  $$GoalsTableTableManager(_$AppDatabase db, $GoalsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GoalsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GoalsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$GoalsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> tipo = const Value.absent(),
+            Value<String?> exercicioNome = const Value.absent(),
+            Value<int?> exercicioId = const Value.absent(),
+            Value<double> valorAlvo = const Value.absent(),
+            Value<double?> valorInicial = const Value.absent(),
+            Value<String> dataCriacao = const Value.absent(),
+            Value<bool> concluido = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              GoalsCompanion(
+            id: id,
+            tipo: tipo,
+            exercicioNome: exercicioNome,
+            exercicioId: exercicioId,
+            valorAlvo: valorAlvo,
+            valorInicial: valorInicial,
+            dataCriacao: dataCriacao,
+            concluido: concluido,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String tipo,
+            Value<String?> exercicioNome = const Value.absent(),
+            Value<int?> exercicioId = const Value.absent(),
+            required double valorAlvo,
+            Value<double?> valorInicial = const Value.absent(),
+            required String dataCriacao,
+            Value<bool> concluido = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              GoalsCompanion.insert(
+            id: id,
+            tipo: tipo,
+            exercicioNome: exercicioNome,
+            exercicioId: exercicioId,
+            valorAlvo: valorAlvo,
+            valorInicial: valorInicial,
+            dataCriacao: dataCriacao,
+            concluido: concluido,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$GoalsTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: ({exercicioId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (exercicioId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.exercicioId,
+                    referencedTable:
+                        $$GoalsTableReferences._exercicioIdTable(db),
+                    referencedColumn:
+                        $$GoalsTableReferences._exercicioIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$GoalsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $GoalsTable,
+    Goal,
+    $$GoalsTableFilterComposer,
+    $$GoalsTableOrderingComposer,
+    $$GoalsTableAnnotationComposer,
+    $$GoalsTableCreateCompanionBuilder,
+    $$GoalsTableUpdateCompanionBuilder,
+    (Goal, $$GoalsTableReferences),
+    Goal,
+    PrefetchHooks Function({bool exercicioId})>;
+typedef $$BodyMeasurementsTableCreateCompanionBuilder
+    = BodyMeasurementsCompanion Function({
+  Value<int> id,
+  required String data,
+  Value<double?> peso,
+  Value<double?> gorduraPercentual,
+  Value<double?> massaMagra,
+  Value<double?> imc,
+  Value<double?> peito,
+  Value<double?> cintura,
+  Value<double?> bracoEsquerdo,
+  Value<double?> bracoDireito,
+  Value<double?> coxaEsquerda,
+  Value<double?> coxaDireita,
+  Value<double?> panturrilhaEsquerda,
+  Value<double?> panturrilhaDireita,
+  Value<String?> fotoPath,
+});
+typedef $$BodyMeasurementsTableUpdateCompanionBuilder
+    = BodyMeasurementsCompanion Function({
+  Value<int> id,
+  Value<String> data,
+  Value<double?> peso,
+  Value<double?> gorduraPercentual,
+  Value<double?> massaMagra,
+  Value<double?> imc,
+  Value<double?> peito,
+  Value<double?> cintura,
+  Value<double?> bracoEsquerdo,
+  Value<double?> bracoDireito,
+  Value<double?> coxaEsquerda,
+  Value<double?> coxaDireita,
+  Value<double?> panturrilhaEsquerda,
+  Value<double?> panturrilhaDireita,
+  Value<String?> fotoPath,
+});
+
+class $$BodyMeasurementsTableFilterComposer
+    extends Composer<_$AppDatabase, $BodyMeasurementsTable> {
+  $$BodyMeasurementsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get data => $composableBuilder(
+      column: $table.data, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get peso => $composableBuilder(
+      column: $table.peso, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get gorduraPercentual => $composableBuilder(
+      column: $table.gorduraPercentual,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get massaMagra => $composableBuilder(
+      column: $table.massaMagra, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get imc => $composableBuilder(
+      column: $table.imc, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get peito => $composableBuilder(
+      column: $table.peito, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get cintura => $composableBuilder(
+      column: $table.cintura, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get bracoEsquerdo => $composableBuilder(
+      column: $table.bracoEsquerdo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get bracoDireito => $composableBuilder(
+      column: $table.bracoDireito, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get coxaEsquerda => $composableBuilder(
+      column: $table.coxaEsquerda, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get coxaDireita => $composableBuilder(
+      column: $table.coxaDireita, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get panturrilhaEsquerda => $composableBuilder(
+      column: $table.panturrilhaEsquerda,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get panturrilhaDireita => $composableBuilder(
+      column: $table.panturrilhaDireita,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fotoPath => $composableBuilder(
+      column: $table.fotoPath, builder: (column) => ColumnFilters(column));
+}
+
+class $$BodyMeasurementsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BodyMeasurementsTable> {
+  $$BodyMeasurementsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get data => $composableBuilder(
+      column: $table.data, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get peso => $composableBuilder(
+      column: $table.peso, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get gorduraPercentual => $composableBuilder(
+      column: $table.gorduraPercentual,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get massaMagra => $composableBuilder(
+      column: $table.massaMagra, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get imc => $composableBuilder(
+      column: $table.imc, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get peito => $composableBuilder(
+      column: $table.peito, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get cintura => $composableBuilder(
+      column: $table.cintura, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get bracoEsquerdo => $composableBuilder(
+      column: $table.bracoEsquerdo,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get bracoDireito => $composableBuilder(
+      column: $table.bracoDireito,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get coxaEsquerda => $composableBuilder(
+      column: $table.coxaEsquerda,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get coxaDireita => $composableBuilder(
+      column: $table.coxaDireita, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get panturrilhaEsquerda => $composableBuilder(
+      column: $table.panturrilhaEsquerda,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get panturrilhaDireita => $composableBuilder(
+      column: $table.panturrilhaDireita,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fotoPath => $composableBuilder(
+      column: $table.fotoPath, builder: (column) => ColumnOrderings(column));
+}
+
+class $$BodyMeasurementsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BodyMeasurementsTable> {
+  $$BodyMeasurementsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<double> get peso =>
+      $composableBuilder(column: $table.peso, builder: (column) => column);
+
+  GeneratedColumn<double> get gorduraPercentual => $composableBuilder(
+      column: $table.gorduraPercentual, builder: (column) => column);
+
+  GeneratedColumn<double> get massaMagra => $composableBuilder(
+      column: $table.massaMagra, builder: (column) => column);
+
+  GeneratedColumn<double> get imc =>
+      $composableBuilder(column: $table.imc, builder: (column) => column);
+
+  GeneratedColumn<double> get peito =>
+      $composableBuilder(column: $table.peito, builder: (column) => column);
+
+  GeneratedColumn<double> get cintura =>
+      $composableBuilder(column: $table.cintura, builder: (column) => column);
+
+  GeneratedColumn<double> get bracoEsquerdo => $composableBuilder(
+      column: $table.bracoEsquerdo, builder: (column) => column);
+
+  GeneratedColumn<double> get bracoDireito => $composableBuilder(
+      column: $table.bracoDireito, builder: (column) => column);
+
+  GeneratedColumn<double> get coxaEsquerda => $composableBuilder(
+      column: $table.coxaEsquerda, builder: (column) => column);
+
+  GeneratedColumn<double> get coxaDireita => $composableBuilder(
+      column: $table.coxaDireita, builder: (column) => column);
+
+  GeneratedColumn<double> get panturrilhaEsquerda => $composableBuilder(
+      column: $table.panturrilhaEsquerda, builder: (column) => column);
+
+  GeneratedColumn<double> get panturrilhaDireita => $composableBuilder(
+      column: $table.panturrilhaDireita, builder: (column) => column);
+
+  GeneratedColumn<String> get fotoPath =>
+      $composableBuilder(column: $table.fotoPath, builder: (column) => column);
+}
+
+class $$BodyMeasurementsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $BodyMeasurementsTable,
+    BodyMeasurement,
+    $$BodyMeasurementsTableFilterComposer,
+    $$BodyMeasurementsTableOrderingComposer,
+    $$BodyMeasurementsTableAnnotationComposer,
+    $$BodyMeasurementsTableCreateCompanionBuilder,
+    $$BodyMeasurementsTableUpdateCompanionBuilder,
+    (
+      BodyMeasurement,
+      BaseReferences<_$AppDatabase, $BodyMeasurementsTable, BodyMeasurement>
+    ),
+    BodyMeasurement,
+    PrefetchHooks Function()> {
+  $$BodyMeasurementsTableTableManager(
+      _$AppDatabase db, $BodyMeasurementsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BodyMeasurementsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BodyMeasurementsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BodyMeasurementsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> data = const Value.absent(),
+            Value<double?> peso = const Value.absent(),
+            Value<double?> gorduraPercentual = const Value.absent(),
+            Value<double?> massaMagra = const Value.absent(),
+            Value<double?> imc = const Value.absent(),
+            Value<double?> peito = const Value.absent(),
+            Value<double?> cintura = const Value.absent(),
+            Value<double?> bracoEsquerdo = const Value.absent(),
+            Value<double?> bracoDireito = const Value.absent(),
+            Value<double?> coxaEsquerda = const Value.absent(),
+            Value<double?> coxaDireita = const Value.absent(),
+            Value<double?> panturrilhaEsquerda = const Value.absent(),
+            Value<double?> panturrilhaDireita = const Value.absent(),
+            Value<String?> fotoPath = const Value.absent(),
+          }) =>
+              BodyMeasurementsCompanion(
+            id: id,
+            data: data,
+            peso: peso,
+            gorduraPercentual: gorduraPercentual,
+            massaMagra: massaMagra,
+            imc: imc,
+            peito: peito,
+            cintura: cintura,
+            bracoEsquerdo: bracoEsquerdo,
+            bracoDireito: bracoDireito,
+            coxaEsquerda: coxaEsquerda,
+            coxaDireita: coxaDireita,
+            panturrilhaEsquerda: panturrilhaEsquerda,
+            panturrilhaDireita: panturrilhaDireita,
+            fotoPath: fotoPath,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String data,
+            Value<double?> peso = const Value.absent(),
+            Value<double?> gorduraPercentual = const Value.absent(),
+            Value<double?> massaMagra = const Value.absent(),
+            Value<double?> imc = const Value.absent(),
+            Value<double?> peito = const Value.absent(),
+            Value<double?> cintura = const Value.absent(),
+            Value<double?> bracoEsquerdo = const Value.absent(),
+            Value<double?> bracoDireito = const Value.absent(),
+            Value<double?> coxaEsquerda = const Value.absent(),
+            Value<double?> coxaDireita = const Value.absent(),
+            Value<double?> panturrilhaEsquerda = const Value.absent(),
+            Value<double?> panturrilhaDireita = const Value.absent(),
+            Value<String?> fotoPath = const Value.absent(),
+          }) =>
+              BodyMeasurementsCompanion.insert(
+            id: id,
+            data: data,
+            peso: peso,
+            gorduraPercentual: gorduraPercentual,
+            massaMagra: massaMagra,
+            imc: imc,
+            peito: peito,
+            cintura: cintura,
+            bracoEsquerdo: bracoEsquerdo,
+            bracoDireito: bracoDireito,
+            coxaEsquerda: coxaEsquerda,
+            coxaDireita: coxaDireita,
+            panturrilhaEsquerda: panturrilhaEsquerda,
+            panturrilhaDireita: panturrilhaDireita,
+            fotoPath: fotoPath,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$BodyMeasurementsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $BodyMeasurementsTable,
+    BodyMeasurement,
+    $$BodyMeasurementsTableFilterComposer,
+    $$BodyMeasurementsTableOrderingComposer,
+    $$BodyMeasurementsTableAnnotationComposer,
+    $$BodyMeasurementsTableCreateCompanionBuilder,
+    $$BodyMeasurementsTableUpdateCompanionBuilder,
+    (
+      BodyMeasurement,
+      BaseReferences<_$AppDatabase, $BodyMeasurementsTable, BodyMeasurement>
+    ),
+    BodyMeasurement,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5869,4 +7786,8 @@ class $AppDatabaseManager {
       $$WeeklyWeightsTableTableManager(_db, _db.weeklyWeights);
   $$WeeklySchedulesTableTableManager get weeklySchedules =>
       $$WeeklySchedulesTableTableManager(_db, _db.weeklySchedules);
+  $$GoalsTableTableManager get goals =>
+      $$GoalsTableTableManager(_db, _db.goals);
+  $$BodyMeasurementsTableTableManager get bodyMeasurements =>
+      $$BodyMeasurementsTableTableManager(_db, _db.bodyMeasurements);
 }

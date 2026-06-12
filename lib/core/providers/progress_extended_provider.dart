@@ -1,5 +1,6 @@
 // lib/core/providers/progress_extended_provider.dart
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -10,106 +11,71 @@ import '../utils/week_utils.dart';
 import '../services/notification_service.dart';
 import 'providers.dart';
 
-class Goal {
-  final String id;
-  final String tipo; // "peso" | "carga"
-  final String? exercicioNome;
-  final int? exercicioId;
-  final double valorAlvo;
-  final double? valorInicial;
-  final String dataCriacao;
-  final bool concluido;
-
-  Goal({
-    required this.id,
-    required this.tipo,
-    this.exercicioNome,
-    this.exercicioId,
-    required this.valorAlvo,
-    this.valorInicial,
-    required this.dataCriacao,
-    this.concluido = false,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'tipo': tipo,
-        'exercicioNome': exercicioNome,
-        'exercicioId': exercicioId,
-        'valorAlvo': valorAlvo,
-        'valorInicial': valorInicial,
-        'dataCriacao': dataCriacao,
-        'concluido': concluido,
-      };
-
-  factory Goal.fromJson(Map<String, dynamic> json) => Goal(
-        id: json['id'],
-        tipo: json['tipo'],
-        exercicioNome: json['exercicioNome'],
-        exercicioId: json['exercicioId'],
-        valorAlvo: (json['valorAlvo'] as num).toDouble(),
-        valorInicial: json['valorInicial'] != null
-            ? (json['valorInicial'] as num).toDouble()
-            : null,
-        dataCriacao: json['dataCriacao'],
-        concluido: json['concluido'] ?? false,
-      );
-}
-
 class GoalsNotifier extends StateNotifier<List<Goal>> {
-  GoalsNotifier() : super([]) {
-    _loadGoals();
+  final AppDatabase db;
+  StreamSubscription<List<Goal>>? _subscription;
+
+  GoalsNotifier(this.db) : super([]) {
+    _loadGoalsAndMigrate();
   }
 
-  Future<void> _loadGoals() async {
+  Future<void> _loadGoalsAndMigrate() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString('workout_goals');
-    if (jsonStr != null) {
-      final List decoded = jsonDecode(jsonStr);
-      state = decoded.map((item) => Goal.fromJson(item)).toList();
+    final migrated = prefs.getBool('goals_migrated_to_db') ?? false;
+
+    if (!migrated) {
+      final jsonStr = prefs.getString('workout_goals');
+      if (jsonStr != null) {
+        try {
+          final List decoded = jsonDecode(jsonStr);
+          final oldGoals = decoded.map((item) => Goal.fromJson(item)).toList();
+          for (final goal in oldGoals) {
+            await db.into(db.goals).insert(goal);
+          }
+        } catch (e) {
+          debugPrint('Erro ao migrar metas do SharedPreferences para o SQLite: $e');
+        }
+      }
+      await prefs.setBool('goals_migrated_to_db', true);
     }
-  }
 
-  Future<void> _saveGoals(List<Goal> newGoals) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonStr = jsonEncode(newGoals.map((g) => g.toJson()).toList());
-    await prefs.setString('workout_goals', jsonStr);
+    _subscription = (db.select(db.goals)
+          ..orderBy([(g) => OrderingTerm.desc(g.dataCriacao)]))
+        .watch()
+        .listen((list) {
+      state = list;
+    });
   }
 
   Future<void> addGoal(Goal goal) async {
-    final newState = [...state, goal];
-    state = newState;
-    await _saveGoals(newState);
+    await db.into(db.goals).insert(goal);
   }
 
   Future<void> deleteGoal(String id) async {
-    final newState = state.where((g) => g.id != id).toList();
-    state = newState;
-    await _saveGoals(newState);
+    await (db.delete(db.goals)..where((g) => g.id.equals(id))).go();
   }
 
   Future<void> toggleGoal(String id) async {
-    final newState = state.map((g) {
-      if (g.id == id) {
-        return Goal(
-          id: g.id,
-          tipo: g.tipo,
-          exercicioNome: g.exercicioNome,
-          exercicioId: g.exercicioId,
-          valorAlvo: g.valorAlvo,
-          dataCriacao: g.dataCriacao,
-          concluido: !g.concluido,
-        );
-      }
-      return g;
-    }).toList();
-    state = newState;
-    await _saveGoals(newState);
+    final goal = await (db.select(db.goals)..where((g) => g.id.equals(id))).getSingleOrNull();
+    if (goal != null) {
+      await (db.update(db.goals)..where((g) => g.id.equals(id))).write(
+        GoalsCompanion(
+          concluido: Value(!goal.concluido),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }
 
 final goalsProvider = StateNotifierProvider<GoalsNotifier, List<Goal>>((ref) {
-  return GoalsNotifier();
+  final db = ref.watch(databaseProvider);
+  return GoalsNotifier(db);
 });
 
 // Provedor para todos os logs de exercícios concluídos

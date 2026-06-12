@@ -72,6 +72,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   int _currentSerie = 1;
   final List<_SetEntry> _setsLogged = [];
   List<ExerciseLog> _prevLogs = []; // último treino deste exercício
+  double _max1RM = 0.0; // recorde máximo 1RM histórico do exercício
 
   // ── Inputs ──────────────────────────────────────────────────────
   final _pesoCtrl = TextEditingController(text: '0');
@@ -170,6 +171,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     // Busca desempenho do último treino para pré-preencher os campos
     final prev = await ref.read(logDaoProvider).getLastLogsForExercise(ex.id);
 
+    // Busca recorde máximo 1RM histórico
+    final prevMax1RM = await ref.read(logDaoProvider).getMax1RMForExercise(ex.id);
+
     // Busca logs já realizados na sessão atual para este exercício
     final currentLogs =
         await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
@@ -183,6 +187,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     final userWeight = profile?.pesoAtual ?? 70.0;
 
     setState(() {
+      _max1RM = prevMax1RM;
       _prevLogs = prev;
       _currentSerie = exerciseSessionLogs.length + 1;
       _setsLogged.clear();
@@ -355,6 +360,75 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     return null;
   }
 
+  void _showPrCelebration(double peso, int reps, double new1RM, double prevMax1RM) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.amber[900],
+        duration: const Duration(seconds: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        content: Row(
+          children: [
+            const Icon(Icons.emoji_events_rounded, color: Colors.yellowAccent, size: 36),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'RECORDE PESSOAL! 🏆',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Você superou seu recorde anterior neste exercício!',
+                    style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.9)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Novo 1RM Estimado: ${new1RM.toStringAsFixed(1)} kg (era ${prevMax1RM.toStringAsFixed(1)} kg)',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.yellowAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPlateCalculator() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return _PlateCalculatorDialog(
+          initialWeight: double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 60.0,
+          onApplyWeight: (newWeight) {
+            setState(() {
+              _pesoCtrl.text = newWeight % 1 == 0
+                  ? newWeight.toInt().toString()
+                  : newWeight.toStringAsFixed(1);
+            });
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _salvarSerie() async {
     final peso = double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0;
     final reps = int.tryParse(_repsCtrl.text) ?? 0;
@@ -385,6 +459,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     final logDao = ref.read(logDaoProvider);
     final now = DateTime.now().toIso8601String();
     final Value<String?> valueObs = obs.isNotEmpty ? Value<String?>(obs) : const Value<String?>.absent();
+
+    final double new1RM = reps == 1 ? peso : peso * (1 + reps / 30.0);
+    final double prevMax1RM = await logDao.getMax1RMForExercise(_current.id);
+    final bool isPR = prevMax1RM > 0 && new1RM > prevMax1RM;
 
     try {
       if (_executandoUnilateral && _lado == 'ambos') {
@@ -432,9 +510,19 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
 
     _obsCtrl.clear();
 
-    AudioService().beep();
+    if (isPR) {
+      AudioService().prCelebration();
+      _showPrCelebration(peso, reps, new1RM, prevMax1RM);
+    } else {
+      AudioService().beep();
+    }
 
     setState(() {
+      if (isPR || prevMax1RM == 0.0) {
+        if (new1RM > _max1RM) {
+          _max1RM = new1RM;
+        }
+      }
       _setsLogged.add(_SetEntry(
         serie: _currentSerie,
         peso: peso,
@@ -1255,6 +1343,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
+                    runSpacing: 6,
                     children: [
                       if (ex.isUnilateral)
                         const _BadgeTag(
@@ -1266,6 +1355,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                         icon: Icons.timer_rounded,
                         color: AppColors.info,
                       ),
+                      if (_max1RM > 0)
+                        _BadgeTag(
+                          label: 'PR: ${_max1RM.toStringAsFixed(1)} kg',
+                          icon: Icons.emoji_events_rounded,
+                          color: Colors.amber,
+                        ),
                       if (ex.link != null && ex.link!.isNotEmpty)
                         GestureDetector(
                           onTap: () => _openLink(ex.link!),
@@ -1349,6 +1444,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                     pesoCtrl: _pesoCtrl,
                     repsCtrl: _repsCtrl,
                     obsCtrl: _obsCtrl,
+                    onOpenCalculator: _showPlateCalculator,
                   ),
 
                   // ── Modo de Execução ──
@@ -1568,6 +1664,14 @@ class _PreviousPerformance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    double prevSessionMax1RM = 0.0;
+    for (final l in logs) {
+      final oneRM = l.repeticoes == 1 ? l.peso : l.peso * (1 + l.repeticoes / 30.0);
+      if (oneRM > prevSessionMax1RM) {
+        prevSessionMax1RM = oneRM;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1578,14 +1682,28 @@ class _PreviousPerformance extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'ÚLTIMO TREINO',
-            style: TextStyle(
-              color: AppColors.onSurface,
-              fontSize: 10,
-              letterSpacing: 1.5,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'ÚLTIMO TREINO',
+                style: TextStyle(
+                  color: AppColors.onSurface,
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (prevSessionMax1RM > 0)
+                Text(
+                  'Max 1RM: ${prevSessionMax1RM.toStringAsFixed(1)} kg',
+                  style: const TextStyle(
+                    color: AppColors.primaryLight,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 6),
           Wrap(
@@ -1733,11 +1851,14 @@ class _InputRow extends StatelessWidget {
   final TextEditingController pesoCtrl;
   final TextEditingController repsCtrl;
   final TextEditingController obsCtrl;
+  final VoidCallback? onOpenCalculator;
+
   const _InputRow({
     required this.serie,
     required this.pesoCtrl,
     required this.repsCtrl,
     required this.obsCtrl,
+    this.onOpenCalculator,
   });
 
   @override
@@ -1745,14 +1866,32 @@ class _InputRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'SÉRIE $serie',
-          style: const TextStyle(
-            color: AppColors.onSurface,
-            fontSize: 11,
-            letterSpacing: 1.5,
-            fontWeight: FontWeight.w600,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'SÉRIE $serie',
+              style: const TextStyle(
+                color: AppColors.onSurface,
+                fontSize: 11,
+                letterSpacing: 1.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (onOpenCalculator != null)
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(
+                  Icons.calculate_rounded,
+                  size: 20,
+                  color: AppColors.primaryLight,
+                ),
+                tooltip: 'Calculadora de Anilhas',
+                onPressed: onOpenCalculator,
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         Row(
@@ -2876,6 +3015,275 @@ class _AddReferencePanelState extends State<_AddReferencePanel> with WidgetsBind
           ),
         ],
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PLATE CALCULATOR DIALOG
+// ═══════════════════════════════════════════════════════════════════
+
+class _PlateCalculatorDialog extends StatefulWidget {
+  final double initialWeight;
+  final ValueChanged<double> onApplyWeight;
+
+  const _PlateCalculatorDialog({
+    required this.initialWeight,
+    required this.onApplyWeight,
+  });
+
+  @override
+  State<_PlateCalculatorDialog> createState() => _PlateCalculatorDialogState();
+}
+
+class _PlateCalculatorDialogState extends State<_PlateCalculatorDialog> {
+  late double _totalWeight;
+  double _barWeight = 20.0;
+  final _weightCtrl = TextEditingController();
+
+  final List<double> _barOptions = [20.0, 15.0, 10.0, 12.0, 8.0, 0.0];
+
+  @override
+  void initState() {
+    super.initState();
+    _totalWeight = widget.initialWeight;
+    _weightCtrl.text = _totalWeight % 1 == 0
+        ? _totalWeight.toInt().toString()
+        : _totalWeight.toStringAsFixed(1);
+  }
+
+  @override
+  void dispose() {
+    _weightCtrl.dispose();
+    super.dispose();
+  }
+
+  Map<double, int> _calculatePlates() {
+    final double targetSideWeight = (_totalWeight - _barWeight) / 2.0;
+    if (targetSideWeight <= 0) return {};
+
+    final availablePlates = [25.0, 20.0, 15.0, 10.0, 5.0, 2.5, 2.0, 1.25, 1.0, 0.5];
+    final Map<double, int> result = {};
+    int remaining = (targetSideWeight * 100).round();
+
+    for (final plate in availablePlates) {
+      final plateInt = (plate * 100).round();
+      if (remaining >= plateInt) {
+        final count = remaining ~/ plateInt;
+        result[plate] = count;
+        remaining -= count * plateInt;
+      }
+    }
+    return result;
+  }
+
+  Color _getPlateColor(double weight) {
+    if (weight >= 25.0) return Colors.red[800]!;
+    if (weight >= 20.0) return Colors.blue[800]!;
+    if (weight >= 15.0) return Colors.yellow[800]!;
+    if (weight >= 10.0) return Colors.green[800]!;
+    if (weight >= 5.0) return Colors.white60;
+    return Colors.grey[700]!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final plates = _calculatePlates();
+    final sideWeight = (_totalWeight - _barWeight) / 2.0;
+
+    return AlertDialog(
+      backgroundColor: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          const Icon(Icons.calculate_rounded, color: AppColors.primaryLight),
+          const SizedBox(width: 10),
+          const Text(
+            'Calculadora de Anilhas',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'PESO TOTAL DESEJADO (kg)',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.onSurface, letterSpacing: 1.0),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _weightCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 20),
+                  onPressed: () {
+                    _weightCtrl.clear();
+                    setState(() => _totalWeight = 0.0);
+                  },
+                ),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _totalWeight = double.tryParse(val.replaceAll(',', '.')) ?? 0.0;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+
+            const Text(
+              'PESO DA BARRA (kg)',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.onSurface, letterSpacing: 1.0),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _barOptions.map((opt) {
+                  final isSelected = _barWeight == opt;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6.0),
+                    child: ChoiceChip(
+                      label: Text('${opt % 1 == 0 ? opt.toInt() : opt} kg'),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() => _barWeight = opt);
+                        }
+                      },
+                      selectedColor: AppColors.primary,
+                      backgroundColor: AppColors.surface,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : AppColors.onBackground,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 12,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            const Divider(color: AppColors.divider),
+            const SizedBox(height: 12),
+
+            if (sideWeight <= 0)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'Insira um peso maior que a barra.',
+                    style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              )
+            else ...[
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      'CADA LADO RECEBE',
+                      style: TextStyle(fontSize: 10, color: AppColors.onSurface.withOpacity(0.8), letterSpacing: 1.5),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${sideWeight % 1 == 0 ? sideWeight.toInt() : sideWeight.toStringAsFixed(2)} kg',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.amber[400],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              const Text(
+                'ANILHAS POR LADO:',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.onSurface, letterSpacing: 1.0),
+              ),
+              const SizedBox(height: 8),
+              if (plates.isEmpty)
+                const Text(
+                  'Nenhuma anilha necessária (apenas a barra).',
+                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.onSurface),
+                )
+              else
+                Column(
+                  children: plates.entries.map((entry) {
+                    final weight = entry.key;
+                    final count = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: _getPlateColor(weight),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.black38, width: 1),
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(0, 1))
+                              ]
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${weight % 1 == 0 ? weight.toInt() : weight}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${weight % 1 == 0 ? weight.toInt() : weight} kg',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          const Spacer(),
+                          Text(
+                            'x $count ${count == 1 ? "anilha" : "anilhas"}',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryLight),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Fechar'),
+        ),
+        if (sideWeight > 0)
+          ElevatedButton(
+            onPressed: () {
+              widget.onApplyWeight(_totalWeight);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Aplicar Peso'),
+          ),
+      ],
     );
   }
 }

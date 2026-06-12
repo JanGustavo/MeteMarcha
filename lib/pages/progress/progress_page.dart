@@ -1,8 +1,12 @@
 // lib/pages/progress/progress_page.dart
 
+import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
@@ -28,15 +32,17 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     final profileAsync = ref.watch(profileProvider);
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Progresso 📈'),
           bottom: const TabBar(
+            isScrollable: true,
             tabs: [
               Tab(text: 'PESO & FREQ'),
               Tab(text: 'CARGAS & RECS'),
               Tab(text: 'METAS & VOL'),
+              Tab(text: 'MEDIDAS'),
             ],
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primaryLight,
@@ -220,6 +226,9 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (_, __) => const Center(child: Text('Erro ao carregar histórico.')),
             ),
+            
+            // Tab 4: Medidas Corporais
+            const _BodyMeasurementsTab(),
           ],
         ),
       ),
@@ -2032,6 +2041,7 @@ class _GoalsManager extends ConsumerWidget {
                   valorAlvo: target,
                   valorInicial: initialVal,
                   dataCriacao: nowStr,
+                  concluido: false,
                 );
 
                 ref.read(goalsProvider.notifier).addGoal(newGoal);
@@ -2431,6 +2441,1475 @@ class _MuscleFocusChart extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TAB 4: MEDIDAS CORPORAIS
+// ═══════════════════════════════════════════════════════════════════
+
+class _BodyMeasurementsTab extends ConsumerStatefulWidget {
+  const _BodyMeasurementsTab();
+
+  @override
+  ConsumerState<_BodyMeasurementsTab> createState() => _BodyMeasurementsTabState();
+}
+
+class _BodyMeasurementsTabState extends ConsumerState<_BodyMeasurementsTab> {
+  String _selectedChartMetric = 'Peso';
+
+  void _showAddEditMeasurementSheet([BodyMeasurement? measurement]) {
+    final profile = ref.read(profileProvider).value;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, controller) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: ListView(
+            controller: controller,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            children: [
+              _AddEditMeasurementSheet(
+                measurement: measurement,
+                userHeight: profile?.altura,
+                onSave: (entry) async {
+                  final dao = ref.read(profileDaoProvider);
+                  if (measurement != null) {
+                    final toUpdate = BodyMeasurement(
+                      id: measurement.id,
+                      data: entry.data.value,
+                      peso: entry.peso.value,
+                      gorduraPercentual: entry.gorduraPercentual.value,
+                      massaMagra: entry.massaMagra.value,
+                      imc: entry.imc.value,
+                      peito: entry.peito.value,
+                      cintura: entry.cintura.value,
+                      bracoEsquerdo: entry.bracoEsquerdo.value,
+                      bracoDireito: entry.bracoDireito.value,
+                      coxaEsquerda: entry.coxaEsquerda.value,
+                      coxaDireita: entry.coxaDireita.value,
+                      panturrilhaEsquerda: entry.panturrilhaEsquerda.value,
+                      panturrilhaDireita: entry.panturrilhaDireita.value,
+                      fotoPath: entry.fotoPath.value,
+                    );
+                    await dao.updateMeasurement(toUpdate);
+                  } else {
+                    await dao.insertMeasurement(entry);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _deleteMeasurement(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir Registro?'),
+        content: const Text('Tem certeza que deseja apagar este registro de medidas? Esta ação não pode ser desfeita.'),
+        actions: [
+          TextButton(
+            child: const Text('Cancelar'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+          ),
+          TextButton(
+            child: const Text('Excluir', style: TextStyle(color: AppColors.primary)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final dao = ref.read(profileDaoProvider);
+      await dao.deleteMeasurement(id);
+    }
+  }
+
+  Widget _buildMetricSelector() {
+    final metrics = [
+      'Peso',
+      'Gordura %',
+      'Massa Magra',
+      'IMC',
+      'Peito',
+      'Cintura',
+      'Braço D.',
+      'Braço E.',
+      'Coxa D.',
+      'Coxa E.',
+      'Panturrilha D.',
+      'Panturrilha E.',
+    ];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: metrics.map((m) {
+          final isSelected = _selectedChartMetric == m;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(m),
+              selected: isSelected,
+              onSelected: (val) {
+                if (val) {
+                  setState(() {
+                    _selectedChartMetric = m;
+                  });
+                }
+              },
+              selectedColor: AppColors.primary.withValues(alpha: 0.2),
+              checkmarkColor: AppColors.primaryLight,
+              labelStyle: TextStyle(
+                color: isSelected ? AppColors.primaryLight : null,
+                fontWeight: isSelected ? FontWeight.bold : null,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final measurementsAsync = ref.watch(bodyMeasurementsProvider);
+
+    return measurementsAsync.when(
+      data: (measurements) {
+        if (measurements.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.straighten_rounded,
+                    size: 64,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.onSurface.withValues(alpha: 0.5)
+                        : AppColors.lightOnSurface.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Nenhum registro de medidas ainda',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Acompanhe seu peso, percentual de gordura, medidas corporais e tire fotos de progresso.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => _showAddEditMeasurementSheet(),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Registrar Medidas'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final latest = measurements.first;
+        final prev = measurements.length > 1 ? measurements[1] : null;
+
+        // Calculate trends
+        final weightDiff = (latest.peso != null && prev?.peso != null) ? latest.peso! - prev!.peso! : 0.0;
+        final fatDiff = (latest.gorduraPercentual != null && prev?.gorduraPercentual != null) ? latest.gorduraPercentual! - prev!.gorduraPercentual! : 0.0;
+        final leanDiff = (latest.massaMagra != null && prev?.massaMagra != null) ? latest.massaMagra! - prev!.massaMagra! : 0.0;
+        final imcDiff = (latest.imc != null && prev?.imc != null) ? latest.imc! - prev!.imc! : 0.0;
+
+        return ListView(
+          padding: const EdgeInsets.only(bottom: 32),
+          children: [
+            // Core stats dashboard
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: GridView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.45,
+                ),
+                children: [
+                  _MetricSummaryCard(
+                    title: 'PESO',
+                    value: latest.peso != null ? '${latest.peso!.toStringAsFixed(1)} kg' : 'N/A',
+                    change: latest.peso != null && prev?.peso != null ? '${weightDiff > 0 ? "+" : ""}${weightDiff.toStringAsFixed(1)} kg' : '',
+                    isPositiveChange: weightDiff >= 0,
+                    icon: Icons.monitor_weight_outlined,
+                    color: AppColors.info,
+                  ),
+                  _MetricSummaryCard(
+                    title: 'GORDURA',
+                    value: latest.gorduraPercentual != null ? '${latest.gorduraPercentual!.toStringAsFixed(1)}%' : 'N/A',
+                    change: latest.gorduraPercentual != null && prev?.gorduraPercentual != null ? '${fatDiff > 0 ? "+" : ""}${fatDiff.toStringAsFixed(1)}%' : '',
+                    isPositiveChange: fatDiff <= 0,
+                    icon: Icons.percent_rounded,
+                    color: AppColors.warning,
+                  ),
+                  _MetricSummaryCard(
+                    title: 'MASSA MAGRA',
+                    value: latest.massaMagra != null ? '${latest.massaMagra!.toStringAsFixed(1)} kg' : 'N/A',
+                    change: latest.massaMagra != null && prev?.massaMagra != null ? '${leanDiff > 0 ? "+" : ""}${leanDiff.toStringAsFixed(1)} kg' : '',
+                    isPositiveChange: leanDiff >= 0,
+                    icon: Icons.fitness_center_rounded,
+                    color: AppColors.success,
+                  ),
+                  _MetricSummaryCard(
+                    title: 'IMC',
+                    value: latest.imc != null ? latest.imc!.toStringAsFixed(1) : 'N/A',
+                    change: latest.imc != null && prev?.imc != null ? '${imcDiff > 0 ? "+" : ""}${imcDiff.toStringAsFixed(1)}' : '',
+                    isPositiveChange: imcDiff <= 0,
+                    icon: Icons.calculate_outlined,
+                    color: AppColors.primaryLight,
+                  ),
+                ],
+              ),
+            ),
+
+            // Evolution Chart Card
+            Card(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: _SectionLabel('EVOLUÇÃO HISTÓRICA'),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildMetricSelector(),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _MeasurementsChart(
+                        measurements: measurements,
+                        metric: _selectedChartMetric,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // History Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const _SectionLabel('HISTÓRICO'),
+                  IconButton.filledTonal(
+                    onPressed: () => _showAddEditMeasurementSheet(),
+                    icon: const Icon(Icons.add_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                      foregroundColor: AppColors.primaryLight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // History List
+            ...measurements.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final item = entry.value;
+              final itemPrev = idx + 1 < measurements.length ? measurements[idx + 1] : null;
+              return _MeasurementCard(
+                measurement: item,
+                previous: itemPrev,
+                onEdit: () => _showAddEditMeasurementSheet(item),
+                onDelete: () => _deleteMeasurement(item.id),
+              );
+            }),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, __) => Center(child: Text('Erro ao carregar medidas: $e')),
+    );
+  }
+}
+
+// ── Metric Summary Card ──────────────────────────────────────────────────────
+
+class _MetricSummaryCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String change;
+  final bool isPositiveChange;
+  final IconData icon;
+  final Color color;
+
+  const _MetricSummaryCard({
+    required this.title,
+    required this.value,
+    required this.change,
+    required this.isPositiveChange,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBgColor = isDark ? color.withValues(alpha: 0.05) : color.withValues(alpha: 0.08);
+    final borderColor = isDark ? color.withValues(alpha: 0.15) : color.withValues(alpha: 0.25);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardBgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.onSurface : AppColors.lightOnSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: isDark ? AppColors.onBackground : AppColors.lightOnBackground,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (change.isNotEmpty)
+            Row(
+              children: [
+                Icon(
+                  isPositiveChange ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                  size: 10,
+                  color: isPositiveChange ? AppColors.success : AppColors.primary,
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  change,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: isPositiveChange ? AppColors.success : AppColors.primary,
+                  ),
+                ),
+              ],
+            )
+          else
+            const Text(
+              'Sem histórico',
+              style: TextStyle(
+                fontSize: 9,
+                color: Colors.grey,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Evolution Chart ──────────────────────────────────────────────────────────
+
+class _MeasurementsChart extends StatelessWidget {
+  final List<BodyMeasurement> measurements;
+  final String metric;
+
+  const _MeasurementsChart({
+    required this.measurements,
+    required this.metric,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final chartData = measurements.reversed.toList();
+    final spots = <FlSpot>[];
+    for (int i = 0; i < chartData.length; i++) {
+      final val = _getValueForMetric(chartData[i], metric);
+      if (val != null) {
+        spots.add(FlSpot(i.toDouble(), val));
+      }
+    }
+
+    if (spots.length < 2) {
+      return Container(
+        height: 180,
+        alignment: Alignment.center,
+        child: Text(
+          'Registre este dado em pelo menos 2 datas\ndiferentes para ver o gráfico de evolução.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.onSurface
+                : AppColors.lightOnSurface,
+            fontSize: 12,
+          ),
+        ),
+      );
+    }
+
+    final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b) * 0.95;
+    final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b) * 1.05;
+
+    return SizedBox(
+      height: 180,
+      child: LineChart(
+        LineChartData(
+          minY: minY,
+          maxY: maxY,
+          gridData: FlGridData(
+            drawHorizontalLine: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) =>
+                const FlLine(color: AppColors.divider, strokeWidth: 1),
+          ),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                getTitlesWidget: (v, _) => Text(
+                  v.toStringAsFixed(1),
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.onSurface
+                        : AppColors.lightOnSurface,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                interval: 1.0,
+                getTitlesWidget: (v, _) {
+                  if (v != v.toInt().toDouble()) return const SizedBox();
+                  final idx = v.toInt();
+                  if (idx < 0 || idx >= chartData.length) return const SizedBox();
+                  final date = DateTime.tryParse(chartData[idx].data);
+                  if (date == null) return const SizedBox();
+                  final day = date.day.toString().padLeft(2, '0');
+                  final month = date.month.toString().padLeft(2, '0');
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '$day/$month',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.onSurface
+                            : AppColors.lightOnSurface,
+                        fontSize: 9,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: AppColors.primary,
+              barWidth: 2.5,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
+                  radius: 4,
+                  color: AppColors.primary,
+                  strokeWidth: 2,
+                  strokeColor: Theme.of(context).scaffoldBackgroundColor,
+                ),
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                color: AppColors.primary.withValues(alpha: 0.08),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  double? _getValueForMetric(BodyMeasurement m, String metric) {
+    switch (metric) {
+      case 'Peso':
+        return m.peso;
+      case 'Gordura %':
+        return m.gorduraPercentual;
+      case 'Massa Magra':
+        return m.massaMagra;
+      case 'IMC':
+        return m.imc;
+      case 'Peito':
+        return m.peito;
+      case 'Cintura':
+        return m.cintura;
+      case 'Braço E.':
+        return m.bracoEsquerdo;
+      case 'Braço D.':
+        return m.bracoDireito;
+      case 'Coxa E.':
+        return m.coxaEsquerda;
+      case 'Coxa D.':
+        return m.coxaDireita;
+      case 'Panturrilha E.':
+        return m.panturrilhaEsquerda;
+      case 'Panturrilha D.':
+        return m.panturrilhaDireita;
+      default:
+        return null;
+    }
+  }
+}
+
+// ── Measurement Card ─────────────────────────────────────────────────────────
+
+class _MeasurementCard extends StatefulWidget {
+  final BodyMeasurement measurement;
+  final BodyMeasurement? previous;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _MeasurementCard({
+    required this.measurement,
+    this.previous,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  State<_MeasurementCard> createState() => _MeasurementCardState();
+}
+
+class _MeasurementCardState extends State<_MeasurementCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.measurement;
+    final prev = widget.previous;
+    final date = DateTime.tryParse(m.data) ?? DateTime.now();
+    final dateStr = DateFormat('dd/MM/yyyy').format(date);
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Column(
+        children: [
+          ListTile(
+            onTap: () {
+              setState(() {
+                _expanded = !_expanded;
+              });
+            },
+            title: Row(
+              children: [
+                const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primaryLight),
+                const SizedBox(width: 8),
+                Text(
+                  dateStr,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ],
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  if (m.peso != null)
+                    _buildMiniBadge('Peso', '${m.peso!.toStringAsFixed(1)} kg', prev?.peso, isWeight: true),
+                  if (m.gorduraPercentual != null)
+                    _buildMiniBadge('Gordura', '${m.gorduraPercentual!.toStringAsFixed(1)}%', prev?.gorduraPercentual, isFat: true),
+                  if (m.massaMagra != null)
+                    _buildMiniBadge('Massa M.', '${m.massaMagra!.toStringAsFixed(1)} kg', prev?.massaMagra, isLeanMass: true),
+                  if (m.imc != null)
+                    _buildMiniBadge('IMC', m.imc!.toStringAsFixed(1), prev?.imc),
+                ],
+              ),
+            ),
+            trailing: Icon(
+              _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+              color: AppColors.onSurface,
+            ),
+          ),
+          if (_expanded) ...[
+            const Divider(height: 1, indent: 16, endIndent: 16),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_hasAnyCircumference(m)) ...[
+                    const Text(
+                      'Medidas de Circunferência',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.5),
+                    ),
+                    const SizedBox(height: 12),
+                    GridView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 3.5,
+                      ),
+                      children: [
+                        if (m.peito != null) _buildCircumferenceTile('Peito', m.peito!, prev?.peito),
+                        if (m.cintura != null) _buildCircumferenceTile('Cintura', m.cintura!, prev?.cintura, lowerIsBetter: true),
+                        if (m.bracoDireito != null) _buildCircumferenceTile('Braço D.', m.bracoDireito!, prev?.bracoDireito),
+                        if (m.bracoEsquerdo != null) _buildCircumferenceTile('Braço E.', m.bracoEsquerdo!, prev?.bracoEsquerdo),
+                        if (m.coxaDireita != null) _buildCircumferenceTile('Coxa D.', m.coxaDireita!, prev?.coxaDireita),
+                        if (m.coxaEsquerda != null) _buildCircumferenceTile('Coxa E.', m.coxaEsquerda!, prev?.coxaEsquerda),
+                        if (m.panturrilhaDireita != null) _buildCircumferenceTile('Panturrilha D.', m.panturrilhaDireita!, prev?.panturrilhaDireita),
+                        if (m.panturrilhaEsquerda != null) _buildCircumferenceTile('Panturrilha E.', m.panturrilhaEsquerda!, prev?.panturrilhaEsquerda),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  if (m.fotoPath != null) ...[
+                    const Text(
+                      'Foto de Progresso',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.5),
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => _FullscreenImageViewer(
+                              imagePath: m.fotoPath!,
+                              dateStr: dateStr,
+                            ),
+                          ),
+                        );
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          height: 200,
+                          width: double.infinity,
+                          color: isDark ? AppColors.surface : AppColors.lightSurface,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Image.file(
+                                File(m.fotoPath!),
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Imagem não encontrada',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              Positioned(
+                                bottom: 8,
+                                right: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.zoom_in_rounded, size: 14, color: Colors.white),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Toque para ampliar',
+                                        style: TextStyle(color: Colors.white, fontSize: 10),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.edit_rounded, size: 16),
+                        label: const Text('Editar', style: TextStyle(fontSize: 12)),
+                        onPressed: widget.onEdit,
+                        style: TextButton.styleFrom(
+                          foregroundColor: isDark ? AppColors.onBackground : AppColors.lightOnBackground,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                        label: const Text('Excluir', style: TextStyle(fontSize: 12)),
+                        onPressed: widget.onDelete,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  bool _hasAnyCircumference(BodyMeasurement m) {
+    return m.peito != null ||
+        m.cintura != null ||
+        m.bracoEsquerdo != null ||
+        m.bracoDireito != null ||
+        m.coxaEsquerda != null ||
+        m.coxaDireita != null ||
+        m.panturrilhaEsquerda != null ||
+        m.panturrilhaDireita != null;
+  }
+
+  Widget _buildMiniBadge(
+    String label,
+    String value,
+    double? prevVal, {
+    bool isWeight = false,
+    bool isFat = false,
+    bool isLeanMass = false,
+  }) {
+    Color? diffColor;
+    String diffText = '';
+
+    if (prevVal != null) {
+      final currentVal = double.tryParse(value.replaceAll(RegExp(r'[^0-9.]'), ''));
+      if (currentVal != null) {
+        final diff = currentVal - prevVal;
+        if (diff != 0) {
+          final sign = diff > 0 ? '+' : '';
+          diffText = ' ($sign${diff.toStringAsFixed(1)})';
+          
+          if (isFat) {
+            diffColor = diff < 0 ? AppColors.success : AppColors.primary;
+          } else if (isWeight || isLeanMass) {
+            diffColor = diff > 0 ? AppColors.success : AppColors.primary;
+          }
+        }
+      }
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? AppColors.onSurface : AppColors.lightOnSurface,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppColors.onBackground : AppColors.lightOnBackground,
+              ),
+            ),
+            if (diffText.isNotEmpty)
+              TextSpan(
+                text: diffText,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: diffColor,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircumferenceTile(String label, double val, double? prevVal, {bool lowerIsBetter = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    String diffText = '';
+    Color? diffColor;
+
+    if (prevVal != null) {
+      final diff = val - prevVal;
+      if (diff != 0) {
+        final sign = diff > 0 ? '+' : '';
+        diffText = ' $sign${diff.toStringAsFixed(1)} cm';
+        if (lowerIsBetter) {
+          diffColor = diff < 0 ? AppColors.success : AppColors.primary;
+        } else {
+          diffColor = diff > 0 ? AppColors.success : AppColors.primary;
+        }
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: isDark ? AppColors.onSurface : AppColors.lightOnSurface,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Text(
+                '${val.toStringAsFixed(1)} cm',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.onBackground : AppColors.lightOnBackground,
+                ),
+              ),
+              if (diffText.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    diffText,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: diffColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Add/Edit Measurement Bottom Sheet ────────────────────────────────────────
+
+class _AddEditMeasurementSheet extends StatefulWidget {
+  final BodyMeasurement? measurement;
+  final double? userHeight;
+  final Function(BodyMeasurementsCompanion entry) onSave;
+
+  const _AddEditMeasurementSheet({
+    this.measurement,
+    this.userHeight,
+    required this.onSave,
+  });
+
+  @override
+  State<_AddEditMeasurementSheet> createState() => _AddEditMeasurementSheetState();
+}
+
+class _AddEditMeasurementSheetState extends State<_AddEditMeasurementSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late DateTime _selectedDate;
+  
+  final _pesoCtrl = TextEditingController();
+  final _gorduraCtrl = TextEditingController();
+  final _massaMagraCtrl = TextEditingController();
+  final _peitoCtrl = TextEditingController();
+  final _cinturaCtrl = TextEditingController();
+  final _bracoECtrl = TextEditingController();
+  final _bracoDCtrl = TextEditingController();
+  final _coxaECtrl = TextEditingController();
+  final _coxaDCtrl = TextEditingController();
+  final _panturrilhaECtrl = TextEditingController();
+  final _panturrilhaDCtrl = TextEditingController();
+
+  File? _selectedImage;
+  String? _existingPhotoPath;
+  final ImagePicker _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    final m = widget.measurement;
+    _selectedDate = m != null ? DateTime.tryParse(m.data) ?? DateTime.now() : DateTime.now();
+    
+    if (m != null) {
+      _pesoCtrl.text = m.peso?.toString() ?? '';
+      _gorduraCtrl.text = m.gorduraPercentual?.toString() ?? '';
+      _massaMagraCtrl.text = m.massaMagra?.toString() ?? '';
+      _peitoCtrl.text = m.peito?.toString() ?? '';
+      _cinturaCtrl.text = m.cintura?.toString() ?? '';
+      _bracoECtrl.text = m.bracoEsquerdo?.toString() ?? '';
+      _bracoDCtrl.text = m.bracoDireito?.toString() ?? '';
+      _coxaECtrl.text = m.coxaEsquerda?.toString() ?? '';
+      _coxaDCtrl.text = m.coxaDireita?.toString() ?? '';
+      _panturrilhaECtrl.text = m.panturrilhaEsquerda?.toString() ?? '';
+      _panturrilhaDCtrl.text = m.panturrilhaDireita?.toString() ?? '';
+      _existingPhotoPath = m.fotoPath;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pesoCtrl.dispose();
+    _gorduraCtrl.dispose();
+    _massaMagraCtrl.dispose();
+    _peitoCtrl.dispose();
+    _cinturaCtrl.dispose();
+    _bracoECtrl.dispose();
+    _bracoDCtrl.dispose();
+    _coxaECtrl.dispose();
+    _coxaDCtrl.dispose();
+    _panturrilhaECtrl.dispose();
+    _panturrilhaDCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(source: source, imageQuality: 85);
+      if (picked != null) {
+        setState(() {
+          _selectedImage = File(picked.path);
+          _existingPhotoPath = null;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _removePhoto() {
+    setState(() {
+      _selectedImage = null;
+      _existingPhotoPath = null;
+    });
+  }
+
+  void _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final peso = double.tryParse(_pesoCtrl.text);
+    final gordura = double.tryParse(_gorduraCtrl.text);
+    final massaMagra = double.tryParse(_massaMagraCtrl.text);
+    final peito = double.tryParse(_peitoCtrl.text);
+    final cintura = double.tryParse(_cinturaCtrl.text);
+    final bracoE = double.tryParse(_bracoECtrl.text);
+    final bracoD = double.tryParse(_bracoDCtrl.text);
+    final coxaE = double.tryParse(_coxaECtrl.text);
+    final coxaD = double.tryParse(_coxaDCtrl.text);
+    final panturrilhaE = double.tryParse(_panturrilhaECtrl.text);
+    final panturrilhaD = double.tryParse(_panturrilhaDCtrl.text);
+
+    if (peso == null &&
+        gordura == null &&
+        massaMagra == null &&
+        peito == null &&
+        cintura == null &&
+        bracoE == null &&
+        bracoD == null &&
+        coxaE == null &&
+        coxaD == null &&
+        panturrilhaE == null &&
+        panturrilhaD == null &&
+        _selectedImage == null &&
+        _existingPhotoPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha pelo menos um campo ou adicione uma foto!')),
+      );
+      return;
+    }
+
+    String? fotoPath = _existingPhotoPath;
+    if (_selectedImage != null) {
+      final appDir = await getApplicationDocumentsDirectory();
+      final photosDir = Directory('${appDir.path}/progress_photos');
+      if (!await photosDir.exists()) {
+        await photosDir.create(recursive: true);
+      }
+      final fileName = 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedFile = await _selectedImage!.copy('${photosDir.path}/$fileName');
+      fotoPath = savedFile.path;
+    }
+
+    double? imc;
+    if (peso != null && widget.userHeight != null && widget.userHeight! > 0) {
+      final hM = widget.userHeight! / 100;
+      imc = peso / (hM * hM);
+    }
+
+    final dateStr = _selectedDate.toIso8601String().split('T')[0];
+
+    final entry = BodyMeasurementsCompanion(
+      id: widget.measurement != null ? Value(widget.measurement!.id) : const Value.absent(),
+      data: Value(dateStr),
+      peso: Value(peso),
+      gorduraPercentual: Value(gordura),
+      massaMagra: Value(massaMagra),
+      imc: Value(imc),
+      peito: Value(peito),
+      cintura: Value(cintura),
+      bracoEsquerdo: Value(bracoE),
+      bracoDireito: Value(bracoD),
+      coxaEsquerda: Value(coxaE),
+      coxaDireita: Value(coxaD),
+      panturrilhaEsquerda: Value(panturrilhaE),
+      panturrilhaDireita: Value(panturrilhaD),
+      fotoPath: Value(fotoPath),
+    );
+
+    widget.onSave(entry);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Form(
+      key: _formKey,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  widget.measurement == null ? 'Nova Medida' : 'Editar Medida',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.calendar_today_rounded, color: AppColors.primaryLight),
+                title: const Text('Data do Registro', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                subtitle: Text(
+                  DateFormat('dd/MM/yyyy').format(_selectedDate),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                trailing: const Icon(Icons.arrow_drop_down_rounded),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedDate,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _selectedDate = picked;
+                    });
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            const _SectionLabel('COMPOSIÇÃO CORPORAL'),
+            const SizedBox(height: 12),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _pesoCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Peso (kg)',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    validator: (val) {
+                      if (val != null && val.isNotEmpty && double.tryParse(val) == null) {
+                        return 'Inválido';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    controller: _gorduraCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Gordura (%)',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    validator: (val) {
+                      if (val != null && val.isNotEmpty && double.tryParse(val) == null) {
+                        return 'Inválido';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    controller: _massaMagraCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Massa M. (kg)',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    validator: (val) {
+                      if (val != null && val.isNotEmpty && double.tryParse(val) == null) {
+                        return 'Inválido';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            const _SectionLabel('CIRCUNFERÊNCIAS (cm)'),
+            const SizedBox(height: 12),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMeasurementField(_peitoCtrl, 'Peito'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMeasurementField(_cinturaCtrl, 'Cintura'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMeasurementField(_bracoDCtrl, 'Braço Direito'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMeasurementField(_bracoECtrl, 'Braço Esquerdo'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMeasurementField(_coxaDCtrl, 'Coxa Direita'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMeasurementField(_coxaECtrl, 'Coxa Esquerda'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMeasurementField(_panturrilhaDCtrl, 'Panturrilha Dir.'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMeasurementField(_panturrilhaECtrl, 'Panturrilha Esq.'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            const _SectionLabel('FOTO DE PROGRESSO'),
+            const SizedBox(height: 12),
+            _buildPhotoPickerSection(isDark),
+            const SizedBox(height: 32),
+
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _submit,
+                    child: const Text('Salvar'),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMeasurementField(TextEditingController controller, String label) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+      validator: (val) {
+        if (val != null && val.isNotEmpty && double.tryParse(val) == null) {
+          return 'Inválido';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPhotoPickerSection(bool isDark) {
+    final hasPhoto = _selectedImage != null || _existingPhotoPath != null;
+
+    if (hasPhoto) {
+      return Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: _selectedImage != null
+                  ? Image.file(_selectedImage!, width: double.infinity, height: double.infinity, fit: BoxFit.cover)
+                  : Image.file(File(_existingPhotoPath!), width: double.infinity, height: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48)),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton.filled(
+                icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+                onPressed: _removePhoto,
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          builder: (ctx) => SafeArea(
+            child: Wrap(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_rounded),
+                  title: const Text('Câmera'),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_rounded),
+                  title: const Text('Galeria'),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _pickImage(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      child: Container(
+        height: 120,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: Colors.grey.withOpacity(0.3),
+            style: BorderStyle.solid,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_a_photo_outlined, size: 32, color: isDark ? Colors.white60 : Colors.black45),
+            const SizedBox(height: 8),
+            Text(
+              'Tirar ou escolher foto de progresso',
+              style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Fullscreen Image Viewer ──────────────────────────────────────────────────
+
+class _FullscreenImageViewer extends StatelessWidget {
+  final String imagePath;
+  final String dateStr;
+
+  const _FullscreenImageViewer({
+    required this.imagePath,
+    required this.dateStr,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          'Foto de Progresso - $dateStr',
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Image.file(
+            File(imagePath),
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.broken_image_rounded, size: 64, color: Colors.white54),
+                  SizedBox(height: 16),
+                  Text(
+                    'Não foi possível carregar a imagem.',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

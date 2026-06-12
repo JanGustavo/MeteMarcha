@@ -98,5 +98,18 @@ class AudioService {
     } catch (_) {}
   }
 
+  /// Quatro bipes rápidos — Recorde Pessoal (PR) batido!
+  Future<void> prCelebration() async {
+    await _checkAudio();
+    if (_audioAvailable != true) return;
+    try {
+      for (var i = 0; i < 4; i++) {
+        await _player.stop();
+        await _player.play(AssetSource('sounds/beep.mp3'));
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+    } catch (_) {}
+  }
+
   void dispose() => __player?.dispose();
 }

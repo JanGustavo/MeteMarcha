@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'core/theme/app_theme.dart';
+import 'core/providers/providers.dart';
 import 'core/services/notification_service.dart';
 import 'core/widgets/global_rest_timer_overlay.dart';
 import 'pages/splash/splash_page.dart';
@@ -37,18 +38,25 @@ class MyApp extends StatelessWidget {
 
     return UncontrolledProviderScope(
       container: activeContainer,
-      child: MaterialApp(
-        title: 'Mete Marcha',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
-        navigatorKey: navigatorKey,
-        home: const SplashPage(),
-        builder: (context, child) {
-          return Stack(
-            children: [
-              if (child != null) child,
-              const GlobalRestTimerOverlay(),
-            ],
+      child: Consumer(
+        builder: (context, ref, child) {
+          final themeMode = ref.watch(themeModeProvider);
+          return MaterialApp(
+            title: 'Mete Marcha',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeMode,
+            navigatorKey: navigatorKey,
+            home: const SplashPage(),
+            builder: (context, child) {
+              return Stack(
+                children: [
+                  if (child != null) child,
+                  const GlobalRestTimerOverlay(),
+                ],
+              );
+            },
           );
         },
       ),

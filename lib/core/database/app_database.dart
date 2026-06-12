@@ -182,6 +182,48 @@ class WeeklySchedules extends Table {
   IntColumn get dayId => integer().nullable().references(WorkoutDays, #id)();
 }
 
+/// Metas do usuário (peso corporal ou carga de exercício)
+@DataClassName('Goal')
+class Goals extends Table {
+  TextColumn get id => text()();
+  TextColumn get tipo => text()(); // "peso" | "carga"
+  TextColumn get exercicioNome => text().nullable()();
+  IntColumn get exercicioId => integer().nullable().references(Exercises, #id)();
+  RealColumn get valorAlvo => real()();
+  RealColumn get valorInicial => real().nullable()();
+  TextColumn get dataCriacao => text()();
+  BoolColumn get concluido => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Registro de medidas corporais (peso, gordura %, massa magra, IMC, circunferências, fotos)
+@DataClassName('BodyMeasurement')
+class BodyMeasurements extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get data => text()(); // ISO 8601 ex: "2026-06-12"
+  
+  // Health Connect aligned fields
+  RealColumn get peso => real().nullable()();
+  RealColumn get gorduraPercentual => real().nullable()();
+  RealColumn get massaMagra => real().nullable()();
+  RealColumn get imc => real().nullable()();
+
+  // Circunferências (opcionais, em cm)
+  RealColumn get peito => real().nullable()();
+  RealColumn get cintura => real().nullable()();
+  RealColumn get bracoEsquerdo => real().nullable()();
+  RealColumn get bracoDireito => real().nullable()();
+  RealColumn get coxaEsquerda => real().nullable()();
+  RealColumn get coxaDireita => real().nullable()();
+  RealColumn get panturrilhaEsquerda => real().nullable()();
+  RealColumn get panturrilhaDireita => real().nullable()();
+
+  // Foto de progresso
+  TextColumn get fotoPath => text().nullable()();
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // DAOs
 // ═══════════════════════════════════════════════════════════════════
@@ -710,6 +752,26 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
             ..where((l) => l.sessionId.equals(sessionId) & l.exerciseId.equals(exerciseId)))
           .go();
 
+  /// Retorna o maior 1RM estimado (Epley) registrado anteriormente para o exercício.
+  Future<double> getMax1RMForExercise(int exerciseId) async {
+    final logs = await (select(exerciseLogs)
+          ..where((l) => l.exerciseId.equals(exerciseId) & l.concluido.equals(true)))
+        .get();
+
+    if (logs.isEmpty) return 0.0;
+
+    double max1RM = 0.0;
+    for (final log in logs) {
+      final oneRM = log.repeticoes == 1
+          ? log.peso
+          : log.peso * (1 + log.repeticoes / 30.0);
+      if (oneRM > max1RM) {
+        max1RM = oneRM;
+      }
+    }
+    return max1RM;
+  }
+
   // ── Cálculo de volume ──────────────────────────────────────────
 
   /// Volume mecânico (kg × reps).
@@ -766,6 +828,34 @@ class ProfileDao {
       ),
     );
   }
+
+  // ── Body measurements ──────────────────────────────────────────
+
+  Stream<List<BodyMeasurement>> watchAllMeasurements() =>
+      (db.select(db.bodyMeasurements)..orderBy([(m) => OrderingTerm.desc(m.data)]))
+          .watch();
+
+  Future<List<BodyMeasurement>> getAllMeasurements() =>
+      (db.select(db.bodyMeasurements)..orderBy([(m) => OrderingTerm.desc(m.data)]))
+          .get();
+
+  Future<BodyMeasurement?> getMeasurementById(int id) =>
+      (db.select(db.bodyMeasurements)..where((m) => m.id.equals(id))).getSingleOrNull();
+
+  Future<BodyMeasurement?> getLatestMeasurement() =>
+      (db.select(db.bodyMeasurements)
+            ..orderBy([(m) => OrderingTerm.desc(m.data)])
+            ..limit(1))
+          .getSingleOrNull();
+
+  Future<int> insertMeasurement(BodyMeasurementsCompanion entry) =>
+      db.into(db.bodyMeasurements).insert(entry);
+
+  Future<bool> updateMeasurement(BodyMeasurement entry) =>
+      db.update(db.bodyMeasurements).replace(entry);
+
+  Future<int> deleteMeasurement(int id) =>
+      (db.delete(db.bodyMeasurements)..where((m) => m.id.equals(id))).go();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -783,6 +873,8 @@ class ProfileDao {
     UserProfiles,
     WeeklyWeights,
     WeeklySchedules,
+    Goals,
+    BodyMeasurements,
   ],
   daos: [ExerciseDao, WorkoutDao, LogDao],
 )
@@ -793,7 +885,7 @@ class AppDatabase extends _$AppDatabase {
   late final ProfileDao profileDao = ProfileDao(this);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -869,6 +961,12 @@ class AppDatabase extends _$AppDatabase {
               );
               await customStatement('DROP TABLE exercise_logs_old;');
               await customStatement('PRAGMA foreign_keys = ON;');
+            }
+            if (from < 10) {
+              await m.createTable(goals);
+            }
+            if (from < 11) {
+              await m.createTable(bodyMeasurements);
             }
           }
         },
