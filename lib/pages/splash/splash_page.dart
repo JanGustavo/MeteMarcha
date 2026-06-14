@@ -89,7 +89,7 @@ class SplashPage extends StatelessWidget {
 
                   const SizedBox(height: 36),
 
-                  // Title with Text.rich (METE in bold white, MACHA in red/italic style)
+                  // Title with Text.rich (METE in bold white, MARCHA in red/italic style)
                   Text.rich(
                     TextSpan(
                       style: Theme.of(context).textTheme.displayLarge?.copyWith(
@@ -117,7 +117,18 @@ class SplashPage extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Treine. Registre. Evolua. ⚡',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
 
                   // Taglines / Motivational Items
                   Column(

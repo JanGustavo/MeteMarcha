@@ -118,7 +118,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         ),
                       ),
                       subtitle: 'Básico - 3 dias/sem.',
-                      iconWidget: _buildWeightStackIcon(),
+                      assetPath: 'assets/images/workout_abc.jpg',
                       desc: 'Ideal para iniciantes ou quem tem tempo limitado. Foco em consistência.',
                       daysInfo: const [
                         'Dia A: Peito, Ombro e Tríceps',
@@ -146,7 +146,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         ),
                       ),
                       subtitle: 'Intermediário - 4 dias/sem.',
-                      iconWidget: _buildDumbbellsIcon(),
+                      assetPath: 'assets/images/workout_abcd.jpg',
                       desc: 'Excelente para quem já treina e quer isolar grupos musculares específicos.',
                       daysInfo: const [
                         'Dia A: Peito e Tríceps',
@@ -176,7 +176,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         ),
                       ),
                       subtitle: 'Avançado - 5 dias/sem.',
-                      iconWidget: _buildKettlebellIcon(),
+                      assetPath: 'assets/images/workout_abcde.jpg',
                       desc: 'Foco alto em volume e intensidade, treinando quase todos os dias da semana.',
                       daysInfo: const [
                         'Dia A: Peito',
@@ -200,11 +200,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         ),
                       ),
                       subtitle: 'Crie sua própria rotina',
-                      iconWidget: Icon(
-                        Icons.assignment_rounded,
-                        size: 44,
-                        color: context.onSurface,
-                      ),
+                      assetPath: 'assets/images/workout_custom.jpg',
                       desc: 'Crie um treino do zero, adicionando dias e exercícios conforme sua necessidade.',
                       daysInfo: const [
                         'Dia A: Meu Treino A (Personalizado)',
@@ -271,7 +267,7 @@ class SplitSelectionPage extends ConsumerWidget {
     required String tipo,
     required Widget richTitle,
     required String subtitle,
-    required Widget iconWidget,
+    required String assetPath,
     required String desc,
     required List<String> daysInfo,
   }) {
@@ -292,6 +288,7 @@ class SplitSelectionPage extends ConsumerWidget {
           subtitle: subtitle,
           desc: desc,
           daysInfo: daysInfo,
+          assetPath: assetPath,
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -311,8 +308,8 @@ class SplitSelectionPage extends ConsumerWidget {
                 ),
               ),
               const Spacer(),
-              // Ícone Customizado no centro/fim
-              Center(child: iconWidget),
+              // Imagem no centro
+              _buildWorkoutCardImage(assetPath),
               const Spacer(),
             ],
           ),
@@ -330,6 +327,7 @@ class SplitSelectionPage extends ConsumerWidget {
     required String subtitle,
     required String desc,
     required List<String> daysInfo,
+    required String assetPath,
   }) {
     showModalBottomSheet(
       context: context,
@@ -344,6 +342,17 @@ class SplitSelectionPage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Imagem do Treino como Banner
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  assetPath,
+                  width: double.infinity,
+                  height: 120,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -448,153 +457,25 @@ class SplitSelectionPage extends ConsumerWidget {
 
   // ─── DESENHO DOS ÍCONES CUSTOMIZADOS ──────────────────────────────────────────
 
-  // Ícone de pilha de anilhas
-  Widget _buildWeightStackIcon() {
-    return SizedBox(
-      height: 50,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(4, (index) {
-          final width = 36.0 + (index * 8.0);
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2.0),
-            child: Container(
-              width: width,
-              height: 6,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.3 + (index * 0.15)),
-                    AppColors.primaryLight.withValues(alpha: 0.5 + (index * 0.15)),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(3),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.6),
-                  width: 1,
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  // Ícone de halteres cruzados/paralelos
-  Widget _buildDumbbellsIcon() {
-    Widget dumbbell() {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 18,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primaryDark, AppColors.primaryLight],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-          Container(
-            width: 16,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ),
-          Container(
-            width: 8,
-            height: 18,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primaryDark, AppColors.primaryLight],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return SizedBox(
-      height: 50,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          dumbbell(),
-          const SizedBox(height: 6),
-          Transform.translate(
-            offset: const Offset(10, 0),
-            child: dumbbell(),
+  Widget _buildWorkoutCardImage(String assetPath) {
+    return Container(
+      height: 70,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 6,
+            offset: Offset(0, 3),
           ),
         ],
       ),
-    );
-  }
-
-  // Ícone de Kettlebell
-  Widget _buildKettlebellIcon() {
-    return SizedBox(
-      width: 44,
-      height: 50,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Alça
-          Positioned(
-            top: 4,
-            child: Container(
-              width: 28,
-              height: 22,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  width: 4.5,
-                ),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-              ),
-            ),
-          ),
-          // Corpo redondo
-          Positioned(
-            bottom: 4,
-            child: Container(
-               width: 38,
-               height: 32,
-               decoration: BoxDecoration(
-                 gradient: const LinearGradient(
-                   colors: [AppColors.primaryDark, AppColors.primaryLight],
-                   begin: Alignment.topLeft,
-                   end: Alignment.bottomRight,
-                 ),
-                 borderRadius: BorderRadius.circular(19),
-                 border: Border.all(
-                   color: AppColors.primaryLight.withValues(alpha: 0.8),
-                   width: 1,
-                 ),
-               ),
-             ),
-          ),
-          // Detalhe de brilho/texto
-          Positioned(
-            bottom: 12,
-            child: Text(
-              'KG',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset(
+          assetPath,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

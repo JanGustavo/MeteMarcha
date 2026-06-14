@@ -748,6 +748,22 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
   Future<int> deleteLog(int logId) =>
       (delete(exerciseLogs)..where((l) => l.id.equals(logId))).go();
 
+  Future<int> updateLog(int logId, double peso, int reps, String? observacoes) =>
+      (update(exerciseLogs)..where((l) => l.id.equals(logId))).write(
+        ExerciseLogsCompanion(
+          peso: Value(peso),
+          repeticoes: Value(reps),
+          observacoes: Value(observacoes),
+        ),
+      );
+
+  Future<int> updateLogSerie(int logId, int newSerie) =>
+      (update(exerciseLogs)..where((l) => l.id.equals(logId))).write(
+        ExerciseLogsCompanion(
+          serie: Value(newSerie),
+        ),
+      );
+
   Future<void> deleteLogsForSessionExercise(int sessionId, int exerciseId) =>
       (delete(exerciseLogs)
             ..where((l) => l.sessionId.equals(sessionId) & l.exerciseId.equals(exerciseId)))

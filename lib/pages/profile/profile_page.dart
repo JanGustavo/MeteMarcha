@@ -17,6 +17,8 @@ import '../../core/providers/providers.dart';
 import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
+import '../../core/utils/decimal_input_formatter.dart';
+import '../../core/utils/string_input_formatter.dart';
 import '../../core/widgets/streak_badge.dart';
 import '../../core/services/ota_update_service.dart';
 
@@ -558,6 +560,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             labelText: 'Nome',
                             prefixIcon: Icon(Icons.badge_rounded),
                           ),
+                          inputFormatters: [StringInputFormatter()],
                         ),
                         const SizedBox(height: 12),
 
@@ -568,6 +571,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               child: TextField(
                                 controller: _alturaCtrl,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [DecimalInputFormatter()],
                                 decoration: const InputDecoration(
                                   labelText: 'Altura (cm)',
                                   prefixIcon: Icon(Icons.height_rounded),
@@ -581,6 +585,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                         decimal: true),
+                                inputFormatters: [DecimalInputFormatter()],
                                 decoration: const InputDecoration(
                                   labelText: 'Peso (kg)',
                                   prefixIcon:

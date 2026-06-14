@@ -6,6 +6,7 @@ import '../core/database/app_database.dart';
 import '../core/providers/providers.dart';
 import '../core/theme/app_theme.dart';
 import '../core/utils/week_utils.dart';
+import '../core/utils/decimal_input_formatter.dart';
 
 final weeklyWeightSnoozedProvider = StateProvider<bool>((ref) => false);
 
@@ -69,6 +70,7 @@ class WeeklyWeightBanner extends ConsumerWidget {
               autofocus: true,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [DecimalInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Peso (kg)',
                 hintText: '80.5',

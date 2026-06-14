@@ -8,6 +8,7 @@ import '../../core/database/app_database.dart';
 import '../../core/constants/equipment_options.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/decimal_input_formatter.dart';
 
 class SetupPage extends ConsumerStatefulWidget {
   final int initialTab;
@@ -315,9 +316,9 @@ class _RoutineSetupTabState extends ConsumerState<_RoutineSetupTab> {
 
               final updatedDay = day.copyWith(letra: letra, nome: nome);
               await ref.read(workoutDaoProvider).updateDay(updatedDay);
-              
+
               ref.invalidate(activeSplitDaysProvider);
-              
+
               if (ctx.mounted) Navigator.pop(ctx);
               setState(() {
                 _selectedDay = updatedDay;
@@ -330,7 +331,8 @@ class _RoutineSetupTabState extends ConsumerState<_RoutineSetupTab> {
     );
   }
 
-  void _addDay(BuildContext context, int splitId, List<WorkoutDay> existingDays) {
+  void _addDay(
+      BuildContext context, int splitId, List<WorkoutDay> existingDays) {
     String nextLetter = 'A';
     if (existingDays.isNotEmpty) {
       final lastLetter = existingDays.last.letra;
@@ -382,12 +384,12 @@ class _RoutineSetupTabState extends ConsumerState<_RoutineSetupTab> {
               if (letra.isEmpty || nome.isEmpty) return;
 
               await ref.read(workoutDaoProvider).insertDay(
-                WorkoutDaysCompanion.insert(
-                  splitId: splitId,
-                  letra: letra,
-                  nome: nome,
-                ),
-              );
+                    WorkoutDaysCompanion.insert(
+                      splitId: splitId,
+                      letra: letra,
+                      nome: nome,
+                    ),
+                  );
 
               ref.invalidate(activeSplitDaysProvider);
 
@@ -400,10 +402,12 @@ class _RoutineSetupTabState extends ConsumerState<_RoutineSetupTab> {
     );
   }
 
-  void _deleteDay(BuildContext context, WorkoutDay day, List<WorkoutDay> allDays) {
+  void _deleteDay(
+      BuildContext context, WorkoutDay day, List<WorkoutDay> allDays) {
     if (allDays.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A divisão precisa ter pelo menos 1 dia de treino.')),
+        const SnackBar(
+            content: Text('A divisão precisa ter pelo menos 1 dia de treino.')),
       );
       return;
     }
@@ -428,14 +432,22 @@ class _RoutineSetupTabState extends ConsumerState<_RoutineSetupTab> {
               final dayId = day.id;
               await ref.read(workoutDaoProvider).transaction(() async {
                 final db = ref.read(databaseProvider);
-                await (db.update(db.weeklySchedules)..where((s) => s.dayId.equals(dayId))).write(
+                await (db.update(db.weeklySchedules)
+                      ..where((s) => s.dayId.equals(dayId)))
+                    .write(
                   const WeeklySchedulesCompanion(dayId: Value(null)),
                 );
-                await (db.delete(db.workoutDayExercises)..where((de) => de.dayId.equals(dayId))).go();
-                await (db.update(db.workoutSessions)..where((s) => s.dayId.equals(dayId))).write(
+                await (db.delete(db.workoutDayExercises)
+                      ..where((de) => de.dayId.equals(dayId)))
+                    .go();
+                await (db.update(db.workoutSessions)
+                      ..where((s) => s.dayId.equals(dayId)))
+                    .write(
                   const WorkoutSessionsCompanion(dayId: Value(null)),
                 );
-                await (db.delete(db.workoutDays)..where((d) => d.id.equals(dayId))).go();
+                await (db.delete(db.workoutDays)
+                      ..where((d) => d.id.equals(dayId)))
+                    .go();
               });
 
               ref.invalidate(activeSplitDaysProvider);
@@ -997,6 +1009,7 @@ void _showAddExerciseSheet(
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                           labelText: 'Descanso (segundos)'),
+                      inputFormatters: [DecimalInputFormatter()],
                     ),
                   ),
                   const SizedBox(width: 20),
@@ -1004,7 +1017,7 @@ void _showAddExerciseSheet(
                       style: TextStyle(fontWeight: FontWeight.w500)),
                   Switch(
                     value: unilateral,
-                    activeColor: AppColors.primary,
+                    activeThumbColor: AppColors.primary,
                     onChanged: (v) => setModalState(() => unilateral = v),
                   ),
                 ],
@@ -1099,7 +1112,8 @@ class _WeeklyScheduleTab extends ConsumerStatefulWidget {
 }
 
 class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
-  int? _selectedWorkoutDayId; // null = none, -1 = rest, positive = workout day id
+  int?
+      _selectedWorkoutDayId; // null = none, -1 = rest, positive = workout day id
 
   @override
   Widget build(BuildContext context) {
@@ -1212,7 +1226,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                       if (_selectedWorkoutDayId != null) ...[
                         const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(12),
@@ -1242,7 +1257,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                 ),
                               ),
                               GestureDetector(
-                                onTap: () => setState(() => _selectedWorkoutDayId = null),
+                                onTap: () => setState(
+                                    () => _selectedWorkoutDayId = null),
                                 child: Icon(
                                   Icons.close_rounded,
                                   size: 16,
@@ -1296,9 +1312,10 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                 return GestureDetector(
                                   onTap: () async {
                                     if (_selectedWorkoutDayId != null) {
-                                      final selectedId = _selectedWorkoutDayId == -1
-                                          ? null
-                                          : _selectedWorkoutDayId;
+                                      final selectedId =
+                                          _selectedWorkoutDayId == -1
+                                              ? null
+                                              : _selectedWorkoutDayId;
                                       await ref
                                           .read(workoutDaoProvider)
                                           .updateWeeklyDay(
@@ -1514,7 +1531,7 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
     required Color color,
   }) {
     final isSelected = _selectedWorkoutDayId == id;
-    
+
     final chip = AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       constraints: BoxConstraints(
@@ -1636,10 +1653,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                   ),
                   title: Text('Descanso / Folga',
                       style: TextStyle(color: context.onBackground)),
-                  subtitle: Text(
-                      'Dia focado em recuperação e hidratação 💧',
-                      style:
-                          TextStyle(color: context.onSurface, fontSize: 12)),
+                  subtitle: Text('Dia focado em recuperação e hidratação 💧',
+                      style: TextStyle(color: context.onSurface, fontSize: 12)),
                   trailing: schedule.dayId == null
                       ? const Icon(Icons.check_circle, color: AppColors.primary)
                       : null,
@@ -1666,8 +1681,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                             color: context.onBackground,
                             fontWeight: FontWeight.bold)),
                     subtitle: Text(day.nome,
-                        style: TextStyle(
-                            color: context.onSurface, fontSize: 12)),
+                        style:
+                            TextStyle(color: context.onSurface, fontSize: 12)),
                     trailing: isSelected
                         ? const Icon(Icons.check_circle,
                             color: AppColors.primary)

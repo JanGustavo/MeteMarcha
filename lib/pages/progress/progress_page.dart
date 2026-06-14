@@ -12,6 +12,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/decimal_input_formatter.dart';
 import 'workout_session_detail_page.dart';
 
 class ProgressPage extends ConsumerStatefulWidget {
@@ -1995,6 +1996,7 @@ class _GoalsManager extends ConsumerWidget {
               TextField(
                 controller: valueController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [DecimalInputFormatter()],
                 decoration: InputDecoration(
                   labelText: 'Valor Alvo',
                   labelStyle: TextStyle(color: context.onSurface, fontSize: 13),
@@ -3873,6 +3875,7 @@ class _AddEditMeasurementSheetState extends State<_AddEditMeasurementSheet> {
                   child: TextFormField(
                     controller: _pesoCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [DecimalInputFormatter()],
                     decoration: const InputDecoration(
                       labelText: 'Peso (kg)',
                       border: OutlineInputBorder(),
@@ -3891,6 +3894,7 @@ class _AddEditMeasurementSheetState extends State<_AddEditMeasurementSheet> {
                   child: TextFormField(
                     controller: _gorduraCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [DecimalInputFormatter()],
                     decoration: const InputDecoration(
                       labelText: 'Gordura (%)',
                       border: OutlineInputBorder(),
@@ -3909,6 +3913,7 @@ class _AddEditMeasurementSheetState extends State<_AddEditMeasurementSheet> {
                   child: TextFormField(
                     controller: _massaMagraCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [DecimalInputFormatter()],
                     decoration: const InputDecoration(
                       labelText: 'Massa M. (kg)',
                       border: OutlineInputBorder(),
@@ -4014,6 +4019,7 @@ class _AddEditMeasurementSheetState extends State<_AddEditMeasurementSheet> {
     return TextFormField(
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [DecimalInputFormatter()],
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),

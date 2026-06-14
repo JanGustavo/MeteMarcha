@@ -26,10 +26,13 @@ import '../../core/providers/progress_extended_provider.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
+import '../../core/utils/decimal_input_formatter.dart';
+import '../../core/utils/string_input_formatter.dart';
 //import '../setup/widgets/setup_page.dart';
 
 // Registro local de uma série (exibição imediata, sem roundtrip)
 class _SetEntry {
+  final int? id;
   final int serie;
   final double peso;
   final int reps;
@@ -37,6 +40,7 @@ class _SetEntry {
   final String? equipamento;
   final String? observacoes;
   _SetEntry({
+    this.id,
     required this.serie,
     required this.peso,
     required this.reps,
@@ -189,9 +193,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     setState(() {
       _max1RM = prevMax1RM;
       _prevLogs = prev;
-      _currentSerie = exerciseSessionLogs.length + 1;
+      final numUniqueSeries = exerciseSessionLogs.map((l) => l.serie).toSet().length;
+      _currentSerie = numUniqueSeries + 1;
       _setsLogged.clear();
       _setsLogged.addAll(exerciseSessionLogs.map((l) => _SetEntry(
+            id: l.id,
             serie: l.serie,
             peso: l.peso,
             reps: l.repeticoes,
@@ -464,11 +470,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     final double prevMax1RM = await logDao.getMax1RMForExercise(_current.id);
     final bool isPR = prevMax1RM > 0 && new1RM > prevMax1RM;
 
+    final List<int> insertedIds = [];
     try {
       if (_executandoUnilateral && _lado == 'ambos') {
         // Grava dois logs: esquerdo e direito
         for (final l in ['esquerdo', 'direito']) {
-          await logDao.insertLog(ExerciseLogsCompanion.insert(
+          final id = await logDao.insertLog(ExerciseLogsCompanion.insert(
             exerciseId: _current.id,
             sessionId: widget.sessionId,
             data: now,
@@ -479,9 +486,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
             equipamento: Value(_equipamentoSelecionado),
             observacoes: valueObs,
           ));
+          insertedIds.add(id);
         }
       } else {
-        await logDao.insertLog(ExerciseLogsCompanion.insert(
+        final id = await logDao.insertLog(ExerciseLogsCompanion.insert(
           exerciseId: _current.id,
           sessionId: widget.sessionId,
           data: now,
@@ -492,6 +500,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
           equipamento: Value(_equipamentoSelecionado),
           observacoes: valueObs,
         ));
+        insertedIds.add(id);
       }
     } catch (e, stack) {
       debugPrint('Erro ao inserir log no banco: $e\n$stack');
@@ -523,14 +532,36 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
           _max1RM = new1RM;
         }
       }
-      _setsLogged.add(_SetEntry(
-        serie: _currentSerie,
-        peso: peso,
-        reps: reps,
-        lado: _lado,
-        equipamento: _equipamentoSelecionado,
-        observacoes: obs.isNotEmpty ? obs : null,
-      ));
+      if (_executandoUnilateral && _lado == 'ambos') {
+        _setsLogged.add(_SetEntry(
+          id: insertedIds[0],
+          serie: _currentSerie,
+          peso: peso,
+          reps: reps,
+          lado: 'esquerdo',
+          equipamento: _equipamentoSelecionado,
+          observacoes: obs.isNotEmpty ? obs : null,
+        ));
+        _setsLogged.add(_SetEntry(
+          id: insertedIds[1],
+          serie: _currentSerie,
+          peso: peso,
+          reps: reps,
+          lado: 'direito',
+          equipamento: _equipamentoSelecionado,
+          observacoes: obs.isNotEmpty ? obs : null,
+        ));
+      } else {
+        _setsLogged.add(_SetEntry(
+          id: insertedIds[0],
+          serie: _currentSerie,
+          peso: peso,
+          reps: reps,
+          lado: _lado,
+          equipamento: _equipamentoSelecionado,
+          observacoes: obs.isNotEmpty ? obs : null,
+        ));
+      }
       _currentSerie++;
     });
 
@@ -586,6 +617,288 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
         );
       }
     }
+  }
+
+  Future<void> _deletarSerie(int serieNum) async {
+    final logDao = ref.read(logDaoProvider);
+    
+    // Encontra todos os logs desta série para o exercício atual na sessão atual
+    final entriesToDelete = _setsLogged.where((e) => e.serie == serieNum).toList();
+    
+    for (final entry in entriesToDelete) {
+      if (entry.id != null) {
+        await logDao.deleteLog(entry.id!);
+      }
+    }
+    
+    // Re-sequenciar as séries seguintes no banco
+    final dbLogs = await logDao.getLogsForSession(widget.sessionId);
+    final exerciseLogs = dbLogs.where((l) => l.exerciseId == _current.id).toList();
+    for (final log in exerciseLogs) {
+      if (log.serie > serieNum) {
+        await logDao.updateLogSerie(log.id, log.serie - 1);
+      }
+    }
+    
+    await _loadExerciseContext();
+  }
+
+  Future<void> _showEditDeleteSeriesDialog(int serieNum) async {
+    final group = _setsLogged.where((e) => e.serie == serieNum).toList();
+    if (group.isEmpty) return;
+
+    // Crie os controllers
+    final controllers = group.map((entry) {
+      final pesoStr = entry.peso % 1 == 0 ? entry.peso.toInt().toString() : entry.peso.toString();
+      return _EditControllers(
+        entry: entry,
+        pesoCtrl: TextEditingController(text: pesoStr),
+        repsCtrl: TextEditingController(text: entry.reps.toString()),
+        obsCtrl: TextEditingController(text: entry.observacoes ?? ''),
+      );
+    }).toList();
+
+    final isDark = context.isDark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: context.cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          actionsPadding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.edit_note_rounded,
+                  size: 24,
+                  color: isDark ? AppColors.primaryLight : AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Editar Série $serieNum',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: isDark ? AppColors.primaryLight : AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                ...controllers.map((c) {
+                  final hasLado = c.entry.lado != 'ambos';
+                  final isEsquerdo = c.entry.lado == 'esquerdo';
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.surface.withValues(alpha: 0.5)
+                          : AppColors.lightBackground.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: context.divider.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (hasLado) ...[
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: (isEsquerdo ? AppColors.info : AppColors.success)
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isEsquerdo ? Icons.keyboard_arrow_left_rounded : Icons.keyboard_arrow_right_rounded,
+                                      size: 14,
+                                      color: isEsquerdo ? AppColors.info : AppColors.success,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      isEsquerdo ? 'ESQUERDO' : 'DIREITO',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: isEsquerdo ? AppColors.info : AppColors.success,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _NumberField(
+                                ctrl: c.pesoCtrl,
+                                label: 'Peso (kg)',
+                                decimal: true,
+                                step: 0.5,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _NumberField(
+                                ctrl: c.repsCtrl,
+                                label: 'Repetições',
+                                step: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: c.obsCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Observações',
+                            labelStyle: TextStyle(fontSize: 12),
+                            prefixIcon: Icon(Icons.edit_note_rounded, size: 20),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton.icon(
+                  onPressed: () async {
+                    // Confirmação para excluir
+                    final confirm = await showDialog<bool>(
+                      context: ctx,
+                      builder: (cConfirm) => AlertDialog(
+                        backgroundColor: context.cardColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: Row(
+                          children: const [
+                            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 24),
+                            SizedBox(width: 8),
+                            Text('Excluir Série?'),
+                          ],
+                        ),
+                        content: const Text('Tem certeza que deseja excluir esta série de forma permanente?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(cConfirm, false),
+                            child: const Text('Cancelar'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(cConfirm, true),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Excluir'),
+                            
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      Navigator.pop(ctx); // fecha o diálogo de edição
+                      await _deletarSerie(serieNum);
+                    }
+                  },
+                  style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                  label: const Text(
+                    'Excluir',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        // Validação e Salvamento
+                        final logDao = ref.read(logDaoProvider);
+                        for (final c in controllers) {
+                          final peso = double.tryParse(c.pesoCtrl.text.replaceAll(',', '.')) ?? 0.0;
+                          final reps = int.tryParse(c.repsCtrl.text) ?? 0;
+                          final obs = c.obsCtrl.text.trim();
+
+                          if (reps <= 0 || peso <= 0) {
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Carga e repetições devem ser maiores que zero.'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (c.entry.id != null) {
+                            await logDao.updateLog(
+                              c.entry.id!,
+                              peso,
+                              reps,
+                              obs.isNotEmpty ? obs : null,
+                            );
+                          }
+                        }
+
+                        Navigator.pop(ctx);
+                        await _loadExerciseContext();
+                      },
+                      icon: const Icon(Icons.save_rounded, size: 16),
+                      label: const Text('Salvar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      // Liberar controllers
+      for (final c in controllers) {
+        c.dispose();
+      }
+    });
   }
 
   Future<void> _proximoExercicio() async {
@@ -655,43 +968,96 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                   style: TextStyle(color: context.onSurface),
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.warning.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: uncompleted.map((entry) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.only(top: 6),
-                                child: Icon(Icons.circle,
-                                    size: 6, color: AppColors.warning),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  entry.value.nome,
-                                  style: TextStyle(
-                                    color: context.onBackground,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 14,
+                Column(
+                  children: uncompleted.map((entry) {
+                    final ex = entry.value;
+                    final muscle = ex.grupoMuscular;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: context.isDark
+                            ? Colors.white.withValues(alpha: 0.03)
+                            : Colors.black.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: context.divider,
+                          width: 1,
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () async {
+                            Navigator.pop(ctx);
+                            setState(() {
+                              _currentIndex = entry.key;
+                            });
+                            await _loadExerciseContext();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.warning.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.fitness_center_rounded,
+                                    size: 16,
+                                    color: AppColors.warning,
                                   ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        ex.nome,
+                                        style: TextStyle(
+                                          color: context.onBackground,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      if (muscle.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: context.divider,
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            muscle.toUpperCase(),
+                                            style: TextStyle(
+                                              color: context.onSurface,
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 12,
+                                  color: context.onSurface.withValues(alpha: 0.5),
+                                ),
+                              ],
+                            ),
                           ),
-                        )).toList(),
-                  ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -1465,7 +1831,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                   // ── Séries já salvas nesta sessão ──────────────
                   if (_setsLogged.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    _SetsList(sets: _setsLogged, exercise: ex),
+                    _SetsList(
+                      sets: _setsLogged,
+                      exercise: ex,
+                      onTapSeries: _showEditDeleteSeriesDialog,
+                    ),
                   ],
 
                   // ── Inputs ────────────────────────────────────
@@ -1770,10 +2140,35 @@ class _PreviousPerformance extends StatelessWidget {
   }
 }
 
+class _EditControllers {
+  final _SetEntry entry;
+  final TextEditingController pesoCtrl;
+  final TextEditingController repsCtrl;
+  final TextEditingController obsCtrl;
+
+  _EditControllers({
+    required this.entry,
+    required this.pesoCtrl,
+    required this.repsCtrl,
+    required this.obsCtrl,
+  });
+
+  void dispose() {
+    pesoCtrl.dispose();
+    repsCtrl.dispose();
+    obsCtrl.dispose();
+  }
+}
+
 class _SetsList extends StatelessWidget {
   final List<_SetEntry> sets;
   final Exercise exercise;
-  const _SetsList({required this.sets, required this.exercise});
+  final Function(int) onTapSeries;
+  const _SetsList({
+    required this.sets,
+    required this.exercise,
+    required this.onTapSeries,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1812,22 +2207,38 @@ class _SetsList extends StatelessWidget {
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
-            runSpacing: 4,
+            runSpacing: 8,
             children: grouped.values.map((group) {
               final formattedText = _formatSeriesGroup(group);
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  formattedText,
-                  style: TextStyle(
-                    color: context.onBackground,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+              final serieNum = group.first.serie;
+              return InkWell(
+                onTap: () => onTapSeries(serieNum),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        formattedText,
+                        style: TextStyle(
+                          color: context.onBackground,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.edit_rounded,
+                        size: 13,
+                        color: (isDark ? AppColors.primaryLight : AppColors.primary).withOpacity(0.7),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -2096,6 +2507,7 @@ class _NumberFieldState extends State<_NumberField> {
             textAlign: TextAlign.center,
             keyboardType:
                 TextInputType.numberWithOptions(decimal: widget.decimal),
+            inputFormatters: [DecimalInputFormatter()],
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -3155,6 +3567,7 @@ class _PlateCalculatorDialogState extends State<_PlateCalculatorDialog> {
             TextField(
               controller: _weightCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [DecimalInputFormatter()],
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               decoration: InputDecoration(

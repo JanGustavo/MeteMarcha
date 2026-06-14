@@ -110,4 +110,83 @@ void main() {
       expect(remainingIds, usedExercises);
     });
   });
+
+  group('Testes de Histórico & Edição (LogDao)', () {
+    test('updateLog, updateLogSerie e deleteLog funcionam corretamente', () async {
+      // 1. Cria um treino e inicia uma sessão
+      final splitId = await db.workoutDao.addSplit('ABC');
+      final days = await db.workoutDao.getDaysForSplit(splitId);
+      final dayA = days[0];
+      final exs = await db.exerciseDao.getExercisesForDay(dayA.id);
+      final ex = exs.first;
+
+      // Inicia sessão
+      final sessionId = await db.workoutDao.insertSession(WorkoutSessionsCompanion.insert(
+        dayId: Value(dayA.id),
+        data: DateTime.now().toIso8601String(),
+        status: const Value('em_andamento'),
+      ));
+
+      // 2. Insere 3 séries (logs) para o exercício
+      final log1Id = await db.logDao.insertLog(ExerciseLogsCompanion.insert(
+        exerciseId: ex.id,
+        sessionId: sessionId,
+        data: DateTime.now().toIso8601String(),
+        peso: 10.0,
+        repeticoes: 10,
+        serie: const Value(1),
+        lado: const Value('ambos'),
+      ));
+
+      final log2Id = await db.logDao.insertLog(ExerciseLogsCompanion.insert(
+        exerciseId: ex.id,
+        sessionId: sessionId,
+        data: DateTime.now().toIso8601String(),
+        peso: 12.0,
+        repeticoes: 8,
+        serie: const Value(2),
+        lado: const Value('ambos'),
+      ));
+
+      final log3Id = await db.logDao.insertLog(ExerciseLogsCompanion.insert(
+        exerciseId: ex.id,
+        sessionId: sessionId,
+        data: DateTime.now().toIso8601String(),
+        peso: 14.0,
+        repeticoes: 6,
+        serie: const Value(3),
+        lado: const Value('ambos'),
+      ));
+
+      // 3. Edita o log 2
+      await db.logDao.updateLog(log2Id, 15.0, 9, 'Nova obs');
+      
+      final currentLogs = await db.logDao.getLogsForSession(sessionId);
+      final log2 = currentLogs.firstWhere((l) => l.id == log2Id);
+      expect(log2.peso, 15.0);
+      expect(log2.repeticoes, 9);
+      expect(log2.observacoes, 'Nova obs');
+
+      // 4. Deleta o log 2 e re-sequencia as séries posteriores
+      await db.logDao.deleteLog(log2Id);
+
+      // Re-sequenciamento
+      final exerciseLogs = currentLogs.where((l) => l.exerciseId == ex.id).toList();
+      for (final log in exerciseLogs) {
+        if (log.id == log2Id) continue;
+        if (log.serie > 2) {
+          await db.logDao.updateLogSerie(log.id, log.serie - 1);
+        }
+      }
+
+      final logsAfterDelete = await db.logDao.getLogsForSession(sessionId);
+      expect(logsAfterDelete.length, 2);
+      
+      final log1 = logsAfterDelete.firstWhere((l) => l.id == log1Id);
+      final log3 = logsAfterDelete.firstWhere((l) => l.id == log3Id);
+      
+      expect(log1.serie, 1);
+      expect(log3.serie, 2); // De 3, passou a ser série 2
+    });
+  });
 }
