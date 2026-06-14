@@ -101,7 +101,7 @@ class SplashPage extends StatelessWidget {
                         TextSpan(
                           text: 'METE\n',
                           style: TextStyle(
-                            color: context.onBackground,
+                            color: Colors.white.withValues(alpha: 0.95),
                             fontWeight: FontWeight.w900,
                           ),
                         ),

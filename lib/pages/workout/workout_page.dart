@@ -638,9 +638,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
           backgroundColor: context.cardColor,
           title: Row(
             children: const [
-              Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-              SizedBox(width: 8),
-              Text('Exercícios Pendentes'),
+              Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text('Exercícios Pendentes'),
+              ),
             ],
           ),
           content: SingleChildScrollView(
@@ -652,31 +654,46 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                   'Você ainda não registrou nenhuma série para os seguintes exercícios:',
                   style: TextStyle(color: context.onSurface),
                 ),
-                const SizedBox(height: 12),
-                ...uncompleted.map((entry) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 6),
-                            child: Icon(Icons.circle,
-                                size: 6, color: AppColors.warning),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              entry.value.nome,
-                              style: TextStyle(
-                                color: context.onBackground,
-                                fontWeight: FontWeight.w500,
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: uncompleted.map((entry) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(top: 6),
+                                child: Icon(Icons.circle,
+                                    size: 6, color: AppColors.warning),
                               ),
-                            ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  entry.value.nome,
+                                  style: TextStyle(
+                                    color: context.onBackground,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    )),
-                const SizedBox(height: 12),
+                        )).toList(),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Text(
                   'Deseja finalizar o treino mesmo assim ou voltar para realizá-los?',
                   style: TextStyle(color: context.onSurface),
@@ -685,33 +702,39 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar'),
-            ),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _finalizarTreino();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primaryLight,
-                side: const BorderSide(color: AppColors.primaryLight),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              child: const Text('Finalizar mesmo assim'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                final firstPending = uncompleted.first;
-                setState(() {
-                  _currentIndex = firstPending.key;
-                });
-                await _loadExerciseContext();
-              },
-              child: const Text('Revisar Pendentes'),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final firstPending = uncompleted.first;
+                    setState(() {
+                      _currentIndex = firstPending.key;
+                    });
+                    await _loadExerciseContext();
+                  },
+                  child: const Text('Revisar Pendentes'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _finalizarTreino();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryLight,
+                    side: const BorderSide(color: AppColors.primaryLight),
+                  ),
+                  child: const Text('Finalizar mesmo assim'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar'),
+                ),
+              ],
             ),
           ],
         );
@@ -755,10 +778,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     required int uniqueExercises,
     required int totalSets,
   }) {
+    final isDark = context.isDark;
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: isDark
+          ? Colors.black.withOpacity(0.8)
+          : Colors.white.withOpacity(0.85),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
       transitionBuilder: (context, anim1, anim2, child) {
@@ -830,12 +856,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                     const SizedBox(height: 20),
                     
                     // Congratulations Text
-                    const Text(
+                    Text(
                       'TREINO CONCLUÍDO!',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.primaryLight,
+                        color: isDark ? AppColors.primaryLight : AppColors.primary,
                         letterSpacing: 1.5,
                       ),
                     ),
@@ -850,7 +876,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Divider(color: Colors.white10, height: 1),
+                    Divider(color: context.divider, height: 1),
                     const SizedBox(height: 20),
 
                     // Stats Rows (Row 1 + Row 2 instead of GridView)
@@ -1016,13 +1042,18 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     required String label,
     required String value,
   }) {
+    final isDark = context.isDark;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: isDark
+            ? Colors.white.withOpacity(0.04)
+            : Colors.black.withOpacity(0.04),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.06),
+          color: isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.08),
           width: 1,
         ),
       ),
@@ -1054,10 +1085,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
-              color: Colors.white,
+              color: context.onBackground,
             ),
           ),
         ],
@@ -1752,20 +1783,27 @@ class _SetsList extends StatelessWidget {
       grouped.putIfAbsent(s.serie, () => []).add(s);
     }
 
+    final isDark = context.isDark;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(red: 0.08),
+        color: isDark
+            ? AppColors.primary.withValues(red: 0.08)
+            : AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: isDark
+              ? AppColors.primary.withValues(alpha: 0.2)
+              : AppColors.primary.withValues(alpha: 0.15),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'SÉRIES SALVAS',
             style: TextStyle(
-              color: AppColors.primaryLight,
+              color: isDark ? AppColors.primaryLight : AppColors.primary,
               fontSize: 10,
               letterSpacing: 1.5,
               fontWeight: FontWeight.w600,

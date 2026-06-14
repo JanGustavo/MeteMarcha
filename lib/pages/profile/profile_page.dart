@@ -9,6 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/database/database_helper.dart'
+    if (dart.library.js_interop) '../../core/database/database_helper_web.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
@@ -123,14 +125,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 'Foto de Perfil',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: context.onBackground,
                 ),
               ),
             ),
@@ -273,6 +275,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.any,
+        withData: kIsWeb,
       );
 
       if (result == null || result.files.isEmpty) {
@@ -280,8 +283,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       }
 
       final file = result.files.first;
-      final path = file.path;
-      if (path == null) return;
+      if (!kIsWeb && file.path == null) return;
+      if (kIsWeb && file.bytes == null) return;
 
       final confirm = await showDialog<bool>(
         context: context,
@@ -311,16 +314,24 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final db = ref.read(databaseProvider);
       await db.close();
 
-      final dbFolder = await getApplicationDocumentsDirectory();
-      final dbFile = File('${dbFolder.path}/gym_tracker.sqlite');
+      if (kIsWeb) {
+        AppDatabase.bytesToImport = file.bytes;
+        await deleteWebDatabase('gym_tracker');
+      } else {
+        final path = file.path!;
+        final dbFolder = await getApplicationDocumentsDirectory();
+        final dbFile = File('${dbFolder.path}/gym_tracker.sqlite');
 
-      if (await dbFile.exists()) {
-        await dbFile.delete();
+        if (await dbFile.exists()) {
+          await dbFile.delete();
+        }
+
+        await File(path).copy(dbFile.path);
       }
 
-      await File(path).copy(dbFile.path);
-
       ref.invalidate(databaseProvider);
+      // Forçar recriação imediata do banco no mesmo loop de eventos
+      ref.read(databaseProvider);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -649,12 +660,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Atualizações APP',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: context.onBackground,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -686,12 +697,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Verificar',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: context.onBackground,
                           ),
                         ),
                       ),
@@ -737,7 +748,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: context.onBackground,
                                 ),
                               ),
                               SizedBox(height: 4),
@@ -788,9 +799,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
           ),
 
-          if (!kIsWeb)
-            SliverToBoxAdapter(
-              child: Card(
+          SliverToBoxAdapter(
+            child: Card(
                 margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -825,7 +835,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: context.onBackground,
                                   ),
                                 ),
                                 SizedBox(height: 4),
@@ -844,20 +854,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => _exportBackup(context),
-                              icon: const Icon(Icons.download_rounded, size: 18),
-                              label: const Text('Exportar', style: TextStyle(fontSize: 13)),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                          if (!kIsWeb) ...[
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _exportBackup(context),
+                                icon: const Icon(Icons.download_rounded, size: 18),
+                                label: const Text('Exportar', style: TextStyle(fontSize: 13)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
+                            const SizedBox(width: 12),
+                          ],
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => _importBackup(context),

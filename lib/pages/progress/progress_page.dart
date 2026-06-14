@@ -38,6 +38,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
           title: const Text('Progresso 📈'),
           bottom: TabBar(
             isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: [
               Tab(text: 'PESO & FREQ'),
               Tab(text: 'CARGAS & RECS'),
@@ -292,7 +293,7 @@ class _WorkoutInsightsWidget extends ConsumerWidget {
                           insight.text,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.white.withOpacity(0.95),
+                            color: context.onBackground.withOpacity(0.95),
                             fontWeight: FontWeight.w500,
                             height: 1.3,
                           ),
@@ -2121,6 +2122,7 @@ class _RelativeStrengthCard extends StatelessWidget {
     double nextLevelRatio = 1.5;
     double prevLevelRatio = 0.0;
     Color levelColor = Colors.blueAccent;
+    bool isMaxLevel = false;
 
     if (strengthRatio < 1.5) {
       levelName = 'Iniciante (Nível 1)';
@@ -2139,27 +2141,21 @@ class _RelativeStrengthCard extends StatelessWidget {
       levelColor = AppColors.success;
     } else {
       levelName = 'Elite (Nível 4)';
-      nextLevelRatio = 6.0;
+      nextLevelRatio = 4.5;
       prevLevelRatio = 4.5;
       levelColor = Colors.amber;
+      isMaxLevel = true;
     }
 
-    final ratioProgress = nextLevelRatio > prevLevelRatio
-        ? ((strengthRatio - prevLevelRatio) / (nextLevelRatio - prevLevelRatio)).clamp(0.0, 1.0)
-        : 1.0;
+    final ratioProgress = isMaxLevel
+        ? 1.0
+        : (nextLevelRatio > prevLevelRatio
+            ? ((strengthRatio - prevLevelRatio) / (nextLevelRatio - prevLevelRatio)).clamp(0.0, 1.0)
+            : 1.0);
 
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Índice de Força Relativa: A soma das estimativas de 1RM em Peito, Costas e Perna, dividida pelo seu peso corporal. Mede sua força proporcional ao seu tamanho.',
-              style: TextStyle(fontSize: 13),
-            ),
-            duration: Duration(seconds: 4),
-          ),
-        );
+        _showRelativeStrengthLevelsDialog(context, strengthRatio, totalBest1RM);
       },
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -2224,10 +2220,16 @@ class _RelativeStrengthCard extends StatelessWidget {
                     '${prevLevelRatio.toStringAsFixed(1)}x',
                     style: TextStyle(fontSize: 10, color: context.onSurface),
                   ),
-                  Text(
-                    'Próximo nível: ${nextLevelRatio.toStringAsFixed(1)}x',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: levelColor),
-                  ),
+                  if (isMaxLevel)
+                    const Text(
+                      'Nível Máximo Atingido 👑',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber),
+                    )
+                  else
+                    Text(
+                      'Próximo nível: ${nextLevelRatio.toStringAsFixed(1)}x',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: levelColor),
+                    ),
                 ],
               ),
               Divider(color: context.divider, height: 24),
@@ -2282,6 +2284,256 @@ class _RelativeStrengthCard extends StatelessWidget {
             const Text('-', style: TextStyle(color: Colors.white30)),
         ],
       ),
+    );
+  }
+
+  void _showRelativeStrengthLevelsDialog(BuildContext context, double currentRatio, double totalBest1RM) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        final textColor = context.onBackground;
+        final subtextColor = context.onSurface;
+
+        Widget buildLevelItem({
+          required String title,
+          required String subtitle,
+          required String range,
+          required String weightRange,
+          required Color color,
+          required bool isActive,
+          required String levelNum,
+        }) {
+          return Container(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isActive ? color.withOpacity(0.08) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isActive ? color : context.divider,
+                width: isActive ? 2.0 : 1.0,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(isActive ? 0.2 : 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      levelNum,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: subtextColor,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      range,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      weightRange,
+                      style: TextStyle(
+                        color: subtextColor,
+                        fontSize: 10,
+                      ),
+                    ),
+                    if (isActive) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: color.withOpacity(0.3), width: 1),
+                        ),
+                        child: Text(
+                          'VOCÊ ESTÁ AQUI',
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 7,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        return AlertDialog(
+          backgroundColor: context.cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.emoji_events_rounded, color: AppColors.primaryLight, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Níveis de Força',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'O Índice de Força Relativa mede a soma das melhores estimativas de 1RM (Peito, Costas e Perna) em relação ao seu peso corporal.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: subtextColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: context.divider.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Seu peso: ${userWeight.toStringAsFixed(1)} kg',
+                            style: TextStyle(fontSize: 11, color: subtextColor),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Sua força total: ${totalBest1RM.toStringAsFixed(1)} kg',
+                            style: TextStyle(fontSize: 11, color: subtextColor),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Seu Índice',
+                            style: TextStyle(fontSize: 10, color: subtextColor),
+                          ),
+                          Text(
+                            '${currentRatio.toStringAsFixed(2)}x',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                buildLevelItem(
+                  title: 'Iniciante (Nível 1)',
+                  subtitle: 'Fase de adaptação muscular',
+                  range: '< 1.5x',
+                  weightRange: 'Até ${(1.5 * userWeight).toStringAsFixed(1)} kg',
+                  color: Colors.blueAccent,
+                  isActive: currentRatio < 1.5,
+                  levelNum: '1',
+                ),
+                buildLevelItem(
+                  title: 'Intermediário (Nível 2)',
+                  subtitle: 'Base sólida de força',
+                  range: '1.5x - 3.0x',
+                  weightRange: '${(1.5 * userWeight).toStringAsFixed(1)} - ${(3.0 * userWeight).toStringAsFixed(1)} kg',
+                  color: AppColors.primaryLight,
+                  isActive: currentRatio >= 1.5 && currentRatio < 3.0,
+                  levelNum: '2',
+                ),
+                buildLevelItem(
+                  title: 'Avançado (Nível 3)',
+                  subtitle: 'Nível de força expressivo',
+                  range: '3.0x - 4.5x',
+                  weightRange: '${(3.0 * userWeight).toStringAsFixed(1)} - ${(4.5 * userWeight).toStringAsFixed(1)} kg',
+                  color: AppColors.success,
+                  isActive: currentRatio >= 3.0 && currentRatio < 4.5,
+                  levelNum: '3',
+                ),
+                buildLevelItem(
+                  title: 'Elite (Nível 4)',
+                  subtitle: 'Força digna de atletas',
+                  range: '≥ 4.5x',
+                  weightRange: 'Mais de ${(4.5 * userWeight).toStringAsFixed(1)} kg',
+                  color: Colors.amber,
+                  isActive: currentRatio >= 4.5,
+                  levelNum: '4',
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('ENTENDI'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

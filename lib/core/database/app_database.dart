@@ -5,6 +5,7 @@
 //
 // O arquivo app_database.g.dart é gerado automaticamente.
 
+import 'dart:typed_data';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
@@ -979,6 +980,8 @@ class AppDatabase extends _$AppDatabase {
         },
       );
 
+  static Uint8List? bytesToImport;
+
   static QueryExecutor _openConnection() {
     // driftDatabase() detecta automaticamente a plataforma:
     //   Android/iOS → SQLite nativo (via sqlite3_flutter_libs)
@@ -988,6 +991,14 @@ class AppDatabase extends _$AppDatabase {
       web: DriftWebOptions(
         sqlite3Wasm: Uri.parse('sqlite3.wasm'),
         driftWorker: Uri.parse('drift_worker.js'),
+        initializeDatabase: () async {
+          if (bytesToImport != null) {
+            final bytes = bytesToImport!;
+            bytesToImport = null;
+            return bytes;
+          }
+          return null;
+        },
       ),
     );
   }

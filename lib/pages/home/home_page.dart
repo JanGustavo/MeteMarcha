@@ -222,15 +222,33 @@ class _TreinoTab extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Mete Marcha'),
-            SizedBox(width: 8),
-            StreakBadge(style: StreakStyle.appBar),
+            Text.rich(
+              TextSpan(
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+                children: [
+                  const TextSpan(
+                    text: 'Mete ',
+                    style: TextStyle(color: AppColors.primary),
+                  ),
+                  TextSpan(
+                    text: 'Marcha',
+                    style: TextStyle(color: context.onBackground),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const StreakBadge(style: StreakStyle.appBar),
           ],
         ),
-        actions: [
+          actions: [
           IconButton(
             icon: const Icon(Icons.tune_rounded),
             tooltip: 'Configurar Treinos',

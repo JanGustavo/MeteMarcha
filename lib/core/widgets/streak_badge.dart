@@ -119,12 +119,12 @@ class _StreakBadgeState extends ConsumerState<StreakBadge>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'OFENSIVA',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.onSurface,
+                  color: context.onSurface,
                   letterSpacing: 1.0,
                 ),
               ),
@@ -138,10 +138,10 @@ class _StreakBadgeState extends ConsumerState<StreakBadge>
           const SizedBox(height: 8),
           Text(
             '$streak ${streak == 1 ? "semana" : "semanas"}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
-              color: Colors.white,
+              color: context.onBackground,
             ),
           ),
         ],

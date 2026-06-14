@@ -82,31 +82,85 @@ class WeeklyScheduleBanner extends ConsumerWidget {
                   }
                 });
 
+                final isDark = context.isDark;
+
+                // Cores do Gradiente
+                final List<Color> gradientColors;
+                if (isDark) {
+                  gradientColors = hasWorkout
+                      ? [
+                          AppColors.getWorkoutColor(assignedDay.letra).withValues(alpha: 0.9),
+                          AppColors.getWorkoutColor(assignedDay.letra).withValues(alpha: 0.6),
+                        ]
+                      : [
+                          Colors.blueGrey.shade800,
+                          Colors.blueGrey.shade900,
+                        ];
+                } else {
+                  gradientColors = hasWorkout
+                      ? [
+                          AppColors.getWorkoutColor(assignedDay.letra).withValues(alpha: 0.15),
+                          AppColors.getWorkoutColor(assignedDay.letra).withValues(alpha: 0.05),
+                        ]
+                      : [
+                          Colors.blueGrey.shade100,
+                          Colors.blueGrey.shade50,
+                        ];
+                }
+
+                // Borda para modo claro
+                final Border? border = isDark
+                    ? null
+                    : Border.all(
+                        color: hasWorkout
+                            ? AppColors.getWorkoutColor(assignedDay.letra).withValues(alpha: 0.25)
+                            : Colors.blueGrey.shade200,
+                      );
+
+                // Cor da Sombra
+                final Color shadowColor = isDark
+                    ? (hasWorkout
+                        ? AppColors.getWorkoutColor(assignedDay.letra)
+                        : Colors.black).withValues(alpha: 0.25)
+                    : Colors.black.withValues(alpha: 0.05);
+
+                // Estilização de Textos e Ícones
+                final Color mainTextColor;
+                final Color subTextColor;
+                final Color iconColor;
+                final Color avatarBgColor;
+
+                if (isDark) {
+                  mainTextColor = Colors.white;
+                  subTextColor = Colors.white.withOpacity(0.7);
+                  iconColor = Colors.white;
+                  avatarBgColor = Colors.white.withOpacity(0.2);
+                } else {
+                  mainTextColor = context.onBackground;
+                  subTextColor = context.onSurface;
+                  iconColor = hasWorkout
+                      ? AppColors.getWorkoutColor(assignedDay.letra)
+                      : Colors.blueGrey.shade700;
+                  avatarBgColor = hasWorkout
+                      ? AppColors.getWorkoutColor(assignedDay.letra).withValues(alpha: 0.12)
+                      : Colors.blueGrey.shade200.withValues(alpha: 0.5);
+                }
+
                 // Renderiza o card premium
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: hasWorkout
-                            ? [
-                                AppColors.getWorkoutColor(assignedDay.letra).withValues(alpha: 0.9),
-                                AppColors.getWorkoutColor(assignedDay.letra).withValues(alpha: 0.6),
-                              ]
-                            : [
-                                Colors.blueGrey.shade800,
-                                Colors.blueGrey.shade900,
-                              ],
+                        colors: gradientColors,
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(16),
+                      border: border,
                       boxShadow: [
                         BoxShadow(
-                          color: (hasWorkout
-                                  ? AppColors.getWorkoutColor(assignedDay.letra)
-                                  : Colors.black)
-                              .withValues(alpha: 0.25),
+                          color: shadowColor,
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -130,10 +184,10 @@ class WeeklyScheduleBanner extends ConsumerWidget {
                               // Ícone correspondente
                               CircleAvatar(
                                 radius: 24,
-                                backgroundColor: Colors.white.withOpacity(0.2),
+                                backgroundColor: avatarBgColor,
                                 child: Icon(
                                   hasWorkout ? Icons.local_fire_department_rounded : Icons.water_drop_rounded,
-                                  color: Colors.white,
+                                  color: iconColor,
                                   size: 26,
                                 ),
                               ),
@@ -147,7 +201,9 @@ class WeeklyScheduleBanner extends ConsumerWidget {
                                     Text(
                                       hasWorkout ? 'HORA DO SHOW' : 'RECUPERAÇÃO',
                                       style: TextStyle(
-                                        color: Colors.white.withOpacity(0.7),
+                                        color: hasWorkout && !isDark
+                                            ? AppColors.getWorkoutColor(assignedDay.letra)
+                                            : subTextColor,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 1.5,
@@ -156,8 +212,8 @@ class WeeklyScheduleBanner extends ConsumerWidget {
                                     const SizedBox(height: 4),
                                     Text(
                                       notificationMessage,
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: mainTextColor,
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         height: 1.4,
