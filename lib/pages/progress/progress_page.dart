@@ -14,6 +14,7 @@ import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/decimal_input_formatter.dart';
 import 'workout_session_detail_page.dart';
+import '../../core/services/health_connect_service.dart';
 
 class ProgressPage extends ConsumerStatefulWidget {
   const ProgressPage({super.key});
@@ -2768,8 +2769,28 @@ class _BodyMeasurementsTabState extends ConsumerState<_BodyMeasurementsTab> {
                       fotoPath: entry.fotoPath.value,
                     );
                     await dao.updateMeasurement(toUpdate);
+                    
+                    if (toUpdate.peso != null) {
+                      final date = DateTime.tryParse(toUpdate.data) ?? DateTime.now();
+                      await HealthConnectService.instance.syncBodyMeasurement(
+                        weightKg: toUpdate.peso!,
+                        bodyFatPercent: toUpdate.gorduraPercentual,
+                        bmi: toUpdate.imc,
+                        dateTime: date,
+                      );
+                    }
                   } else {
                     await dao.insertMeasurement(entry);
+                    
+                    if (entry.peso.value != null) {
+                      final date = DateTime.tryParse(entry.data.value ?? '') ?? DateTime.now();
+                      await HealthConnectService.instance.syncBodyMeasurement(
+                        weightKg: entry.peso.value!,
+                        bodyFatPercent: entry.gorduraPercentual.value,
+                        bmi: entry.imc.value,
+                        dateTime: date,
+                      );
+                    }
                   }
                 },
               ),

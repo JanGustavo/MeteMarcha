@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../core/services/health_connect_service.dart';
 
 import '../../core/database/database_helper.dart'
     if (dart.library.js_interop) '../../core/database/database_helper_web.dart';
@@ -36,6 +37,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   bool _saving = false;
   bool _populated = false;
+  bool _healthConnectEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHealthConnectStatus();
+  }
+
+  void _loadHealthConnectStatus() async {
+    final enabled = await HealthConnectService.instance.isEnabled();
+    if (mounted) {
+      setState(() {
+        _healthConnectEnabled = enabled;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -893,6 +910,148 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ),
                         ],
                       ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          if (!kIsWeb)
+            SliverToBoxAdapter(
+              child: Card(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: context.divider),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.favorite_rounded,
+                              color: Colors.green,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Google Health Connect',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: context.onBackground,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Sincronize pesos e treinos com o ecossistema do Google',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: context.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _healthConnectEnabled,
+                            onChanged: (val) async {
+                              if (val) {
+                                final permitted = await HealthConnectService.instance.requestPermissions();
+                                if (permitted) {
+                                  await HealthConnectService.instance.setEnabled(true);
+                                  if (context.mounted) {
+                                    setState(() {
+                                      _healthConnectEnabled = true;
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Conectado ao Google Health Connect!')),
+                                    );
+                                  }
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Permissões de saúde não concedidas.'),
+                                        backgroundColor: Colors.redAccent,
+                                      ),
+                                    );
+                                  }
+                                }
+                              } else {
+                                await HealthConnectService.instance.setEnabled(false);
+                                if (context.mounted) {
+                                  setState(() {
+                                    _healthConnectEnabled = false;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Sincronização desativada.')),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      if (_healthConnectEnabled) ...[
+                        const SizedBox(height: 12),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final profileDao = ref.read(profileDaoProvider);
+                              final last = await profileDao.getLatestMeasurement();
+                              int syncedCount = 0;
+                              
+                              if (last != null && last.peso != null) {
+                                final date = DateTime.tryParse(last.data) ?? DateTime.now();
+                                final success = await HealthConnectService.instance.syncBodyMeasurement(
+                                  weightKg: last.peso!,
+                                  bodyFatPercent: last.gorduraPercentual,
+                                  bmi: last.imc,
+                                  dateTime: date,
+                                );
+                                if (success) syncedCount++;
+                              }
+                              
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(syncedCount > 0 
+                                      ? 'Dados sincronizados com sucesso!'
+                                      : 'Nenhum dado novo para sincronizar ou falha na integração.'
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.sync_rounded, size: 18),
+                            label: const Text('Forçar Sincronização Agora', style: TextStyle(fontSize: 13)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

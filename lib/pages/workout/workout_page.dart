@@ -28,6 +28,7 @@ import '../../core/utils/week_utils.dart';
 import '../../core/utils/decimal_input_formatter.dart';
 import 'widgets/plate_calculator_dialog.dart';
 import 'widgets/workout_music_panel.dart';
+import '../../core/services/health_connect_service.dart';
 //import '../setup/widgets/setup_page.dart';
 
 // Registro local de uma série (exibição imediata, sem roundtrip)
@@ -1126,6 +1127,21 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
         .read(workoutDaoProvider)
         .finishSession(widget.sessionId, _sessionSecs);
 
+    // Sincronizar treino finalizado com o Health Connect
+    try {
+      final now = DateTime.now();
+      final start = now.subtract(Duration(seconds: _sessionSecs));
+      final calories = (_sessionSecs / 60.0) * 5.0; // estimativa de 5 kcal/min
+      await HealthConnectService.instance.syncWorkout(
+        title: widget.dayName,
+        start: start,
+        end: now,
+        estimatedCaloriesBurned: calories,
+      );
+    } catch (e) {
+      debugPrint('Erro ao sincronizar treino com Health Connect: $e');
+    }
+
     AudioService().workoutDone();
 
     if (!mounted) return;
@@ -1937,7 +1953,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
             // ── Botões de ação ─────────────────────────────────
             _ActionBar(
               isLast: _isLast,
-              resting: _resting,
+              resting: resting,
               hasSets: _setsLogged.isNotEmpty,
               onSkip: _pularExercicio,
               onSalvarSerie: _salvarSerie,
