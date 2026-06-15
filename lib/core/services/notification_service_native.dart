@@ -1,6 +1,8 @@
 // lib/core/services/notification_service_native.dart
 
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -66,6 +68,22 @@ class NotificationService {
       linux: initializationSettingsLinux,
     );
 
+    // Registra a porta de comunicação para ações em background
+    final ReceivePort port = ReceivePort();
+    IsolateNameServer.removePortNameMapping('notification_action_port');
+    IsolateNameServer.registerPortWithName(port.sendPort, 'notification_action_port');
+    port.listen((message) {
+      if (message == 'rest_add_30s') {
+        globalProviderContainer.read(restTimerProvider.notifier).add30Seconds();
+      } else if (message == 'rest_skip') {
+        globalProviderContainer.read(restTimerProvider.notifier).cancelRest();
+      } else if (message == 'music_pause' || message == 'music_play') {
+        globalProviderContainer.read(workoutMusicProvider.notifier).togglePlay();
+      } else if (message == 'music_stop') {
+        globalProviderContainer.read(workoutMusicProvider.notifier).stop();
+      }
+    });
+
     await _notificationsPlugin.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
@@ -73,10 +91,15 @@ class NotificationService {
           globalProviderContainer.read(workoutMusicProvider.notifier).togglePlay();
         } else if (response.actionId == 'music_stop') {
           globalProviderContainer.read(workoutMusicProvider.notifier).stop();
+        } else if (response.actionId == 'rest_add_30s') {
+          globalProviderContainer.read(restTimerProvider.notifier).add30Seconds();
+        } else if (response.actionId == 'rest_skip') {
+          globalProviderContainer.read(restTimerProvider.notifier).cancelRest();
         } else {
           openActiveWorkout();
         }
       },
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
     requestPermission();
@@ -87,6 +110,19 @@ class NotificationService {
     final seconds = secondsLeft % 60;
     final timeStr = '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     final boldTime = _toUnicodeBold(timeStr);
+
+    final List<AndroidNotificationAction> actions = [
+      const AndroidNotificationAction(
+        'rest_add_30s',
+        '+30s',
+        showsUserInterface: false,
+      ),
+      const AndroidNotificationAction(
+        'rest_skip',
+        'Pular',
+        showsUserInterface: true,
+      ),
+    ];
 
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'rest_timer_countdown_channel',
@@ -100,6 +136,7 @@ class NotificationService {
       usesChronometer: true,
       chronometerCountDown: true,
       ongoing: true,
+      actions: actions,
     );
 
     final NotificationDetails platformDetails = NotificationDetails(
@@ -190,19 +227,19 @@ class NotificationService {
       actions.add(const AndroidNotificationAction(
         'music_pause',
         'Pausar',
-        showsUserInterface: true,
+        showsUserInterface: false,
       ));
     } else {
       actions.add(const AndroidNotificationAction(
         'music_play',
         'Tocar',
-        showsUserInterface: true,
+        showsUserInterface: false,
       ));
     }
     actions.add(const AndroidNotificationAction(
       'music_stop',
       'Parar',
-      showsUserInterface: true,
+      showsUserInterface: false,
     ));
 
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
@@ -248,5 +285,14 @@ class NotificationService {
         ),
       );
     }
+  }
+}
+
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse response) {
+  if (response.actionId == 'rest_add_30s' || response.actionId == 'rest_skip' ||
+      response.actionId == 'music_pause' || response.actionId == 'music_play' || response.actionId == 'music_stop') {
+    final SendPort? sendPort = IsolateNameServer.lookupPortByName('notification_action_port');
+    sendPort?.send(response.actionId);
   }
 }

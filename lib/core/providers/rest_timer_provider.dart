@@ -109,10 +109,21 @@ class RestTimerNotifier extends StateNotifier<RestTimerState> with WidgetsBindin
       _onTimerFinished();
     } else {
       state = state.copyWith(remainingSeconds: difference);
-      if (_isMinimized) {
-        NotificationService().showRestTimer(difference);
-      }
     }
+  }
+
+  void add30Seconds() {
+    if (!state.isActive || _endTime == null) return;
+    _endTime = _endTime!.add(const Duration(seconds: 30));
+    final newRemaining = state.remainingSeconds + 30;
+    final newTotal = state.totalSeconds + 30;
+    state = state.copyWith(
+      totalSeconds: newTotal,
+      remainingSeconds: newRemaining,
+    );
+    // Sempre atualiza a notificação ao adicionar tempo para manter o cronômetro visível
+    NotificationService().showRestTimer(newRemaining);
+    NotificationService().scheduleRestEndedNotification(newRemaining);
   }
 
   void cancelRest() {

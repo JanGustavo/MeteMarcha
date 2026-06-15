@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/app_database.dart';
 import '../utils/week_utils.dart';
+import '../services/foreground_service.dart';
+import '../services/widget_sync_service.dart';
+import 'progress_extended_provider.dart';
 
 // ── Database ──────────────────────────────────────────────────────────────────
 
@@ -289,7 +292,6 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
         val = 'system';
         break;
       case ThemeMode.dark:
-      default:
         val = 'dark';
         break;
     }
@@ -301,4 +303,140 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
   return ThemeModeNotifier();
 });
+
+final foregroundSessionControllerProvider = Provider<void>((ref) {
+  final activeSessionAsync = ref.watch(activeSessionProvider);
+  final daysMapAsync = ref.watch(workoutDaysMapProvider);
+
+  activeSessionAsync.whenData((session) {
+    if (session == null) {
+      ForegroundTaskService.stop();
+    } else {
+      final daysMap = daysMapAsync.value;
+      final dayName = daysMap?[session.dayId]?.nome ?? 'Treino';
+      ForegroundTaskService.start(
+        '🏋️ Mete Marcha',
+        'Treino ativo: $dayName',
+      );
+    }
+  });
+});
+
+class TodayWorkoutData {
+  final String title;
+  final String name;
+  final String status;
+  final bool hasWorkout;
+
+  TodayWorkoutData({
+    required this.title,
+    required this.name,
+    required this.status,
+    required this.hasWorkout,
+  });
+}
+
+final todayWorkoutProvider = Provider<AsyncValue<TodayWorkoutData>>((ref) {
+  final scheduleAsync = ref.watch(weeklyScheduleProvider);
+  final daysAsync = ref.watch(activeSplitDaysProvider);
+  final activeSplitAsync = ref.watch(activeSplitProvider);
+
+  return activeSplitAsync.when(
+    loading: () => const AsyncValue.loading(),
+    error: (e, st) => AsyncValue.error(e, st),
+    data: (activeSplit) {
+      if (activeSplit == null) {
+        return AsyncValue.data(TodayWorkoutData(
+          title: 'Mete Marcha',
+          name: 'Nenhuma rotina ativa',
+          status: 'Crie uma rotina',
+          hasWorkout: false,
+        ));
+      }
+
+      return daysAsync.when(
+        loading: () => const AsyncValue.loading(),
+        error: (e, st) => AsyncValue.error(e, st),
+        data: (workoutDays) {
+          return scheduleAsync.when(
+            loading: () => const AsyncValue.loading(),
+            error: (e, st) => AsyncValue.error(e, st),
+            data: (schedules) {
+              if (schedules.isEmpty) {
+                return AsyncValue.data(TodayWorkoutData(
+                  title: 'Treino do Dia',
+                  name: 'Nenhum agendado',
+                  status: 'Configurar agenda',
+                  hasWorkout: false,
+                ));
+              }
+
+              final weekdayInt = DateTime.now().weekday;
+              final diasSemana = [
+                'Segunda-feira',
+                'Terça-feira',
+                'Quarta-feira',
+                'Quinta-feira',
+                'Sexta-feira',
+                'Sábado',
+                'Domingo',
+              ];
+              final diaSemanaHoje = diasSemana[weekdayInt - 1];
+
+              final todaySchedule = schedules.firstWhere(
+                (s) => s.diaSemana == diaSemanaHoje,
+                orElse: () => schedules.first,
+              );
+
+              final assignedDay = workoutDays.firstWhere(
+                (d) => d.id == todaySchedule.dayId,
+                orElse: () => const WorkoutDay(id: -1, splitId: -1, letra: '', nome: ''),
+              );
+
+              final hasWorkout = assignedDay.id != -1;
+              if (hasWorkout) {
+                return AsyncValue.data(TodayWorkoutData(
+                  title: 'Treino de Hoje',
+                  name: 'Treino ${assignedDay.letra}: ${assignedDay.nome}',
+                  status: 'Mete Marcha! 💪',
+                  hasWorkout: true,
+                ));
+              } else {
+                return AsyncValue.data(TodayWorkoutData(
+                  title: 'Recuperação',
+                  name: 'Dia de Descanso 😴',
+                  status: 'Beber água! 💧',
+                  hasWorkout: false,
+                ));
+              }
+            },
+          );
+        },
+      );
+    },
+  );
+});
+
+final widgetSyncControllerProvider = Provider<void>((ref) {
+  // Sync Streak (Ofensiva)
+  // Como streakProvider pode não estar disponível de imediato ou lançar erro se os dados não carregarem,
+  // nós apenas escutamos ou lemos de forma segura.
+  try {
+    final streak = ref.watch(streakProvider);
+    ref.listen<int>(streakProvider, (previous, next) {
+      WidgetSyncService.syncStreak(next);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetSyncService.syncStreak(streak);
+    });
+  } catch (_) {}
+
+  // Sync Workout of the Day (Treino do Dia)
+  final todayWorkoutAsync = ref.watch(todayWorkoutProvider);
+  todayWorkoutAsync.whenData((data) {
+    WidgetSyncService.syncWorkout(data);
+  });
+});
+
+final homeTabProvider = StateProvider<int>((ref) => 0);
 

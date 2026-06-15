@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
-import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
 import '../../widgets/weekly_weight_banner.dart';
@@ -26,8 +25,6 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  int _currentTab = 0;
-
   @override
   void initState() {
     super.initState();
@@ -38,7 +35,10 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(foregroundSessionControllerProvider);
+    ref.watch(widgetSyncControllerProvider);
     final splitsAsync = ref.watch(splitsProvider);
+    final currentTab = ref.watch(homeTabProvider);
 
     return splitsAsync.when(
       data: (splits) {
@@ -47,7 +47,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         }
         return Scaffold(
           body: IndexedStack(
-            index: _currentTab,
+            index: currentTab,
             children: const [
               _TreinoTab(),
               ProgressPage(),
@@ -55,8 +55,8 @@ class _HomePageState extends ConsumerState<HomePage> {
             ],
           ),
           bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentTab,
-            onTap: (index) => setState(() => _currentTab = index),
+            currentIndex: currentTab,
+            onTap: (index) => ref.read(homeTabProvider.notifier).state = index,
             items: const [
               BottomNavigationBarItem(
                 icon: Icon(Icons.fitness_center_rounded),

@@ -15,19 +15,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:drift/drift.dart' as drift;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/constants/equipment_options.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/rest_timer_provider.dart';
-import '../../core/providers/progress_extended_provider.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
 import '../../core/utils/decimal_input_formatter.dart';
-import '../../core/utils/string_input_formatter.dart';
 import 'widgets/plate_calculator_dialog.dart';
 import 'widgets/workout_music_panel.dart';
 //import '../setup/widgets/setup_page.dart';
@@ -1489,21 +1486,6 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
             const SnackBar(content: Text('Referência salva com sucesso!')),
           );
         },
-      ),
-    );
-  }
-
-  Widget _statRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: context.onSurface)),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.w700, color: context.onBackground)),
-        ],
       ),
     );
   }

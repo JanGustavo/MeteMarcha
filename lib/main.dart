@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 import 'core/theme/app_theme.dart';
 import 'core/providers/providers.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/foreground_service.dart';
+import 'core/services/deep_link_service.dart';
 import 'core/widgets/global_rest_timer_overlay.dart';
 import 'pages/splash/splash_page.dart';
 
@@ -17,8 +18,10 @@ void main() async {
   
   globalProviderContainer = ProviderContainer();
 
-  // Inicializa o serviço de notificações
+  // Inicializa o serviço de notificações, o foreground service e os links de widgets
   await NotificationService().init();
+  ForegroundTaskService.init();
+  DeepLinkService.init();
 
   runApp(const MyApp());
 }

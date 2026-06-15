@@ -1,7 +1,6 @@
 // test/body_measurements_test.dart
 
 import 'dart:ffi';
-import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gym_tracker/core/database/app_database.dart' hide isNull, isNotNull;
@@ -37,17 +36,17 @@ void main() {
       );
 
       // 2. Registra medida corporal com peso de 81kg
-      final height = 180.0;
-      final weight = 81.0;
-      final heightInMeters = height / 100;
-      final expectedImc = weight / (heightInMeters * heightInMeters);
+      const height = 180.0;
+      const weight = 81.0;
+      const heightInMeters = height / 100;
+      const expectedImc = weight / (heightInMeters * heightInMeters);
 
       final companion = BodyMeasurementsCompanion.insert(
         data: '2026-06-12',
         peso: const Value(81.0),
         gorduraPercentual: const Value(15.0),
         massaMagra: const Value(68.85),
-        imc: Value(expectedImc),
+        imc: const Value(expectedImc),
         fotoPath: const Value('local/path/photo.jpg'),
       );
 

@@ -6,6 +6,7 @@ import '../core/database/app_database.dart';
 import '../core/providers/providers.dart';
 import '../core/theme/app_theme.dart';
 import '../core/services/services.dart';
+import '../pages/workout/workout_page.dart';
 
 // Provider para controlar se a notificação já foi disparada hoje
 final lastNotificationTriggeredProvider = StateProvider<String>((ref) => '');
@@ -170,11 +171,120 @@ class WeeklyScheduleBanner extends ConsumerWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () {
+                        onTap: () async {
                           if (hasWorkout) {
-                            // Se for dia de treino, pode iniciar o treino direto
-                            // ou navegar para a página de execução.
-                            // Mas por enquanto, apenas mostra uma confirmação ou abre o dia.
+                            final workoutDao = ref.read(workoutDaoProvider);
+                            final active = await workoutDao.getActiveSession();
+
+                            if (context.mounted) {
+                              if (active != null) {
+                                if (active.dayId == assignedDay.id) {
+                                  // Retoma o treino ativo de hoje
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => WorkoutPage(
+                                        dayId: assignedDay.id,
+                                        dayName: assignedDay.nome,
+                                        sessionId: active.id,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  // Conflito de treino ativo
+                                  showDialog(
+                                    context: context,
+                                    builder: (dialogCtx) => AlertDialog(
+                                      title: const Text('Treino em andamento'),
+                                      content: const Text(
+                                        'Já existe uma sessão de treino iniciada de outro dia. '
+                                        'Deseja cancelá-la para iniciar este novo treino ou prefere retomá-la?',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(dialogCtx),
+                                          child: const Text('Cancelar'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () async {
+                                            // Cancela o anterior e inicia o novo
+                                            await workoutDao.cancelSession(active.id);
+                                            Navigator.pop(dialogCtx);
+                                            
+                                            final newSessionId = await workoutDao.insertSession(
+                                              WorkoutSessionsCompanion.insert(
+                                                dayId: Value(assignedDay.id),
+                                                data: DateTime.now().toIso8601String(),
+                                                status: const Value('em_andamento'),
+                                              ),
+                                            );
+                                            
+                                            if (context.mounted) {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => WorkoutPage(
+                                                    dayId: assignedDay.id,
+                                                    dayName: assignedDay.nome,
+                                                    sessionId: newSessionId,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          child: const Text('Iniciar Novo'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () async {
+                                            // Retoma o anterior
+                                            Navigator.pop(dialogCtx);
+                                            final daysMap = ref.read(workoutDaysMapProvider).value;
+                                            final activeDayName = daysMap?[active.dayId]?.nome ?? 'Treino';
+                                            
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => WorkoutPage(
+                                                  dayId: active.dayId!,
+                                                  dayName: activeDayName,
+                                                  sessionId: active.id,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: const Text('Retomar Anterior'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                              } else {
+                                // Cria uma nova sessão
+                                final newSessionId = await workoutDao.insertSession(
+                                  WorkoutSessionsCompanion.insert(
+                                    dayId: Value(assignedDay.id),
+                                    data: DateTime.now().toIso8601String(),
+                                    status: const Value('em_andamento'),
+                                  ),
+                                );
+
+                                if (context.mounted) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => WorkoutPage(
+                                        dayId: assignedDay.id,
+                                        dayName: assignedDay.nome,
+                                        sessionId: newSessionId,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Hoje é dia de descanso! Aproveite para se recuperar. 😴'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
                           }
                         },
                         child: Padding(

@@ -332,123 +332,131 @@ class SplitSelectionPage extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: context.cardColor,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Imagem do Treino como Banner
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  assetPath,
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Imagem do Treino como Banner
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    assetPath,
+                    width: double.infinity,
+                    height: 120,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        titleWidget,
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(color: context.onSurface, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                const Text(
+                  'COMO FUNCIONA:',
+                  style: TextStyle(
+                    color: AppColors.primaryLight,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  desc,
+                  style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'DIAS E GRUPOS MUSCULARES:',
+                  style: TextStyle(
+                    color: AppColors.primaryLight,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...daysInfo.map(
+                  (info) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline_rounded,
+                            size: 16, color: AppColors.primaryLight),
+                        const SizedBox(width: 8),
+                        Text(
+                          info,
+                          style: TextStyle(color: context.onBackground, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
                   width: double.infinity,
-                  height: 120,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      titleWidget,
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: TextStyle(color: context.onSurface, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const Divider(height: 24),
-              const Text(
-                'COMO FUNCIONA:',
-                style: TextStyle(
-                  color: AppColors.primaryLight,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                desc,
-                style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'DIAS E GRUPOS MUSCULARES:',
-                style: TextStyle(
-                  color: AppColors.primaryLight,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...daysInfo.map(
-                (info) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle_outline_rounded,
-                          size: 16, color: AppColors.primaryLight),
-                      const SizedBox(width: 8),
-                      Text(
-                        info,
-                        style: TextStyle(color: context.onBackground, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx); // Fecha o bottom sheet
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx); // Fecha o bottom sheet
 
-                    // Adiciona o treino selecionado no banco
-                    await ref.read(workoutDaoProvider).addSplit(tipo);
-                    ref.invalidate(splitsProvider);
-                    ref.invalidate(activeSplitProvider);
-                    ref.invalidate(activeSplitDaysProvider);
+                      // Adiciona o treino selecionado no banco
+                      await ref.read(workoutDaoProvider).addSplit(tipo);
+                      ref.invalidate(splitsProvider);
+                      ref.invalidate(activeSplitProvider);
+                      ref.invalidate(activeSplitDaysProvider);
 
-                    final nav = navigatorKey.currentState;
-                    final rootContext = navigatorKey.currentContext;
+                      final nav = navigatorKey.currentState;
+                      final rootContext = navigatorKey.currentContext;
 
-                    if (rootContext != null && rootContext.mounted) {
-                      ScaffoldMessenger.of(rootContext).showSnackBar(
-                        const SnackBar(content: Text('Treino adicionado com sucesso! ✓')),
+                      if (rootContext != null && rootContext.mounted) {
+                        ScaffoldMessenger.of(rootContext).showSnackBar(
+                          const SnackBar(content: Text('Treino adicionado com sucesso! ✓')),
+                        );
+                      }
+
+                      if (!isOnboarding && context.mounted) {
+                        Navigator.pop(context); // Volta ao Dashboard se não estiver no onboarding
+                      }
+
+                      nav?.push(
+                        MaterialPageRoute(builder: (_) => const SetupPage(initialTab: 2)),
                       );
-                    }
-
-                    if (!isOnboarding && context.mounted) {
-                      Navigator.pop(context); // Volta ao Dashboard se não estiver no onboarding
-                    }
-
-                    nav?.push(
-                      MaterialPageRoute(builder: (_) => const SetupPage(initialTab: 2)),
-                    );
-                  },
-                  child: const Text('ATIVAR ESTE TREINO'),
+                    },
+                    child: const Text('ATIVAR ESTE TREINO'),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -550,7 +558,6 @@ class SplitSelectionPage extends ConsumerWidget {
                                   backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                                   foregroundColor: AppColors.primaryLight,
                                   elevation: 0,
-                                  side: const BorderSide(color: AppColors.primary, width: 1),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                 ),

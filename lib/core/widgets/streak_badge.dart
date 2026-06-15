@@ -92,56 +92,85 @@ class _StreakBadgeState extends ConsumerState<StreakBadge>
     final color = hasStreak ? Colors.orangeAccent : Colors.grey;
 
     if (widget.style == StreakStyle.appBar) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.local_fire_department_rounded,
-            color: color,
-            size: 20,
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: hasStreak ? Colors.orange.withOpacity(0.08) : Colors.grey.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: hasStreak ? Colors.orange.withOpacity(0.25) : Colors.grey.withOpacity(0.2),
+            width: 1.2,
           ),
-          const SizedBox(width: 2),
-          Text(
-            '$streak',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.local_fire_department_rounded,
               color: color,
+              size: 18,
             ),
-          ),
-        ],
+            const SizedBox(width: 4),
+            Text(
+              '$streak',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: color,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
       );
     } else {
-      // Estilo maior para o card do Perfil
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      // Estilo maior e premium para o card do Perfil
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'OFENSIVA',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: context.onSurface,
-                  letterSpacing: 1.0,
-                ),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: hasStreak ? Colors.orange.withOpacity(0.08) : Colors.grey.withOpacity(0.05),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: hasStreak ? Colors.orange.withOpacity(0.25) : Colors.grey.withOpacity(0.2),
+                width: 1.5,
               ),
-              Icon(
-                Icons.local_fire_department_rounded,
-                color: color,
-                size: 20,
-              ),
-            ],
+            ),
+            child: Icon(
+              Icons.local_fire_department_rounded,
+              color: color,
+              size: 24,
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            '$streak ${streak == 1 ? "semana" : "semanas"}',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: context.onBackground,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'OFENSIVA ATUAL',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: context.onSurface.withOpacity(0.6),
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$streak ${streak == 1 ? "semana" : "semanas"}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: context.onBackground,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
