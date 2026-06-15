@@ -22,6 +22,7 @@ import '../../core/constants/equipment_options.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/rest_timer_provider.dart';
 import '../../core/services/audio_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
 import '../../core/utils/decimal_input_formatter.dart';
@@ -94,6 +95,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   @override
   void initState() {
     super.initState();
+    NotificationService.requestPermission();
     _loadExercises();
     _initSessionDuration().whenComplete(() {
       _startSessionTimer();
