@@ -60,11 +60,9 @@ class AppTheme {
         brightness: Brightness.dark,
         useMaterial3: true,
         colorScheme: const ColorScheme.dark(
-          background: AppColors.background,
           surface: AppColors.surface,
           primary: AppColors.primary,
           onPrimary: AppColors.onPrimary,
-          onBackground: AppColors.onBackground,
           onSurface: AppColors.onSurface,
           outline: AppColors.divider,
         ),
@@ -137,7 +135,7 @@ class AppTheme {
             borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
           labelStyle: const TextStyle(color: AppColors.onSurface),
-          hintStyle: TextStyle(color: AppColors.onSurface.withOpacity(0.4)),
+          hintStyle: TextStyle(color: AppColors.onSurface.withValues(alpha: 0.4)),
         ),
 
         // ── Card ────────────────────────────────────────────────────
@@ -190,13 +188,15 @@ class AppTheme {
         segmentedButtonTheme: SegmentedButtonThemeData(
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected))
+              if (states.contains(WidgetState.selected)) {
                 return AppColors.primary;
+              }
               return AppColors.surface;
             }),
             foregroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected))
+              if (states.contains(WidgetState.selected)) {
                 return AppColors.onPrimary;
+              }
               return AppColors.onSurface;
             }),
             side: WidgetStateProperty.all(
@@ -230,11 +230,9 @@ class AppTheme {
         brightness: Brightness.light,
         useMaterial3: true,
         colorScheme: const ColorScheme.light(
-          background: AppColors.lightBackground,
           surface: AppColors.lightSurface,
           primary: AppColors.primary,
           onPrimary: AppColors.lightOnPrimary,
-          onBackground: AppColors.lightOnBackground,
           onSurface: AppColors.lightOnSurface,
           outline: AppColors.lightDivider,
         ),
@@ -307,7 +305,7 @@ class AppTheme {
             borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
           labelStyle: const TextStyle(color: AppColors.lightOnSurface),
-          hintStyle: TextStyle(color: AppColors.lightOnSurface.withOpacity(0.5)),
+          hintStyle: TextStyle(color: AppColors.lightOnSurface.withValues(alpha: 0.5)),
         ),
 
         // ── Card ────────────────────────────────────────────────────
@@ -360,13 +358,15 @@ class AppTheme {
         segmentedButtonTheme: SegmentedButtonThemeData(
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected))
+              if (states.contains(WidgetState.selected)) {
                 return AppColors.primary;
+              }
               return AppColors.lightSurface;
             }),
             foregroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected))
+              if (states.contains(WidgetState.selected)) {
                 return AppColors.lightOnPrimary;
+              }
               return AppColors.lightOnBackground;
             }),
             side: WidgetStateProperty.all(

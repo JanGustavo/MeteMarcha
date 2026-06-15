@@ -40,7 +40,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            tabs: [
+            tabs: const [
               Tab(text: 'PESO & FREQ'),
               Tab(text: 'CARGAS & RECS'),
               Tab(text: 'METAS & VOL'),
@@ -141,7 +141,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                               const _SectionLabel('EVOLUÇÃO DE CARGAS'),
                               const SizedBox(height: 12),
                               DropdownButtonFormField<int>(
-                                value: exercises.any((e) => e.id == _selectedExerciseIdForEvolution)
+                                initialValue: exercises.any((e) => e.id == _selectedExerciseIdForEvolution)
                                     ? _selectedExerciseIdForEvolution
                                     : null,
                                 isExpanded: true,
@@ -282,10 +282,10 @@ class _WorkoutInsightsWidget extends ConsumerWidget {
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: insight.color.withOpacity(0.06),
+                    color: insight.color.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: insight.color.withOpacity(0.25),
+                      color: insight.color.withValues(alpha: 0.25),
                       width: 1.0,
                     ),
                   ),
@@ -298,7 +298,7 @@ class _WorkoutInsightsWidget extends ConsumerWidget {
                           insight.text,
                           style: TextStyle(
                             fontSize: 12,
-                            color: context.onBackground.withOpacity(0.95),
+                            color: context.onBackground.withValues(alpha: 0.95),
                             fontWeight: FontWeight.w500,
                             height: 1.3,
                           ),
@@ -403,7 +403,7 @@ class _WeightChart extends StatelessWidget {
               ),
               belowBarData: BarAreaData(
                 show: true,
-                color: AppColors.primary.withOpacity(0.08),
+                color: AppColors.primary.withValues(alpha: 0.08),
               ),
             ),
           ],
@@ -415,6 +415,7 @@ class _WeightChart extends StatelessWidget {
 
 // ─── Lista de exercícios com gráfico expansível ───────────────────────────────
 
+/*
 class _ExerciseProgressSliver extends ConsumerWidget {
   const _ExerciseProgressSliver();
 
@@ -546,7 +547,9 @@ class _ExerciseProgressSliver extends ConsumerWidget {
     );
   }
 }
+*/
 
+/*
 class _GroupingSelector extends ConsumerWidget {
   const _GroupingSelector();
 
@@ -578,7 +581,9 @@ class _GroupingSelector extends ConsumerWidget {
     );
   }
 }
+*/
 
+/*
 class _ExerciseCard extends ConsumerWidget {
   final Exercise exercise;
   const _ExerciseCard({required this.exercise});
@@ -593,7 +598,7 @@ class _ExerciseCard extends ConsumerWidget {
         leading: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Icon(Icons.fitness_center_rounded,
@@ -617,7 +622,7 @@ class _ExerciseCard extends ConsumerWidget {
               final logs = snap.data ?? [];
               if (logs.length < 2) {
                 return Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
                     'Mais dados necessários para o gráfico.',
                     style: TextStyle(color: context.onSurface, fontSize: 13),
@@ -678,7 +683,7 @@ class _ExerciseVolumeChart extends StatelessWidget {
                 touchTooltipData: LineTouchTooltipData(
                   getTooltipColor: (touchedSpot) => context.surfaceColor,
                   getTooltipItems: (touchedSpots) {
-                    return touchedSpots.map((spot) {
+                     return touchedSpots.map((spot) {
                       final idx = spot.x.toInt();
                       if (idx < 0 || idx >= logs.length) return null;
                       final log = logs[idx];
@@ -738,7 +743,7 @@ class _ExerciseVolumeChart extends StatelessWidget {
                   ),
                   belowBarData: BarAreaData(
                     show: true,
-                    color: AppColors.primary.withOpacity(0.07),
+                    color: AppColors.primary.withValues(alpha: 0.07),
                   ),
                 ),
               ],
@@ -747,7 +752,7 @@ class _ExerciseVolumeChart extends StatelessWidget {
         ),
         if (isUnilateral)
           Padding(
-            padding: EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: 6),
             child: Text(
               '* Volume bilateral: peso × reps × 2',
               style: TextStyle(color: context.onSurface, fontSize: 11),
@@ -757,6 +762,7 @@ class _ExerciseVolumeChart extends StatelessWidget {
     );
   }
 }
+*/
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -844,9 +850,9 @@ class _MonthlyFrequencySliver extends ConsumerWidget {
         if (months.isEmpty) {
           return SliverToBoxAdapter(
             child: Card(
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                 child: Center(
                   child: Text(
                     'Nenhum treino concluído ainda.\nInicie e conclua um treino para ver seu histórico mensal.',
@@ -1420,7 +1426,7 @@ class _WeeklyVolumeChart extends StatelessWidget {
               color: AppColors.primary,
               barWidth: 2.5,
               dotData: const FlDotData(show: true),
-              belowBarData: BarAreaData(show: true, color: AppColors.primary.withOpacity(0.08)),
+              belowBarData: BarAreaData(show: true, color: AppColors.primary.withValues(alpha: 0.08)),
             ),
           ],
         ),
@@ -1557,7 +1563,7 @@ class _LoadEvolutionChart extends StatelessWidget {
               color: AppColors.success,
               barWidth: 2,
               dotData: const FlDotData(show: true),
-              belowBarData: BarAreaData(show: true, color: AppColors.success.withOpacity(0.06)),
+              belowBarData: BarAreaData(show: true, color: AppColors.success.withValues(alpha: 0.06)),
             ),
           ],
         ),
@@ -1602,7 +1608,7 @@ class _PersonalRecordsList extends StatelessWidget {
 
     if (recordItems.isEmpty) {
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
+        padding: const EdgeInsets.symmetric(vertical: 24),
         child: Center(
           child: Text('Nenhum recorde registrado ainda.', style: TextStyle(color: context.onSurface)),
         ),
@@ -1722,7 +1728,7 @@ class _GoalsManager extends ConsumerWidget {
         ),
         if (goals.isEmpty)
           Padding(
-            padding: EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(24.0),
             child: Center(
               child: Text(
                 'Nenhuma meta definida. Defina metas para peso corporal ou carga de exercício!',
@@ -1805,7 +1811,7 @@ class _GoalsManager extends ConsumerWidget {
                                   : Icons.radio_button_unchecked_rounded,
                               color: isCompleted
                                   ? AppColors.success
-                                  : AppColors.primaryLight.withOpacity(0.6),
+                                  : AppColors.primaryLight.withValues(alpha: 0.6),
                               size: 22,
                             ),
                             onPressed: () => ref.read(goalsProvider.notifier).toggleGoal(goal.id),
@@ -1896,7 +1902,7 @@ class _GoalsManager extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.15),
+                  color: AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.emoji_events_rounded, color: AppColors.primaryLight, size: 24),
@@ -1917,14 +1923,14 @@ class _GoalsManager extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: selectedType,
+                initialValue: selectedType,
                 dropdownColor: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
                 decoration: InputDecoration(
                   labelText: 'Tipo de Meta',
                   labelStyle: TextStyle(color: context.onSurface, fontSize: 13),
                   filled: true,
-                  fillColor: Colors.black.withOpacity(0.2),
+                  fillColor: Colors.black.withValues(alpha: 0.2),
                   prefixIcon: Icon(Icons.category_rounded, color: context.onSurface, size: 20),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: context.divider, width: 1)),
@@ -1950,9 +1956,9 @@ class _GoalsManager extends ConsumerWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.redAccent.withOpacity(0.1),
+                      color: Colors.redAccent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
                     ),
                     child: const Row(
                       children: [
@@ -1969,14 +1975,14 @@ class _GoalsManager extends ConsumerWidget {
                   )
                 else
                   DropdownButtonFormField<Exercise>(
-                    value: exercises.contains(selectedExercise) ? selectedExercise : null,
+                    initialValue: exercises.contains(selectedExercise) ? selectedExercise : null,
                     dropdownColor: context.cardColor,
                     borderRadius: BorderRadius.circular(16),
                     decoration: InputDecoration(
                       labelText: 'Selecione o Exercício',
                       labelStyle: TextStyle(color: context.onSurface, fontSize: 13),
                       filled: true,
-                      fillColor: Colors.black.withOpacity(0.2),
+                      fillColor: Colors.black.withValues(alpha: 0.2),
                       prefixIcon: Icon(Icons.fitness_center_rounded, color: context.onSurface, size: 20),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: context.divider, width: 1)),
@@ -2008,7 +2014,7 @@ class _GoalsManager extends ConsumerWidget {
                   suffixText: 'kg',
                   suffixStyle: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold),
                   filled: true,
-                  fillColor: Colors.black.withOpacity(0.2),
+                  fillColor: Colors.black.withValues(alpha: 0.2),
                   prefixIcon: Icon(Icons.ads_click_rounded, color: context.onSurface, size: 20),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: context.divider, width: 1)),
@@ -2085,9 +2091,9 @@ class _RelativeStrengthCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (userWeight <= 0) {
       return Card(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0),
           child: Text(
             'Registre seu peso corporal no perfil para calcular seu Índice de Força Relativa.',
             textAlign: TextAlign.center,
@@ -2197,9 +2203,9 @@ class _RelativeStrengthCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: levelColor.withOpacity(0.12),
+                      color: levelColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: levelColor.withOpacity(0.3), width: 1),
+                      border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 1),
                     ),
                     child: Text(
                       '${strengthRatio.toStringAsFixed(1)}x',
@@ -2313,7 +2319,7 @@ class _RelativeStrengthCard extends StatelessWidget {
             margin: const EdgeInsets.symmetric(vertical: 6),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isActive ? color.withOpacity(0.08) : Colors.transparent,
+              color: isActive ? color.withValues(alpha: 0.08) : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isActive ? color : context.divider,
@@ -2326,7 +2332,7 @@ class _RelativeStrengthCard extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(isActive ? 0.2 : 0.1),
+                    color: color.withValues(alpha: isActive ? 0.2 : 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -2389,9 +2395,9 @@ class _RelativeStrengthCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.12),
+                          color: color.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: color.withOpacity(0.3), width: 1),
+                          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
                         ),
                         child: Text(
                           'VOCÊ ESTÁ AQUI',
@@ -2418,7 +2424,7 @@ class _RelativeStrengthCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.15),
+                  color: AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.emoji_events_rounded, color: AppColors.primaryLight, size: 24),
@@ -2452,7 +2458,7 @@ class _RelativeStrengthCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: context.divider.withOpacity(0.2),
+                    color: context.divider.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -2481,7 +2487,7 @@ class _RelativeStrengthCard extends StatelessWidget {
                           ),
                           Text(
                             '${currentRatio.toStringAsFixed(2)}x',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: AppColors.primaryLight,
@@ -3433,7 +3439,7 @@ class _MeasurementCardState extends State<_MeasurementCard> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.6),
+                                    color: Colors.black.withValues(alpha: 0.6),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Row(
@@ -3532,7 +3538,7 @@ class _MeasurementCardState extends State<_MeasurementCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text.rich(
@@ -3589,7 +3595,7 @@ class _MeasurementCardState extends State<_MeasurementCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
@@ -3803,7 +3809,9 @@ class _AddEditMeasurementSheetState extends State<_AddEditMeasurementSheet> {
     );
 
     widget.onSave(entry);
-    Navigator.of(context).pop();
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -3822,7 +3830,7 @@ class _AddEditMeasurementSheetState extends State<_AddEditMeasurementSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -4047,7 +4055,7 @@ class _AddEditMeasurementSheetState extends State<_AddEditMeasurementSheet> {
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withOpacity(0.3)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -4107,7 +4115,7 @@ class _AddEditMeasurementSheetState extends State<_AddEditMeasurementSheet> {
         width: double.infinity,
         decoration: BoxDecoration(
           border: Border.all(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             style: BorderStyle.solid,
           ),
           borderRadius: BorderRadius.circular(12),
@@ -4278,15 +4286,15 @@ class _PlateauWarningWidget extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppColors.warning.withOpacity(0.08),
-              AppColors.warning.withOpacity(0.03),
+              AppColors.warning.withValues(alpha: 0.08),
+              AppColors.warning.withValues(alpha: 0.03),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: AppColors.warning.withOpacity(0.35),
+            color: AppColors.warning.withValues(alpha: 0.35),
             width: 1.5,
           ),
         ),
@@ -4300,7 +4308,7 @@ class _PlateauWarningWidget extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.warning.withOpacity(0.15),
+                      color: AppColors.warning.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -4326,7 +4334,7 @@ class _PlateauWarningWidget extends StatelessWidget {
                         Text(
                           'Identificamos estagnação nas últimas 3 sessões:',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: context.onBackground.withOpacity(0.8),
+                                color: context.onBackground.withValues(alpha: 0.8),
                               ),
                         ),
                       ],
@@ -4388,7 +4396,7 @@ class _PlateauWarningWidget extends StatelessWidget {
                               child: RichText(
                                 text: TextSpan(
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: context.onBackground.withOpacity(0.9),
+                                        color: context.onBackground.withValues(alpha: 0.9),
                                       ),
                                   children: [
                                     const TextSpan(text: 'Sugestão: Realize um '),

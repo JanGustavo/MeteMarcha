@@ -315,7 +315,7 @@ class _TreinoTab extends ConsumerWidget {
                       Text(
                         '(Segure para opções)',
                         style: TextStyle(
-                          color: context.onSurface.withOpacity(0.5),
+                          color: context.onSurface.withValues(alpha: 0.5),
                           fontSize: 10,
                         ),
                       ),
@@ -346,7 +346,7 @@ class _TreinoTab extends ConsumerWidget {
                                 },
                               ),
                             );
-                          }).toList(),
+                          }),
                           ActionChip(
                             avatar: const Icon(Icons.add_rounded, size: 16, color: AppColors.primaryLight),
                             label: const Text(
@@ -411,7 +411,7 @@ class _TreinoTab extends ConsumerWidget {
               data: (days) {
                 if (days.isEmpty) {
                   return Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(24),
                     child: Center(
                       child: Text(
                         'Nenhum dia cadastrado para esta divisão.\nUse o botão de ajuste acima para configurar.',
@@ -464,7 +464,7 @@ class _ActiveSessionCard extends ConsumerWidget {
         final name = day != null ? 'Dia ${day.letra} - ${day.nome}' : 'Treino';
 
         return Card(
-          color: AppColors.primaryDark.withOpacity(0.15),
+          color: AppColors.primaryDark.withValues(alpha: 0.15),
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -475,11 +475,11 @@ class _ActiveSessionCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
-                    const Icon(Icons.flash_on_rounded, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    const Text(
+                    Icon(Icons.flash_on_rounded, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text(
                       'TREINO EM ANDAMENTO',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
@@ -667,7 +667,7 @@ class _DayListTile extends ConsumerWidget {
               const SizedBox(height: 12),
               if (exercises.isEmpty)
                 Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
+                  padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Center(
                     child: Text(
                       'Sem exercícios cadastrados neste dia.',

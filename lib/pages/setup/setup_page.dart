@@ -550,7 +550,7 @@ class _RoutineSetupTabState extends ConsumerState<_RoutineSetupTab> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<WorkoutDay>(
-                      value: _selectedDay,
+                      initialValue: _selectedDay,
                       dropdownColor: context.cardColor,
                       isExpanded: true,
                       decoration: const InputDecoration(
@@ -645,7 +645,7 @@ class _RoutineExercisesListState extends ConsumerState<_RoutineExercisesList> {
           : Column(
               children: [
                 Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   child: Text(
                     'Arraste e solte para reordenar os exerc\u00edcios do treino (toque para editar)',
                     style: TextStyle(fontSize: 11, color: context.onSurface),
@@ -816,7 +816,7 @@ class _RoutineExercisesListState extends ConsumerState<_RoutineExercisesList> {
             children: [
               if (unlinked.isEmpty)
                 Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Text(
                     'Todos os exerc\u00edcios cadastrados j\u00e1 fazem parte deste dia de treino.',
                     style: TextStyle(color: context.onSurface),
@@ -940,12 +940,12 @@ void _showAddExerciseSheet(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: group,
+                      initialValue: group,
                       decoration:
                           const InputDecoration(labelText: 'Grupo Muscular'),
                       dropdownColor: context.cardColor,
                       items: {
-                        if (group != null) group!,
+                        group,
                         'Peito',
                         'Costas',
                         'Ombro',
@@ -964,12 +964,12 @@ void _showAddExerciseSheet(
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: equipment,
+                      initialValue: equipment,
                       decoration:
                           const InputDecoration(labelText: 'Equipamento'),
                       dropdownColor: context.cardColor,
                       items: {
-                        if (equipment != null) equipment!,
+                        equipment,
                         ...equipmentOptions,
                       }
                           .map(
@@ -1128,13 +1128,13 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
         if (activeSplit == null) {
           return Center(
             child: Padding(
-              padding: EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.warning_amber_rounded,
+                  const Icon(Icons.warning_amber_rounded,
                       size: 64, color: AppColors.primary),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
                     'Nenhuma Rotina Ativa',
                     style: TextStyle(
@@ -1142,7 +1142,7 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                         fontWeight: FontWeight.bold,
                         color: context.onBackground),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Ative uma rotina na aba "Minhas Rotinas" para configurar seu planejamento semanal.',
                     textAlign: TextAlign.center,
@@ -1229,10 +1229,10 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.08),
+                            color: AppColors.primary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppColors.primary.withOpacity(0.25),
+                              color: AppColors.primary.withValues(alpha: 0.25),
                               width: 1,
                             ),
                           ),
@@ -1335,7 +1335,7 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       color: isHovered
-                                          ? AppColors.primary.withOpacity(0.15)
+                                          ? AppColors.primary.withValues(alpha: 0.15)
                                           : context.cardColor,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
@@ -1344,8 +1344,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                             : (hasWorkout
                                                 ? AppColors.getWorkoutColor(
                                                         assignedDay.letra)
-                                                    .withOpacity(0.3)
-                                                : Colors.grey.withOpacity(0.2)),
+                                                    .withValues(alpha: 0.3)
+                                                : Colors.grey.withValues(alpha: 0.2)),
                                         width: isHovered ? 2 : 1,
                                       ),
                                     ),
@@ -1404,7 +1404,7 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                                               .getWorkoutColor(
                                                                   assignedDay
                                                                       .letra)
-                                                          .withOpacity(0.2),
+                                                          .withValues(alpha: 0.2),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               8),
@@ -1413,8 +1413,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                                                   .getWorkoutColor(
                                                                       assignedDay
                                                                           .letra)
-                                                              .withOpacity(
-                                                                  0.4)),
+                                                              .withValues(
+                                                                  alpha: 0.4)),
                                                     ),
                                                     child: Row(
                                                       mainAxisSize:
@@ -1475,7 +1475,7 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                                       vertical: 6),
                                                   decoration: BoxDecoration(
                                                     color: Colors.grey
-                                                        .withOpacity(0.15),
+                                                        .withValues(alpha: 0.15),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             8),
@@ -1547,7 +1547,7 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
         ),
         boxShadow: [
           BoxShadow(
-            color: isSelected ? color.withOpacity(0.6) : color.withOpacity(0.3),
+            color: isSelected ? color.withValues(alpha: 0.6) : color.withValues(alpha: 0.3),
             blurRadius: isSelected ? 10 : 6,
             spreadRadius: isSelected ? 1 : 0,
             offset: const Offset(0, 3),

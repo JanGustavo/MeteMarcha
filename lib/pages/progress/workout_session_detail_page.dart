@@ -236,7 +236,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
               border: Border.all(color: context.divider),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 )
@@ -265,9 +265,9 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.15),
+                        color: AppColors.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -430,7 +430,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                             TableRow(
                               children: [
                                 Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 4),
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
                                   child: Text(
                                     'SÉRIE',
                                     style: TextStyle(
@@ -441,7 +441,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                                   ),
                                 ),
                                 Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 4),
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
                                   child: Text(
                                     'CARGA & REPS',
                                     style: TextStyle(
@@ -452,7 +452,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                                   ),
                                 ),
                                 Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 4),
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
                                   child: Text(
                                     'VS SEMANA PASSADA',
                                     style: TextStyle(
@@ -585,9 +585,9 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3), width: 0.6),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.6),
       ),
       child: Text(
         text,
@@ -686,7 +686,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.check_rounded, color: context.onSurface, size: 12),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           Text(
             'Igual',
             style: TextStyle(color: context.onSurface, fontSize: 12),
@@ -828,7 +828,7 @@ class _LoadEvolutionChart extends StatelessWidget {
               color: AppColors.success,
               barWidth: 2,
               dotData: const FlDotData(show: true),
-              belowBarData: BarAreaData(show: true, color: AppColors.success.withOpacity(0.06)),
+              belowBarData: BarAreaData(show: true, color: AppColors.success.withValues(alpha: 0.06)),
             ),
           ],
         ),

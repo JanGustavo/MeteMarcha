@@ -239,7 +239,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final dbFile = File('${dbFolder.path}/gym_tracker.sqlite');
 
       if (!await dbFile.exists()) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Nenhum dado encontrado para exportar!')),
           );
@@ -252,20 +252,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final tempDir = await getTemporaryDirectory();
       final backupFile = await dbFile.copy('${tempDir.path}/metemacha_backup_$dateStr.sqlite');
 
-      final result = await Share.shareXFiles(
-        [XFile(backupFile.path)],
-        text: 'Backup do MeteMacha Fit - $dateStr',
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(backupFile.path)],
+          text: 'Backup do MeteMacha Fit - $dateStr',
+        ),
       );
 
       if (result.status == ShareResultStatus.success) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Backup compartilhado com sucesso!')),
           );
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro ao exportar backup: $e')),
         );
@@ -288,6 +290,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       if (!kIsWeb && file.path == null) return;
       if (kIsWeb && file.bytes == null) return;
 
+      if (!context.mounted) return;
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -335,13 +338,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       // Forçar recriação imediata do banco no mesmo loop de eventos
       ref.read(databaseProvider);
 
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Dados restaurados com sucesso!')),
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro ao restaurar backup: $e')),
         );
@@ -426,7 +429,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                       letterSpacing: 1.0,
                                     ),
                                   ),
-                                  Icon(
+                                  const Icon(
                                     Icons.trending_up_rounded,
                                     color: AppColors.success,
                                     size: 20,
@@ -756,7 +759,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                   color: context.onBackground,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
                                 'Escolha o tema visual do aplicativo',
                                 style: TextStyle(
@@ -843,7 +846,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                     color: context.onBackground,
                                   ),
                                 ),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
                                 Text(
                                   'Exporte ou importe seus treinos e histórico',
                                   style: TextStyle(
@@ -915,7 +918,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               if (weights.isEmpty) {
                 return SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     child: Text(
                       'Nenhum peso registrado ainda.',
                       style: TextStyle(color: context.onSurface),

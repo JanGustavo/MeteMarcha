@@ -398,7 +398,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                   const SizedBox(height: 2),
                   Text(
                     'Você superou seu recorde anterior neste exercício!',
-                    style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.9)),
+                    style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.9)),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -798,8 +798,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                       builder: (cConfirm) => AlertDialog(
                         backgroundColor: context.cardColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        title: Row(
-                          children: const [
+                        title: const Row(
+                          children: [
                             Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 24),
                             SizedBox(width: 8),
                             Text('Excluir Série?'),
@@ -824,7 +824,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                       ),
                     );
 
-                    if (confirm == true) {
+                    if (confirm == true && ctx.mounted) {
                       Navigator.pop(ctx); // fecha o diálogo de edição
                       await _deletarSerie(serieNum);
                     }
@@ -853,13 +853,15 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                           final obs = c.obsCtrl.text.trim();
 
                           if (reps <= 0 || peso <= 0) {
-                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Carga e repetições devem ser maiores que zero.'),
-                                backgroundColor: Colors.redAccent,
-                              ),
-                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Carga e repetições devem ser maiores que zero.'),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
                             return;
                           }
 
@@ -873,7 +875,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                           }
                         }
 
-                        Navigator.pop(ctx);
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                        }
                         await _loadExerciseContext();
                       },
                       icon: const Icon(Icons.save_rounded, size: 16),
@@ -942,8 +946,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: context.cardColor,
-          title: Row(
-            children: const [
+          title: const Row(
+            children: [
               Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 28),
               SizedBox(width: 10),
               Expanded(
@@ -1142,8 +1146,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
       context: context,
       barrierDismissible: false,
       barrierColor: isDark
-          ? Colors.black.withOpacity(0.8)
-          : Colors.white.withOpacity(0.85),
+          ? Colors.black.withValues(alpha: 0.8)
+          : Colors.white.withValues(alpha: 0.85),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
       transitionBuilder: (context, anim1, anim2, child) {
@@ -1160,20 +1164,20 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      context.cardColor.withOpacity(0.95),
-                      context.cardColor.withOpacity(0.85),
+                      context.cardColor.withValues(alpha: 0.95),
+                      context.cardColor.withValues(alpha: 0.85),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.35),
+                    color: AppColors.primary.withValues(alpha: 0.35),
                     width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.15),
+                      color: AppColors.primary.withValues(alpha: 0.15),
                       blurRadius: 24,
                       spreadRadius: 4,
                     ),
@@ -1199,7 +1203,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.orange.withOpacity(0.4),
+                            color: Colors.orange.withValues(alpha: 0.4),
                             blurRadius: 16,
                             spreadRadius: 2,
                             offset: const Offset(0, 4),
@@ -1230,7 +1234,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
-                        color: context.onSurface.withOpacity(0.8),
+                        color: context.onSurface.withValues(alpha: 0.8),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1292,7 +1296,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withOpacity(0.25),
+                              color: AppColors.primary.withValues(alpha: 0.25),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -1307,8 +1311,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                             final formattedVolume = _formatVolume(totalVolume);
                             final shareText =
                                 "Meteu Marcha! 🔥 $dayNameClean concluído: $uniqueExercises ${uniqueExercises == 1 ? 'exercício' : 'exercícios'} | $durationMin min | ${formattedVolume}kg totais. #MeteMarcha";
-                            // ignore: deprecated_member_use
-                            Share.share(shareText);
+                            SharePlus.instance.share(ShareParams(text: shareText));
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
@@ -1358,7 +1361,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.home_rounded, size: 18, color: context.onSurface),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Text(
                               'VOLTAR AO INÍCIO',
                               style: TextStyle(
@@ -1406,13 +1409,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.04)
-            : Colors.black.withOpacity(0.04),
+            ? Colors.white.withValues(alpha: 0.04)
+            : Colors.black.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.08),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.08),
           width: 1,
         ),
       ),
@@ -1483,10 +1486,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
           setState(() {
             _exercises[_currentIndex] = updated;
           });
-          if (mounted) Navigator.pop(ctx);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Referência salva com sucesso!')),
-          );
+          if (ctx.mounted) Navigator.pop(ctx);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Referência salva com sucesso!')),
+            );
+          }
         },
       ),
     );
@@ -1497,9 +1502,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   @override
   Widget build(BuildContext context) {
     final timerState = ref.watch(restTimerProvider);
-    final _resting = timerState.isActive;
-    final _restLeft = timerState.remainingSeconds;
-    final _restTotal = timerState.totalSeconds;
+    final resting = timerState.isActive;
+    final restLeft = timerState.remainingSeconds;
+    final restTotal = timerState.totalSeconds;
 
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -1517,7 +1522,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final ok = await showDialog<bool>(
           context: context,
@@ -1534,7 +1539,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
             ],
           ),
         );
-        if (ok == true && context.mounted) Navigator.pop(context);
+        if (ok == true && context.mounted) Navigator.of(context).pop(result);
       },
       child: Scaffold(
         appBar: AppBar(
@@ -1582,10 +1587,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
             ),
 
             // Banner de descanso
-            if (_resting)
+            if (resting)
               _RestBanner(
-                left: _restLeft,
-                total: _restTotal,
+                left: restLeft,
+                total: restTotal,
                 onSkip: _skipRest,
               ),
 
@@ -1767,7 +1772,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                       decoration: BoxDecoration(
                         color: context.cardColor,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: context.divider.withOpacity(0.5)),
+                        border: Border.all(color: context.divider.withValues(alpha: 0.5)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2214,7 +2219,7 @@ class _SetsList extends StatelessWidget {
                       Icon(
                         Icons.edit_rounded,
                         size: 13,
-                        color: (isDark ? AppColors.primaryLight : AppColors.primary).withOpacity(0.7),
+                        color: (isDark ? AppColors.primaryLight : AppColors.primary).withValues(alpha: 0.7),
                       ),
                     ],
                   ),
@@ -2381,7 +2386,7 @@ class _CircleButton extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(
             color: disabled
-                ? context.surfaceColor.withOpacity(0.6)
+                ? context.surfaceColor.withValues(alpha: 0.6)
                 : context.surfaceColor,
             shape: BoxShape.circle,
             border: Border.all(color: context.divider),
@@ -2391,7 +2396,7 @@ class _CircleButton extends StatelessWidget {
               icon,
               size: size * 0.5,
               color: disabled
-                  ? context.onSurface.withOpacity(0.5)
+                  ? context.onSurface.withValues(alpha: 0.5)
                   : AppColors.primaryLight,
             ),
           ),
@@ -2408,12 +2413,12 @@ class _NumberField extends StatefulWidget {
   final double step;
 
   const _NumberField({
+    super.key,
     required this.ctrl,
     required this.label,
     this.decimal = false,
     required this.step,
-    Key? key,
-  }) : super(key: key);
+  });
 
   @override
   State<_NumberField> createState() => _NumberFieldState();
@@ -2625,9 +2630,9 @@ class _BadgeTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2850,9 +2855,9 @@ class _AddReferencePanelState extends State<_AddReferencePanel> with WidgetsBind
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

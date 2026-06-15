@@ -133,9 +133,9 @@ class WeeklyScheduleBanner extends ConsumerWidget {
 
                 if (isDark) {
                   mainTextColor = Colors.white;
-                  subTextColor = Colors.white.withOpacity(0.7);
+                  subTextColor = Colors.white.withValues(alpha: 0.7);
                   iconColor = Colors.white;
-                  avatarBgColor = Colors.white.withOpacity(0.2);
+                  avatarBgColor = Colors.white.withValues(alpha: 0.2);
                 } else {
                   mainTextColor = context.onBackground;
                   subTextColor = context.onSurface;
@@ -208,7 +208,9 @@ class WeeklyScheduleBanner extends ConsumerWidget {
                                           onPressed: () async {
                                             // Cancela o anterior e inicia o novo
                                             await workoutDao.cancelSession(active.id);
-                                            Navigator.pop(dialogCtx);
+                                            if (dialogCtx.mounted) {
+                                              Navigator.pop(dialogCtx);
+                                            }
                                             
                                             final newSessionId = await workoutDao.insertSession(
                                               WorkoutSessionsCompanion.insert(
