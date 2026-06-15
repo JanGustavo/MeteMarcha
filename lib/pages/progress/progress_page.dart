@@ -124,8 +124,12 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                   final profile = profileAsync.value;
                   final userWeight = profile?.pesoAtual ?? 0.0;
 
+                  final plateaus = _detectPlateaus(logs, exercises);
+
                   return ListView(
                     children: [
+                      if (plateaus.isNotEmpty)
+                        _PlateauWarningWidget(plateaus: plateaus),
                       // Card de Evolução de Cargas
                       Card(
                         margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -4167,6 +4171,258 @@ class _FullscreenImageViewer extends StatelessWidget {
                 ],
               );
             },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Plateau Detection & Warning ──────────────────────────────────────────────
+
+class _PlateauInfo {
+  final Exercise exercise;
+  final double currentMax1RM;
+  final double previousMax1RM;
+  final double previous2Max1RM;
+  final double lastSessionMaxWeight;
+  final double suggestedDeloadWeight;
+
+  _PlateauInfo({
+    required this.exercise,
+    required this.currentMax1RM,
+    required this.previousMax1RM,
+    required this.previous2Max1RM,
+    required this.lastSessionMaxWeight,
+    required this.suggestedDeloadWeight,
+  });
+}
+
+List<_PlateauInfo> _detectPlateaus(List<ExerciseLog> logs, List<Exercise> exercises) {
+  final List<_PlateauInfo> plateaus = [];
+
+  final Map<int, List<ExerciseLog>> logsByExercise = {};
+  for (final log in logs) {
+    logsByExercise.putIfAbsent(log.exerciseId, () => []).add(log);
+  }
+
+  for (final exercise in exercises) {
+    final exerciseLogs = logsByExercise[exercise.id];
+    if (exerciseLogs == null || exerciseLogs.isEmpty) continue;
+
+    final List<int> sessionIds = [];
+    final Map<int, List<ExerciseLog>> logsBySession = {};
+    for (final log in exerciseLogs) {
+      if (!logsBySession.containsKey(log.sessionId)) {
+        sessionIds.add(log.sessionId);
+        logsBySession[log.sessionId] = [];
+      }
+      logsBySession[log.sessionId]!.add(log);
+    }
+
+    if (sessionIds.length >= 3) {
+      final sN_2 = sessionIds[sessionIds.length - 3];
+      final sN_1 = sessionIds[sessionIds.length - 2];
+      final sN = sessionIds[sessionIds.length - 1];
+
+      double getMax1RM(List<ExerciseLog> sessionLogs) {
+        double maxVal = 0.0;
+        for (final l in sessionLogs) {
+          final oneRM = l.repeticoes == 1 ? l.peso : l.peso * (1 + l.repeticoes / 30.0);
+          if (oneRM > maxVal) {
+            maxVal = oneRM;
+          }
+        }
+        return maxVal;
+      }
+
+      final oneRMN_2 = getMax1RM(logsBySession[sN_2]!);
+      final oneRMN_1 = getMax1RM(logsBySession[sN_1]!);
+      final oneRMN = getMax1RM(logsBySession[sN]!);
+
+      if (oneRMN <= oneRMN_1 && oneRMN_1 <= oneRMN_2) {
+        double maxWeight = 0.0;
+        for (final l in logsBySession[sN]!) {
+          if (l.peso > maxWeight) {
+            maxWeight = l.peso;
+          }
+        }
+
+        plateaus.add(_PlateauInfo(
+          exercise: exercise,
+          currentMax1RM: oneRMN,
+          previousMax1RM: oneRMN_1,
+          previous2Max1RM: oneRMN_2,
+          lastSessionMaxWeight: maxWeight,
+          suggestedDeloadWeight: maxWeight * 0.9,
+        ));
+      }
+    }
+  }
+
+  return plateaus;
+}
+
+class _PlateauWarningWidget extends StatelessWidget {
+  final List<_PlateauInfo> plateaus;
+
+  const _PlateauWarningWidget({required this.plateaus});
+
+  @override
+  Widget build(BuildContext context) {
+    if (plateaus.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.warning.withOpacity(0.08),
+              AppColors.warning.withOpacity(0.03),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.warning.withOpacity(0.35),
+            width: 1.5,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: AppColors.warning,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Alerta de Platô & Deload ⚠️',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: AppColors.warning,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.2,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Identificamos estagnação nas últimas 3 sessões:',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: context.onBackground.withOpacity(0.8),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(color: AppColors.divider, height: 1),
+              const SizedBox(height: 12),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: plateaus.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final p = plateaus[index];
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              p.exercise.nome,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${p.currentMax1RM.toStringAsFixed(1)} kg max 1RM',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.onSurface,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: context.cardColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.trending_down_rounded,
+                              color: AppColors.primaryLight,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: RichText(
+                                text: TextSpan(
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: context.onBackground.withOpacity(0.9),
+                                      ),
+                                  children: [
+                                    const TextSpan(text: 'Sugestão: Realize um '),
+                                    const TextSpan(
+                                      text: 'Deload de 10%',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primaryLight,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: '. Use no próximo treino a carga máxima de ',
+                                    ),
+                                    TextSpan(
+                                      text: '${p.suggestedDeloadWeight.toStringAsFixed(1)} kg',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: ' (anterior: ${p.lastSessionMaxWeight.toStringAsFixed(1)} kg).',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),
