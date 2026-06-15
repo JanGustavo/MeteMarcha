@@ -6,7 +6,7 @@
 
 ## 📦 Download da Versão Mais Recente
 
-[![Download APK](https://img.shields.io/badge/Download-APK%20Release-red?style=for-the-badge&logo=android)](https://github.com/JanGustavo/MeteMachaFit/releases/latest)
+[![Download APK](https://img.shields.io/badge/Download-APK%20Release-red?style=for-the-badge&logo=android)](https://github.com/JanGustavo/MeteMarcha/releases/latest)
 
 > [!TIP]
 > Clique no botão acima para baixar a versão mais recente diretamente da página de Releases do GitHub e começar a registrar sua evolução hoje mesmo!

@@ -28,7 +28,7 @@ class OtaUpdateService {
       final currentVersion = packageInfo.version;
 
       final response = await http.get(
-        Uri.parse('https://api.github.com/repos/JanGustavo/MeteMachaFit/releases/latest'),
+        Uri.parse('https://api.github.com/repos/JanGustavo/MeteMarcha/releases/latest'),
         headers: {'User-Agent': 'MeteMachaApp'},
       );
       if (response.statusCode == 200) {
@@ -202,7 +202,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
     try {
       OtaUpdate()
           .execute(
-        'https://github.com/JanGustavo/MeteMachaFit/releases/latest/download/mete-marcha.apk',
+        'https://github.com/JanGustavo/MeteMarcha/releases/latest/download/mete-marcha.apk',
         destinationFilename: 'mete-marcha.apk',
       )
           .listen(

@@ -1,4 +1,4 @@
-package com.example.gym
+package dev.jangustavo.metemarcha
 
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
@@ -6,7 +6,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.gym/app_launcher"
+    private val CHANNEL = "dev.jangustavo.metemarcha/app_launcher"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

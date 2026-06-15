@@ -337,7 +337,7 @@ class MusicAppLinkButton extends StatelessWidget {
     required this.fallbackUrl,
   });
 
-  static const _channel = MethodChannel('com.example.gym/app_launcher');
+  static const _channel = MethodChannel('dev.jangustavo.metemarcha/app_launcher');
 
   Future<void> _launch() async {
     if (packageName != null) {

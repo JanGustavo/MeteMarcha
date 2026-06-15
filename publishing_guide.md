@@ -15,7 +15,7 @@ A partir de setembro de 2026, dispositivos Android certificados (com serviços G
 2. **Processo de Identificação (KYC):**
    * Você precisará fornecer seus dados oficiais de desenvolvedor (nome legal, endereço residencial, e-mail e número de telefone verificado).
 3. **Registro do App e Assinatura:**
-   * Registre o **Package Name** do seu aplicativo (ex: `dev.jangustavo.metemachafit`).
+   * Registre o **Package Name** do seu aplicativo (ex: `dev.jangustavo.metemarcha`).
    * Adicione o fingerprint SHA-256 da chave de assinatura do seu APK (a keystore que você configurou no `key.properties` para assinar a build no `release.sh`).
    * Isso associará seus APKs compilados à sua identidade oficial no Play Protect, liberando instalações via link do GitHub sem telas de bloqueio severas.
 
@@ -23,7 +23,7 @@ A partir de setembro de 2026, dispositivos Android certificados (com serviços G
 
 ## 2. Alterando o Package Name (Recomendado) 📦
 
-Atualmente o aplicativo utiliza o ID genérico `com.example.gym`. Antes de iniciar a verificação com o Google, é fundamental alterar o Package Name para um identificador definitivo e único, como `dev.jangustavo.metemachafit`.
+Atualmente o aplicativo utiliza o ID genérico `com.example.gym`. Antes de iniciar a verificação com o Google, é fundamental alterar o Package Name para um identificador definitivo e único, como `dev.jangustavo.metemarcha`.
 
 ### Como alterar de forma simples:
 Você pode utilizar o pacote comunitário `change_app_package_name` para fazer isso automaticamente:
@@ -34,7 +34,7 @@ Você pode utilizar o pacote comunitário `change_app_package_name` para fazer i
    ```
 2. Execute o comando com o novo identificador:
    ```bash
-   flutter pub run change_app_package_name:main dev.jangustavo.metemachafit
+   flutter pub run change_app_package_name:main dev.jangustavo.metemarcha
    ```
 3. Remova a dependência:
    ```bash
@@ -50,7 +50,7 @@ Você pode utilizar o pacote comunitário `change_app_package_name` para fazer i
 O Obtainium é um agregador que busca lançamentos diretamente do repositório do GitHub e atualiza aplicativos sem intermediários.
 * **Como funciona:** Como já temos o script `release.sh` gerando tags semver e publicando APKs nas Releases do GitHub, o Obtainium é suportado nativamente.
 * **Instruções ao usuário:** Basta instruir seus usuários a instalar o Obtainium e adicionar o link do seu repositório:
-  `https://github.com/JanGustavo/MeteMachaFit`
+  `https://github.com/JanGustavo/MeteMarcha`
 
 ### Canal 2: IzzyOnDroid (Intermediário) 📦
 O IzzyOnDroid é um repositório extremamente popular compatível com clientes F-Droid que hospeda APKs compilados direto do GitHub Releases.

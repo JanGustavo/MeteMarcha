@@ -1,4 +1,4 @@
-package com.example.gym
+package dev.jangustavo.metemarcha
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
@@ -36,7 +36,7 @@ class WorkoutWidgetProvider : HomeWidgetProvider() {
                 val pendingIntent = HomeWidgetLaunchIntent.getActivity(
                     context,
                     MainActivity::class.java,
-                    Uri.parse("metemachafit://workout")
+                    Uri.parse("metemarcha://workout")
                 )
                 setOnClickPendingIntent(R.id.workout_icon, pendingIntent)
                 setOnClickPendingIntent(R.id.workout_name, pendingIntent)

@@ -19,7 +19,7 @@ class DeepLinkService {
 
   static void _handleUri(Uri? uri) {
     if (uri == null) return;
-    if (uri.scheme == 'metemachafit') {
+    if (uri.scheme == 'metemarcha' || uri.scheme == 'metemachafit') {
       if (uri.host == 'workout' || uri.path == 'workout') {
         final state = globalProviderContainer.read(restTimerProvider);
         if (state.dayId != null && state.sessionId != null) {

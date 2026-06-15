@@ -1,4 +1,4 @@
-package com.example.gym
+package dev.jangustavo.metemarcha
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
@@ -25,7 +25,7 @@ class StreakWidgetProvider : HomeWidgetProvider() {
                 val pendingIntent = HomeWidgetLaunchIntent.getActivity(
                     context,
                     MainActivity::class.java,
-                    Uri.parse("metemachafit://streak")
+                    Uri.parse("metemarcha://streak")
                 )
                 setOnClickPendingIntent(R.id.streak_icon, pendingIntent)
                 // Também coloca no background
