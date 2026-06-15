@@ -17,6 +17,8 @@ class OtaUpdateService {
 
   /// Verifica se há atualizações no GitHub e mostra um diálogo se houver.
   Future<void> checkForUpdates(BuildContext context, {bool forceShowNoUpdate = false}) async {
+    const enableOta = bool.fromEnvironment('ENABLE_OTA', defaultValue: true);
+    if (!enableOta) return;
     if (kIsWeb || !Platform.isAndroid) return;
     if (_isChecking) return;
     _isChecking = true;
