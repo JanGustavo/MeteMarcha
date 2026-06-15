@@ -118,7 +118,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         ),
                       ),
                       subtitle: 'Básico - 3 dias/sem.',
-                      assetPath: 'assets/images/workout_abc.jpg',
+                      assetPath: 'assets/images/workout_abc.webp',
                       desc: 'Ideal para iniciantes ou quem tem tempo limitado. Foco em consistência.',
                       daysInfo: const [
                         'Dia A: Peito, Ombro e Tríceps',
@@ -146,7 +146,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         ),
                       ),
                       subtitle: 'Intermediário - 4 dias/sem.',
-                      assetPath: 'assets/images/workout_abcd.jpg',
+                      assetPath: 'assets/images/workout_abcd.webp',
                       desc: 'Excelente para quem já treina e quer isolar grupos musculares específicos.',
                       daysInfo: const [
                         'Dia A: Peito e Tríceps',
@@ -176,7 +176,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         ),
                       ),
                       subtitle: 'Avançado - 5 dias/sem.',
-                      assetPath: 'assets/images/workout_abcde.jpg',
+                      assetPath: 'assets/images/workout_abcde.webp',
                       desc: 'Foco alto em volume e intensidade, treinando quase todos os dias da semana.',
                       daysInfo: const [
                         'Dia A: Peito',
@@ -200,7 +200,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         ),
                       ),
                       subtitle: 'Crie sua própria rotina',
-                      assetPath: 'assets/images/workout_custom.jpg',
+                      assetPath: 'assets/images/workout_custom.webp',
                       desc: 'Crie um treino do zero, adicionando dias e exercícios conforme sua necessidade.',
                       daysInfo: const [
                         'Dia A: Meu Treino A (Personalizado)',

@@ -11,8 +11,8 @@ class StringInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Remove caracteres que não sejam letras ou espaços
-    String text = newValue.text.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
+    // Remove caracteres que não sejam letras ou espaços (suporta acentuação Unicode)
+    String text = newValue.text.replaceAll(RegExp(r'[^\p{L}\s]', unicode: true), '');
 
     // Mantém a seleção do cursor coerente com o novo texto limpo
     return TextEditingValue(
