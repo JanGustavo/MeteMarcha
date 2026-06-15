@@ -1,6 +1,7 @@
 import java.util.Properties
 import java.io.FileInputStream
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 
 plugins {
     id("com.android.application")
@@ -47,7 +48,7 @@ android {
         applicationId = "dev.jangustavo.metemarcha"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -60,6 +61,19 @@ android {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
+            }
+        }
+    }
+
+    applicationVariants.configureEach {
+        val variant = this
+        outputs.configureEach {
+            val output = this as? ApkVariantOutputImpl
+            output?.let {
+                val appName = "metemarcha"
+                val version = variant.versionName ?: "1.0"
+                val buildType = variant.buildType.name
+                it.outputFileName = "${appName}-${version}-${buildType}.apk"
             }
         }
     }
