@@ -90,6 +90,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             WeekUtils.currentWeekKey(),
             peso,
           );
+
+      // Sincroniza com o Health Connect se estiver ativado
+      if (_healthConnectEnabled) {
+        await HealthConnectService.instance.syncBodyMeasurement(
+          weightKg: peso,
+          dateTime: DateTime.now(),
+        );
+      }
     }
 
     setState(() => _saving = false);
