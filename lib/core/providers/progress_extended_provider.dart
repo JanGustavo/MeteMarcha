@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:drift/drift.dart' as drift;
 import '../database/app_database.dart';
 import '../utils/week_utils.dart';
 import '../services/notification_service.dart';
@@ -81,10 +82,14 @@ final goalsProvider = StateNotifierProvider<GoalsNotifier, List<Goal>>((ref) {
 // Provedor para todos os logs de exercícios concluídos
 final allCompletedLogsProvider = FutureProvider<List<ExerciseLog>>((ref) async {
   final db = ref.watch(databaseProvider);
-  return (db.select(db.exerciseLogs)
-        ..where((l) => l.concluido.equals(true))
-        ..orderBy([(l) => OrderingTerm.asc(l.data)]))
-      .get();
+  final query = db.select(db.exerciseLogs).join([
+    drift.innerJoin(db.workoutSessions, db.workoutSessions.id.equalsExp(db.exerciseLogs.sessionId))
+  ])
+  ..where(db.exerciseLogs.concluido.equals(true) & db.workoutSessions.status.equals('concluido'))
+  ..orderBy([drift.OrderingTerm.asc(db.exerciseLogs.data)]);
+
+  final rows = await query.get();
+  return rows.map((row) => row.readTable(db.exerciseLogs)).toList();
 });
 
 // Provedor para calcular a ofensiva (streak) de semanas consecutivas treinadas

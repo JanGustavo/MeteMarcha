@@ -1921,7 +1921,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
+                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _equipamentoSelecionado,
                     decoration: const InputDecoration(
                       contentPadding:

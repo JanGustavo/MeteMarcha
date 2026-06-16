@@ -940,6 +940,7 @@ void _showAddExerciseSheet(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: group,
                       decoration:
                           const InputDecoration(labelText: 'Grupo Muscular'),
@@ -966,6 +967,7 @@ void _showAddExerciseSheet(
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: equipment,
                       decoration:
                           const InputDecoration(labelText: 'Equipamento'),

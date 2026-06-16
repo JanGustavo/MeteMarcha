@@ -688,7 +688,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
   }
 }
 
-@DriftAccessor(tables: [ExerciseLogs])
+@DriftAccessor(tables: [ExerciseLogs, WorkoutSessions])
 class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
   LogDao(super.db);
 
@@ -707,33 +707,34 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
   }) async {
     final cutoff =
         DateTime.now().subtract(Duration(days: weeks * 7)).toIso8601String();
-    return (select(exerciseLogs)
-          ..where(
-            (l) =>
-                l.exerciseId.equals(exerciseId) &
-                l.data.isBiggerOrEqualValue(cutoff) &
-                l.concluido.equals(true),
-          )
-          ..orderBy([(l) => OrderingTerm.asc(l.data), (l) => OrderingTerm.asc(l.serie)]))
-        .get();
+    final query = select(exerciseLogs).join([
+      innerJoin(db.workoutSessions, db.workoutSessions.id.equalsExp(exerciseLogs.sessionId))
+    ])..where(
+      exerciseLogs.exerciseId.equals(exerciseId) &
+      exerciseLogs.data.isBiggerOrEqualValue(cutoff) &
+      exerciseLogs.concluido.equals(true) &
+      db.workoutSessions.status.equals('concluido')
+    )..orderBy([OrderingTerm.asc(exerciseLogs.data), OrderingTerm.asc(exerciseLogs.serie)]);
+
+    final rows = await query.get();
+    return rows.map((row) => row.readTable(exerciseLogs)).toList();
   }
 
   Future<List<ExerciseLog>> getLastLogsForExercise(int exerciseId, {int? excludeSessionId}) async {
     // Busca a sessão mais recente onde esse exercício foi executado e concluído, excluindo a sessão atual se fornecida
-    final query = select(exerciseLogs)
-      ..where((l) {
-        var expr = l.exerciseId.equals(exerciseId) & l.concluido.equals(true);
-        if (excludeSessionId != null) {
-          expr = expr & l.sessionId.equals(excludeSessionId).not();
-        }
-        return expr;
-      })
-      ..orderBy([(l) => OrderingTerm.desc(l.data)])
-      ..limit(1);
+    final query = select(exerciseLogs).join([
+      innerJoin(db.workoutSessions, db.workoutSessions.id.equalsExp(exerciseLogs.sessionId))
+    ])..where(
+      exerciseLogs.exerciseId.equals(exerciseId) &
+      exerciseLogs.concluido.equals(true) &
+      db.workoutSessions.status.equals('concluido') &
+      (excludeSessionId != null ? exerciseLogs.sessionId.equals(excludeSessionId).not() : const Constant(true))
+    )..orderBy([OrderingTerm.desc(exerciseLogs.data)])..limit(1);
 
-    final latestLog = await query.getSingleOrNull();
+    final row = await query.getSingleOrNull();
+    if (row == null) return [];
 
-    if (latestLog == null) return [];
+    final latestLog = row.readTable(exerciseLogs);
 
     // Retorna todos os logs (séries) daquela mesma sessão para o exercício
     return (select(exerciseLogs)
@@ -746,10 +747,15 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
   }
 
   Stream<List<ExerciseLog>> watchExerciseLogs(int exerciseId) {
-    return (select(exerciseLogs)
-          ..where((l) => l.exerciseId.equals(exerciseId) & l.concluido.equals(true))
-          ..orderBy([(l) => OrderingTerm.asc(l.data), (l) => OrderingTerm.asc(l.serie)]))
-        .watch();
+    final query = select(exerciseLogs).join([
+      innerJoin(db.workoutSessions, db.workoutSessions.id.equalsExp(exerciseLogs.sessionId))
+    ])..where(
+      exerciseLogs.exerciseId.equals(exerciseId) &
+      exerciseLogs.concluido.equals(true) &
+      db.workoutSessions.status.equals('concluido')
+    )..orderBy([OrderingTerm.asc(exerciseLogs.data), OrderingTerm.asc(exerciseLogs.serie)]);
+
+    return query.watch().map((rows) => rows.map((row) => row.readTable(exerciseLogs)).toList());
   }
 
   Future<int> deleteLog(int logId) =>
@@ -778,14 +784,20 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
 
   /// Retorna o maior 1RM estimado (Epley) registrado anteriormente para o exercício.
   Future<double> getMax1RMForExercise(int exerciseId) async {
-    final logs = await (select(exerciseLogs)
-          ..where((l) => l.exerciseId.equals(exerciseId) & l.concluido.equals(true)))
-        .get();
+    final query = select(exerciseLogs).join([
+      innerJoin(db.workoutSessions, db.workoutSessions.id.equalsExp(exerciseLogs.sessionId))
+    ])..where(
+      exerciseLogs.exerciseId.equals(exerciseId) &
+      exerciseLogs.concluido.equals(true) &
+      db.workoutSessions.status.equals('concluido')
+    );
 
-    if (logs.isEmpty) return 0.0;
+    final rows = await query.get();
+    if (rows.isEmpty) return 0.0;
 
     double max1RM = 0.0;
-    for (final log in logs) {
+    for (final row in rows) {
+      final log = row.readTable(exerciseLogs);
       final oneRM = log.repeticoes == 1
           ? log.peso
           : log.peso * (1 + log.repeticoes / 30.0);

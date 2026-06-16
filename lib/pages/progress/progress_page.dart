@@ -2109,6 +2109,11 @@ class _RelativeStrengthCard extends StatelessWidget {
       'Perna': 0.0,
       'Costas': 0.0,
     };
+    final Map<String, double> bestRaw1RMPerGroup = {
+      'Peito': 0.0,
+      'Perna': 0.0,
+      'Costas': 0.0,
+    };
     final Map<String, String> bestExerciseNamePerGroup = {};
 
     final exerciseMap = {for (final e in exercises) e.id: e};
@@ -2117,71 +2122,138 @@ class _RelativeStrengthCard extends StatelessWidget {
       final ex = exerciseMap[log.exerciseId];
       if (ex == null) continue;
 
-      // Desconsidera exercícios de máquina, cabo ou smith para o benchmark de força relativa,
-      // pois a vantagem mecânica e polias distorcem o peso real levantado.
       final equip = ex.equipamento.trim().toLowerCase();
-      if (equip == 'máquina' || equip == 'cabo' || equip == 'smith') {
-        continue;
+      final nameLower = ex.nome.trim().toLowerCase();
+      final muscle = ex.grupoMuscular;
+      
+      double factor = 1.0;
+      
+      final isLeg = muscle == 'Quadríceps' ||
+                    muscle == 'Posterior' ||
+                    muscle == 'Panturrilha' ||
+                    muscle == 'Perna';
+      
+      final isMachine = equip == 'máquina' ||
+                        equip == 'maquina' ||
+                        equip == 'aparelho' ||
+                        equip == 'articulado' ||
+                        equip == 'guiado' ||
+                        nameLower.contains('máquina') ||
+                        nameLower.contains('maquina') ||
+                        nameLower.contains('aparelho') ||
+                        nameLower.contains('leg press') ||
+                        nameLower.contains('hack');
+                        
+      final isCableOrSmith = equip == 'cabo' ||
+                             equip == 'smith' ||
+                             equip == 'polia' ||
+                             nameLower.contains('cabo') ||
+                             nameLower.contains('smith') ||
+                             nameLower.contains('polia');
+
+      if (isLeg && isMachine) {
+        factor = 0.6; // 40% de desconto para máquinas de perna
+      } else if (isMachine) {
+        factor = 0.8; // 20% de desconto para outras máquinas
+      } else if (isCableOrSmith) {
+        factor = 0.9; // 10% de desconto para polias e Smith
       }
       
-      final muscle = ex.grupoMuscular;
       final String mappedGroup;
-      if (muscle == 'Quadríceps' || muscle == 'Posterior' || muscle == 'Panturrilha' || muscle == 'Perna') {
+      if (isLeg) {
         mappedGroup = 'Perna';
       } else {
         mappedGroup = muscle;
       }
+      
       if (best1RMPerGroup.containsKey(mappedGroup)) {
-        final oneRepMax = log.peso * (1 + log.repeticoes / 30.0);
+        final raw1RM = log.peso * (1 + log.repeticoes / 30.0);
+        final oneRepMax = raw1RM * factor;
         final currentBest = best1RMPerGroup[mappedGroup] ?? 0.0;
         if (oneRepMax > currentBest) {
           best1RMPerGroup[mappedGroup] = oneRepMax;
+          bestRaw1RMPerGroup[mappedGroup] = raw1RM;
           bestExerciseNamePerGroup[mappedGroup] = ex.nome;
         }
       }
     }
 
+    final double peitoRatio = userWeight > 0 ? (best1RMPerGroup['Peito']! / userWeight) : 0.0;
+    final double costasRatio = userWeight > 0 ? (best1RMPerGroup['Costas']! / userWeight) : 0.0;
+    final double pernaRatio = userWeight > 0 ? (best1RMPerGroup['Perna']! / userWeight) : 0.0;
+
+    double getGroupScore(double ratio, List<double> thresholds) {
+      if (ratio <= 0.0) return 1.0;
+      final t1 = thresholds[0];
+      final t2 = thresholds[1];
+      final t3 = thresholds[2];
+      if (ratio < t1) {
+        return 1.0 + (ratio / t1);
+      } else if (ratio < t2) {
+        return 2.0 + (ratio - t1) / (t2 - t1);
+      } else if (ratio < t3) {
+        return 3.0 + (ratio - t2) / (t3 - t2);
+      } else {
+        return (4.0 + (ratio - t3) / (t3 * 0.5)).clamp(4.0, 5.0);
+      }
+    }
+
+    final peitoScore = getGroupScore(peitoRatio, const [0.5, 0.9, 1.3]);
+    final costasScore = getGroupScore(costasRatio, const [0.5, 0.8, 1.2]);
+    final pernaScore = getGroupScore(pernaRatio, const [0.8, 1.3, 1.8]);
+
+    final overallScore = (peitoScore + costasScore + pernaScore) / 3.0;
     final totalBest1RM = best1RMPerGroup.values.fold<double>(0.0, (sum, val) => sum + val);
-    final strengthRatio = totalBest1RM / userWeight;
 
     String levelName = 'Iniciante';
-    double nextLevelRatio = 1.5;
-    double prevLevelRatio = 0.0;
+    double nextLevelScore = 2.0;
+    double prevLevelScore = 1.0;
     Color levelColor = Colors.blueAccent;
     bool isMaxLevel = false;
 
-    if (strengthRatio < 1.5) {
+    if (overallScore < 2.0) {
       levelName = 'Iniciante (Nível 1)';
-      nextLevelRatio = 1.5;
-      prevLevelRatio = 0.0;
+      nextLevelScore = 2.0;
+      prevLevelScore = 1.0;
       levelColor = Colors.blueAccent;
-    } else if (strengthRatio < 3.0) {
+    } else if (overallScore < 3.0) {
       levelName = 'Intermediário (Nível 2)';
-      nextLevelRatio = 3.0;
-      prevLevelRatio = 1.5;
+      nextLevelScore = 3.0;
+      prevLevelScore = 2.0;
       levelColor = AppColors.primaryLight;
-    } else if (strengthRatio < 4.5) {
+    } else if (overallScore < 4.0) {
       levelName = 'Avançado (Nível 3)';
-      nextLevelRatio = 4.5;
-      prevLevelRatio = 3.0;
+      nextLevelScore = 4.0;
+      prevLevelScore = 3.0;
       levelColor = AppColors.success;
     } else {
       levelName = 'Elite (Nível 4)';
-      nextLevelRatio = 4.5;
-      prevLevelRatio = 4.5;
+      nextLevelScore = 4.0;
+      prevLevelScore = 4.0;
       levelColor = Colors.amber;
       isMaxLevel = true;
     }
 
     final ratioProgress = isMaxLevel
         ? 1.0
-        : (nextLevelRatio > prevLevelRatio
-            ? ((strengthRatio - prevLevelRatio) / (nextLevelRatio - prevLevelRatio)).clamp(0.0, 1.0)
+        : (nextLevelScore > prevLevelScore
+            ? ((overallScore - prevLevelScore) / (nextLevelScore - prevLevelScore)).clamp(0.0, 1.0)
             : 1.0);
 
     return GestureDetector(
       onTap: () {
-        _showRelativeStrengthLevelsDialog(context, strengthRatio, totalBest1RM);
+        _showRelativeStrengthLevelsDialog(
+          context: context,
+          overallScore: overallScore,
+          peitoScore: peitoScore,
+          costasScore: costasScore,
+          pernaScore: pernaScore,
+          peitoRatio: peitoRatio,
+          costasRatio: costasRatio,
+          pernaRatio: pernaRatio,
+          totalBest1RM: totalBest1RM,
+          userWeight: userWeight,
+        );
       },
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -2209,7 +2281,7 @@ class _RelativeStrengthCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Soma 1RM: ${totalBest1RM.toStringAsFixed(1)} kg (${strengthRatio.toStringAsFixed(2)}x peso)',
+                        'Índice Geral: ${overallScore.toStringAsFixed(2)} / 4.00 (Média de Níveis)',
                         style: TextStyle(fontSize: 12, color: context.onSurface),
                       ),
                     ],
@@ -2222,7 +2294,7 @@ class _RelativeStrengthCard extends StatelessWidget {
                       border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 1),
                     ),
                     child: Text(
-                      '${strengthRatio.toStringAsFixed(1)}x',
+                      'Nível ${overallScore.toStringAsFixed(1)}',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: levelColor),
                     ),
                   ),
@@ -2243,7 +2315,7 @@ class _RelativeStrengthCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${prevLevelRatio.toStringAsFixed(1)}x',
+                    'Nível ${prevLevelScore.toStringAsFixed(0)}',
                     style: TextStyle(fontSize: 10, color: context.onSurface),
                   ),
                   if (isMaxLevel)
@@ -2253,20 +2325,41 @@ class _RelativeStrengthCard extends StatelessWidget {
                     )
                   else
                     Text(
-                      'Próximo nível: ${nextLevelRatio.toStringAsFixed(1)}x',
+                      'Próximo nível: Nível ${nextLevelScore.toStringAsFixed(0)}',
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: levelColor),
                     ),
                 ],
               ),
               Divider(color: context.divider, height: 24),
               const Text(
-                'MELHORES ESTIMATIVAS DE 1RM:',
+                'MELHORES ESTIMATIVAS DE 1RM (AJUSTADAS):',
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryLight, letterSpacing: 1.0),
               ),
               const SizedBox(height: 8),
-              _buildMuscleStrengthRow('Peito (Empurrar)', best1RMPerGroup['Peito']!, bestExerciseNamePerGroup['Peito'], userWeight),
-              _buildMuscleStrengthRow('Costas (Puxar)', best1RMPerGroup['Costas']!, bestExerciseNamePerGroup['Costas'], userWeight),
-              _buildMuscleStrengthRow('Perna (Agachar)', best1RMPerGroup['Perna']!, bestExerciseNamePerGroup['Perna'], userWeight),
+              _buildMuscleStrengthRow(
+                groupName: 'Peito (Empurrar)',
+                oneRM: best1RMPerGroup['Peito']!,
+                rawOneRM: bestRaw1RMPerGroup['Peito']!,
+                exerciseName: bestExerciseNamePerGroup['Peito'],
+                bodyWeight: userWeight,
+                groupScore: peitoScore,
+              ),
+              _buildMuscleStrengthRow(
+                groupName: 'Costas (Puxar)',
+                oneRM: best1RMPerGroup['Costas']!,
+                rawOneRM: bestRaw1RMPerGroup['Costas']!,
+                exerciseName: bestExerciseNamePerGroup['Costas'],
+                bodyWeight: userWeight,
+                groupScore: costasScore,
+              ),
+              _buildMuscleStrengthRow(
+                groupName: 'Perna (Agachar)',
+                oneRM: best1RMPerGroup['Perna']!,
+                rawOneRM: bestRaw1RMPerGroup['Perna']!,
+                exerciseName: bestExerciseNamePerGroup['Perna'],
+                bodyWeight: userWeight,
+                groupScore: pernaScore,
+              ),
             ],
           ),
         ),
@@ -2274,10 +2367,36 @@ class _RelativeStrengthCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMuscleStrengthRow(String groupName, double oneRM, String? exerciseName, double bodyWeight) {
+  Widget _buildMuscleStrengthRow({
+    required String groupName,
+    required double oneRM,
+    required double rawOneRM,
+    required String? exerciseName,
+    required double bodyWeight,
+    required double groupScore,
+  }) {
     final ratio = bodyWeight > 0 ? oneRM / bodyWeight : 0.0;
+    
+    String groupLevel = 'Nenhum';
+    Color levelColor = Colors.white30;
+    if (oneRM > 0) {
+      if (groupScore < 2.0) {
+        groupLevel = 'Iniciante';
+        levelColor = Colors.blueAccent;
+      } else if (groupScore < 3.0) {
+        groupLevel = 'Intermediário';
+        levelColor = AppColors.primaryLight;
+      } else if (groupScore < 4.0) {
+        groupLevel = 'Avançado';
+        levelColor = AppColors.success;
+      } else {
+        groupLevel = 'Elite';
+        levelColor = Colors.amber;
+      }
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -2285,7 +2404,29 @@ class _RelativeStrengthCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(groupName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                Row(
+                  children: [
+                    Text(groupName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 6),
+                    if (oneRM > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: levelColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 0.5),
+                        ),
+                        child: Text(
+                          groupLevel.toUpperCase(),
+                          style: TextStyle(
+                            color: levelColor,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 if (exerciseName != null && oneRM > 0)
                   Text(
                     exerciseName,
@@ -2303,7 +2444,10 @@ class _RelativeStrengthCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text('${oneRM.toStringAsFixed(1)} kg', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                Text('${ratio.toStringAsFixed(2)}x Peso', style: const TextStyle(fontSize: 10, color: AppColors.primaryLight)),
+                Text(
+                  '${ratio.toStringAsFixed(2)}x Peso${rawOneRM > oneRM ? ' (${rawOneRM.toStringAsFixed(0)} kg real)' : ''}',
+                  style: const TextStyle(fontSize: 10, color: AppColors.primaryLight),
+                ),
               ],
             )
           else
@@ -2313,7 +2457,18 @@ class _RelativeStrengthCard extends StatelessWidget {
     );
   }
 
-  void _showRelativeStrengthLevelsDialog(BuildContext context, double currentRatio, double totalBest1RM) {
+  void _showRelativeStrengthLevelsDialog({
+    required BuildContext context,
+    required double overallScore,
+    required double peitoScore,
+    required double costasScore,
+    required double pernaScore,
+    required double peitoRatio,
+    required double costasRatio,
+    required double pernaRatio,
+    required double totalBest1RM,
+    required double userWeight,
+  }) {
     showDialog(
       context: context,
       builder: (dialogCtx) {
@@ -2324,7 +2479,7 @@ class _RelativeStrengthCard extends StatelessWidget {
           required String title,
           required String subtitle,
           required String range,
-          required String weightRange,
+          required String details,
           required Color color,
           required bool isActive,
           required String levelNum,
@@ -2381,6 +2536,15 @@ class _RelativeStrengthCard extends StatelessWidget {
                           fontSize: 11,
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        details,
+                        style: TextStyle(
+                          color: subtextColor.withValues(alpha: 0.7),
+                          fontSize: 9,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -2395,13 +2559,6 @@ class _RelativeStrengthCard extends StatelessWidget {
                         color: color,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      weightRange,
-                      style: TextStyle(
-                        color: subtextColor,
-                        fontSize: 10,
                       ),
                     ),
                     if (isActive) ...[
@@ -2462,7 +2619,7 @@ class _RelativeStrengthCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'O Índice de Força Relativa mede a soma das melhores estimativas de 1RM (Peito, Costas e Perna) em relação ao seu peso corporal. Apenas exercícios com pesos livres ou peso corporal são considerados para evitar distorções de polias e máquinas.',
+                  'O Nível de Força é a média dos níveis atingidos em Peito, Costas e Pernas. Cada grupo muscular possui padrões específicos. Para evitar distorções de polias e alavancas, exercícios em máquinas e cabos recebem um fator de correção (ex: polias/smith = -10%, máquinas = -20%, máquinas de perna = -40%).',
                   style: TextStyle(
                     fontSize: 12,
                     color: subtextColor,
@@ -2475,36 +2632,65 @@ class _RelativeStrengthCard extends StatelessWidget {
                     color: context.divider.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             'Seu peso: ${userWeight.toStringAsFixed(1)} kg',
                             style: TextStyle(fontSize: 11, color: subtextColor),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Sua força total: ${totalBest1RM.toStringAsFixed(1)} kg',
-                            style: TextStyle(fontSize: 11, color: subtextColor),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Nível Geral',
+                                style: TextStyle(fontSize: 10, color: subtextColor),
+                              ),
+                              Text(
+                                '${overallScore.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryLight,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      const SizedBox(height: 8),
+                      const Divider(height: 1, color: Colors.white10),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Seu Índice',
-                            style: TextStyle(fontSize: 10, color: subtextColor),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Peito', style: TextStyle(fontSize: 9, color: Colors.white60)),
+                                Text('${peitoRatio.toStringAsFixed(2)}x (Nível ${peitoScore.toStringAsFixed(1)})', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
                           ),
-                          Text(
-                            '${currentRatio.toStringAsFixed(2)}x',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primaryLight,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Text('Costas', style: TextStyle(fontSize: 9, color: Colors.white60)),
+                                Text('${costasRatio.toStringAsFixed(2)}x (Nível ${costasScore.toStringAsFixed(1)})', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                const Text('Perna', style: TextStyle(fontSize: 9, color: Colors.white60)),
+                                Text('${pernaRatio.toStringAsFixed(2)}x (Nível ${pernaScore.toStringAsFixed(1)})', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                              ],
                             ),
                           ),
                         ],
@@ -2516,37 +2702,37 @@ class _RelativeStrengthCard extends StatelessWidget {
                 buildLevelItem(
                   title: 'Iniciante (Nível 1)',
                   subtitle: 'Fase de adaptação muscular',
-                  range: '< 1.5x',
-                  weightRange: 'Até ${(1.5 * userWeight).toStringAsFixed(1)} kg',
+                  range: '< Nível 2',
+                  details: 'Peito < 0.5x | Costas < 0.5x | Perna < 0.8x',
                   color: Colors.blueAccent,
-                  isActive: currentRatio < 1.5,
+                  isActive: overallScore < 2.0,
                   levelNum: '1',
                 ),
                 buildLevelItem(
                   title: 'Intermediário (Nível 2)',
                   subtitle: 'Base sólida de força',
-                  range: '1.5x - 3.0x',
-                  weightRange: '${(1.5 * userWeight).toStringAsFixed(1)} - ${(3.0 * userWeight).toStringAsFixed(1)} kg',
+                  range: 'Nível 2 a 3',
+                  details: 'Peito: 0.5x - 0.9x | Costas: 0.5x - 0.8x | Perna: 0.8x - 1.3x',
                   color: AppColors.primaryLight,
-                  isActive: currentRatio >= 1.5 && currentRatio < 3.0,
+                  isActive: overallScore >= 2.0 && overallScore < 3.0,
                   levelNum: '2',
                 ),
                 buildLevelItem(
                   title: 'Avançado (Nível 3)',
                   subtitle: 'Nível de força expressivo',
-                  range: '3.0x - 4.5x',
-                  weightRange: '${(3.0 * userWeight).toStringAsFixed(1)} - ${(4.5 * userWeight).toStringAsFixed(1)} kg',
+                  range: 'Nível 3 a 4',
+                  details: 'Peito: 0.9x - 1.3x | Costas: 0.8x - 1.2x | Perna: 1.3x - 1.8x',
                   color: AppColors.success,
-                  isActive: currentRatio >= 3.0 && currentRatio < 4.5,
+                  isActive: overallScore >= 3.0 && overallScore < 4.0,
                   levelNum: '3',
                 ),
                 buildLevelItem(
                   title: 'Elite (Nível 4)',
                   subtitle: 'Força digna de atletas',
-                  range: '≥ 4.5x',
-                  weightRange: 'Mais de ${(4.5 * userWeight).toStringAsFixed(1)} kg',
+                  range: '≥ Nível 4',
+                  details: 'Peito ≥ 1.3x | Costas ≥ 1.2x | Perna ≥ 1.8x',
                   color: Colors.amber,
-                  isActive: currentRatio >= 4.5,
+                  isActive: overallScore >= 4.0,
                   levelNum: '4',
                 ),
               ],
@@ -2655,7 +2841,7 @@ class _MuscleFocusChart extends StatelessWidget {
       return PieChartSectionData(
         color: color,
         value: entry.value,
-        title: percentage >= 8 ? '${percentage.toStringAsFixed(0)}%' : '',
+        title: percentage >= 5 ? '${percentage.toStringAsFixed(0)}%' : '',
         radius: 35,
         titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
       );
