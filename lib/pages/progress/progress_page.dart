@@ -2116,6 +2116,13 @@ class _RelativeStrengthCard extends StatelessWidget {
     for (final log in logs) {
       final ex = exerciseMap[log.exerciseId];
       if (ex == null) continue;
+
+      // Desconsidera exercícios de máquina, cabo ou smith para o benchmark de força relativa,
+      // pois a vantagem mecânica e polias distorcem o peso real levantado.
+      final equip = ex.equipamento.trim().toLowerCase();
+      if (equip == 'máquina' || equip == 'cabo' || equip == 'smith') {
+        continue;
+      }
       
       final muscle = ex.grupoMuscular;
       final String mappedGroup;
@@ -2455,7 +2462,7 @@ class _RelativeStrengthCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'O Índice de Força Relativa mede a soma das melhores estimativas de 1RM (Peito, Costas e Perna) em relação ao seu peso corporal.',
+                  'O Índice de Força Relativa mede a soma das melhores estimativas de 1RM (Peito, Costas e Perna) em relação ao seu peso corporal. Apenas exercícios com pesos livres ou peso corporal são considerados para evitar distorções de polias e máquinas.',
                   style: TextStyle(
                     fontSize: 12,
                     color: subtextColor,
