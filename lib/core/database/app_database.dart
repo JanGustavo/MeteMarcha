@@ -718,13 +718,20 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
         .get();
   }
 
-  Future<List<ExerciseLog>> getLastLogsForExercise(int exerciseId) async {
-    // Busca a sessão mais recente onde esse exercício foi executado e concluído
-    final latestLog = await (select(exerciseLogs)
-          ..where((l) => l.exerciseId.equals(exerciseId) & l.concluido.equals(true))
-          ..orderBy([(l) => OrderingTerm.desc(l.data)])
-          ..limit(1))
-        .getSingleOrNull();
+  Future<List<ExerciseLog>> getLastLogsForExercise(int exerciseId, {int? excludeSessionId}) async {
+    // Busca a sessão mais recente onde esse exercício foi executado e concluído, excluindo a sessão atual se fornecida
+    final query = select(exerciseLogs)
+      ..where((l) {
+        var expr = l.exerciseId.equals(exerciseId) & l.concluido.equals(true);
+        if (excludeSessionId != null) {
+          expr = expr & l.sessionId.equals(excludeSessionId).not();
+        }
+        return expr;
+      })
+      ..orderBy([(l) => OrderingTerm.desc(l.data)])
+      ..limit(1);
+
+    final latestLog = await query.getSingleOrNull();
 
     if (latestLog == null) return [];
 
@@ -989,6 +996,21 @@ class AppDatabase extends _$AppDatabase {
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON;');
+
+          // Migra exercícios existentes de 'Perna' para os novos subgrupos específicos
+          await customStatement(
+            "UPDATE exercises SET grupo_muscular = 'Quadríceps' WHERE grupo_muscular = 'Perna' AND nome IN ('Agachamento Livre', 'Leg Press', 'Cadeira Extensora');"
+          );
+          await customStatement(
+            "UPDATE exercises SET grupo_muscular = 'Posterior' WHERE grupo_muscular = 'Perna' AND nome IN ('Mesa Flexora');"
+          );
+          await customStatement(
+            "UPDATE exercises SET grupo_muscular = 'Panturrilha' WHERE grupo_muscular = 'Perna' AND nome IN ('Gêmeos Sentado');"
+          );
+          await customStatement(
+            "UPDATE exercises SET grupo_muscular = 'Quadríceps' WHERE grupo_muscular = 'Perna';"
+          );
+
           final allExs = await select(exercises).get();
           if (allExs.isEmpty) {
             await _seedDatabase(this);

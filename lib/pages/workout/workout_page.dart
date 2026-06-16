@@ -174,8 +174,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     if (_exercises.isEmpty) return;
     final ex = _current;
 
-    // Busca desempenho do último treino para pré-preencher os campos
-    final prev = await ref.read(logDaoProvider).getLastLogsForExercise(ex.id);
+    // Busca desempenho do último treino para pré-preencher os campos (excluindo a sessão atual)
+    final prev = await ref.read(logDaoProvider).getLastLogsForExercise(
+          ex.id,
+          excludeSessionId: widget.sessionId,
+        );
 
     // Busca recorde máximo 1RM histórico
     final prevMax1RM = await ref.read(logDaoProvider).getMax1RMForExercise(ex.id);
