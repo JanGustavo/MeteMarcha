@@ -2118,12 +2118,18 @@ class _RelativeStrengthCard extends StatelessWidget {
       if (ex == null) continue;
       
       final muscle = ex.grupoMuscular;
-      if (best1RMPerGroup.containsKey(muscle)) {
+      final String mappedGroup;
+      if (muscle == 'Quadríceps' || muscle == 'Posterior' || muscle == 'Panturrilha' || muscle == 'Perna') {
+        mappedGroup = 'Perna';
+      } else {
+        mappedGroup = muscle;
+      }
+      if (best1RMPerGroup.containsKey(mappedGroup)) {
         final oneRepMax = log.peso * (1 + log.repeticoes / 30.0);
-        final currentBest = best1RMPerGroup[muscle] ?? 0.0;
+        final currentBest = best1RMPerGroup[mappedGroup] ?? 0.0;
         if (oneRepMax > currentBest) {
-          best1RMPerGroup[muscle] = oneRepMax;
-          bestExerciseNamePerGroup[muscle] = ex.nome;
+          best1RMPerGroup[mappedGroup] = oneRepMax;
+          bestExerciseNamePerGroup[mappedGroup] = ex.nome;
         }
       }
     }
@@ -2571,6 +2577,12 @@ class _MuscleFocusChart extends StatelessWidget {
         return Colors.pinkAccent;
       case 'perna':
         return Colors.greenAccent;
+      case 'quadríceps':
+        return Colors.greenAccent;
+      case 'posterior':
+        return Colors.lightGreenAccent;
+      case 'panturrilha':
+        return Colors.limeAccent;
       case 'glúteo':
         return Colors.amberAccent;
       case 'core':

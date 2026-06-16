@@ -281,7 +281,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
   final int id;
   final String nome;
 
-  /// Peito | Costas | Ombro | Tríceps | Bíceps | Perna | Core | Glúteo
+  /// Peito | Costas | Ombro | Tríceps | Bíceps | Quadríceps | Posterior | Panturrilha | Core | Glúteo
   final String grupoMuscular;
 
   /// Link YouTube/referência para ver a execução

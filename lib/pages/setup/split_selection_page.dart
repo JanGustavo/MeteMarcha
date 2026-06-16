@@ -587,7 +587,7 @@ class SplitSelectionPage extends ConsumerWidget {
                                     '      "exercicios": [\n'
                                     '        {\n'
                                     '          "nome": "Nome do Exercício (ex: Supino Reto)",\n'
-                                    '          "grupoMuscular": "Peito", // Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core ou Glúteo\n'
+                                    '          "grupoMuscular": "Peito", // Peito, Costas, Ombro, Tríceps, Bíceps, Quadríceps, Posterior, Panturrilha, Core ou Glúteo\n'
                                     '          "equipamento": "Barra", // Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal ou Smith\n'
                                     '          "isUnilateral": false,\n'
                                     '          "tempoDescansoSegundos": 90,\n'
@@ -1031,7 +1031,7 @@ Converta o texto de treino em um objeto JSON válido seguindo esta estrutura:
       "exercicios": [
         {
           "nome": "Nome do Exercício",
-          "grupoMuscular": "Peito", // Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core, Glúteo
+          "grupoMuscular": "Peito", // Peito, Costas, Ombro, Tríceps, Bíceps, Quadríceps, Posterior, Panturrilha, Core, Glúteo
           "equipamento": "Barra", // Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith
           "isUnilateral": false,
           "tempoDescansoSegundos": 90,
@@ -1044,7 +1044,7 @@ Converta o texto de treino em um objeto JSON válido seguindo esta estrutura:
 }
 
 Regras:
-1. grupoMuscular deve ser exatamente um destes: [Peito, Costas, Ombro, Tríceps, Bíceps, Perna, Core, Glúteo]. Mapeie Elevação Lateral/Crucifixo Invertido/Posterior de Ombro como "Ombro"; Abdominais como "Core"; Agachamento/Leg Press/Extensora/Flexora/Panturrilha como "Perna"; Elevação de Quadril como "Glúteo".
+1. grupoMuscular deve ser exatamente um destes: [Peito, Costas, Ombro, Tríceps, Bíceps, Quadríceps, Posterior, Panturrilha, Core, Glúteo]. Mapeie Elevação Lateral/Crucifixo Invertido/Posterior de Ombro como "Ombro"; Abdominais como "Core"; Agachamento/Leg Press/Cadeira Extensora como "Quadríceps"; Mesa Flexora/Cadeira Flexora/Stiff como "Posterior"; Panturrilha/Gêmeos como "Panturrilha"; Elevação de Quadril como "Glúteo".
 2. equipamento deve ser exatamente um destes: [Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith]. Mapeie "Halteres" como "Haltere"; "Polia/Crossover/Pulley" como "Cabo"; Leg Press/Extensora/Flexora/Hack/Gêmeos na máquina como "Máquina"; Flexão/Barra Fixa/Abdominais como "Peso Corporal".
 3. letra começa em "A" e segue sequencialmente.
 4. tipo: 3 dias = "ABC", 4 dias = "ABCD", 5 dias = "ABCDE", outro = "CUSTOM".

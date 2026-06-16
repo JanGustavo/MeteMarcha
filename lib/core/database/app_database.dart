@@ -25,7 +25,7 @@ class Exercises extends Table {
 
   TextColumn get nome => text()();
 
-  /// Peito | Costas | Ombro | Tríceps | Bíceps | Perna | Core | Glúteo
+  /// Peito | Costas | Ombro | Tríceps | Bíceps | Quadríceps | Posterior | Panturrilha | Core | Glúteo
   TextColumn get grupoMuscular => text()();
 
   /// Link YouTube/referência para ver a execução
@@ -1044,12 +1044,14 @@ Future<void> _seedDatabase(AppDatabase db) async {
       // Tríceps
       (nome: 'Tríceps Corda', grupo: 'Tríceps', equip: 'Cabo', unilateral: false, descanso: 60),
       (nome: 'Tríceps Testa', grupo: 'Tríceps', equip: 'Barra', unilateral: false, descanso: 60),
-      // Perna
-      (nome: 'Agachamento Livre', grupo: 'Perna', equip: 'Barra', unilateral: false, descanso: 120),
-      (nome: 'Leg Press', grupo: 'Perna', equip: 'Máquina', unilateral: false, descanso: 120),
-      (nome: 'Cadeira Extensora', grupo: 'Perna', equip: 'Máquina', unilateral: true, descanso: 90),
-      (nome: 'Mesa Flexora', grupo: 'Perna', equip: 'Máquina', unilateral: true, descanso: 90),
-      (nome: 'Gêmeos Sentado', grupo: 'Perna', equip: 'Máquina', unilateral: false, descanso: 60),
+      // Quadríceps
+      (nome: 'Agachamento Livre', grupo: 'Quadríceps', equip: 'Barra', unilateral: false, descanso: 120),
+      (nome: 'Leg Press', grupo: 'Quadríceps', equip: 'Máquina', unilateral: false, descanso: 120),
+      (nome: 'Cadeira Extensora', grupo: 'Quadríceps', equip: 'Máquina', unilateral: true, descanso: 90),
+      // Posterior
+      (nome: 'Mesa Flexora', grupo: 'Posterior', equip: 'Máquina', unilateral: true, descanso: 90),
+      // Panturrilha
+      (nome: 'Gêmeos Sentado', grupo: 'Panturrilha', equip: 'Máquina', unilateral: false, descanso: 60),
       // Core
       (nome: 'Abdominal Supra', grupo: 'Core', equip: 'Peso Corporal', unilateral: false, descanso: 45),
       (nome: 'Prancha', grupo: 'Core', equip: 'Peso Corporal', unilateral: false, descanso: 45),

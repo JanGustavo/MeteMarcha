@@ -951,7 +951,9 @@ void _showAddExerciseSheet(
                         'Ombro',
                         'Tríceps',
                         'Bíceps',
-                        'Perna',
+                        'Quadríceps',
+                        'Posterior',
+                        'Panturrilha',
                         'Core',
                         'Glúteo'
                       }
