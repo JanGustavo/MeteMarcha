@@ -17,7 +17,7 @@ class AudioService {
   void _configureAudioContext() {
     try {
       AudioPlayer.global.setAudioContext(AudioContext(
-        android: AudioContextAndroid(
+        android: const AudioContextAndroid(
           isSpeakerphoneOn: true,
           stayAwake: true,
           contentType: AndroidContentType.sonification,

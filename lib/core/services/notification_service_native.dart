@@ -191,7 +191,7 @@ class NotificationService {
       fullScreenIntent: true,
     );
 
-    final NotificationDetails platformDetails = NotificationDetails(
+    const NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
     );
 

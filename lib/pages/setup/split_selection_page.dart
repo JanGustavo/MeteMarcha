@@ -239,7 +239,7 @@ class SplitSelectionPage extends ConsumerWidget {
               // Footer Text
               Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -247,8 +247,8 @@ class SplitSelectionPage extends ConsumerWidget {
                         'Toque para ver os detalhes',
                         style: TextStyle(color: context.onSurface, fontSize: 13),
                       ),
-                      SizedBox(width: 4),
-                      Icon(Icons.star_rounded, size: 14, color: AppColors.primaryLight),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.star_rounded, size: 14, color: AppColors.primaryLight),
                     ],
                   ),
                 ),

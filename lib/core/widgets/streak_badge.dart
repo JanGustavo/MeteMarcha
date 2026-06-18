@@ -95,10 +95,10 @@ class _StreakBadgeState extends ConsumerState<StreakBadge>
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: hasStreak ? Colors.orange.withOpacity(0.08) : Colors.grey.withOpacity(0.05),
+          color: hasStreak ? Colors.orange.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: hasStreak ? Colors.orange.withOpacity(0.25) : Colors.grey.withOpacity(0.2),
+            color: hasStreak ? Colors.orange.withValues(alpha: 0.25) : Colors.grey.withValues(alpha: 0.2),
             width: 1.2,
           ),
         ),
@@ -132,10 +132,10 @@ class _StreakBadgeState extends ConsumerState<StreakBadge>
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: hasStreak ? Colors.orange.withOpacity(0.08) : Colors.grey.withOpacity(0.05),
+              color: hasStreak ? Colors.orange.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.05),
               shape: BoxShape.circle,
               border: Border.all(
-                color: hasStreak ? Colors.orange.withOpacity(0.25) : Colors.grey.withOpacity(0.2),
+                color: hasStreak ? Colors.orange.withValues(alpha: 0.25) : Colors.grey.withValues(alpha: 0.2),
                 width: 1.5,
               ),
             ),
@@ -156,7 +156,7 @@ class _StreakBadgeState extends ConsumerState<StreakBadge>
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
-                    color: context.onSurface.withOpacity(0.6),
+                    color: context.onSurface.withValues(alpha: 0.6),
                     letterSpacing: 1.2,
                   ),
                 ),

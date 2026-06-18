@@ -29,6 +29,7 @@ import '../../core/utils/decimal_input_formatter.dart';
 import 'widgets/plate_calculator_dialog.dart';
 import 'widgets/workout_music_panel.dart';
 import '../../core/services/health_connect_service.dart';
+import '../progress/workout_session_detail_page.dart';
 //import '../setup/widgets/setup_page.dart';
 
 // Registro local de uma série (exibição imediata, sem roundtrip)
@@ -72,6 +73,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   List<Exercise> _exercises = [];
   int _currentIndex = 0;
   bool _loading = true;
+  bool _hasOtherUncompleted = false;
 
   // ── Set tracking ────────────────────────────────────────────────
   int _currentSerie = 1;
@@ -189,6 +191,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     final exerciseSessionLogs =
         currentLogs.where((l) => l.exerciseId == ex.id).toList();
 
+    final completedIds = currentLogs.map((l) => l.exerciseId).toSet();
+    final hasOtherUncompleted = _exercises.asMap().entries.any((entry) =>
+        entry.key != _currentIndex && !completedIds.contains(entry.value.id));
+
     final isBodyWeight = ex.equipamento.trim().toLowerCase() == 'peso corporal';
 
     // Busca o peso do perfil diretamente do banco de dados (evita race conditions com providers reativos em carregamento)
@@ -196,6 +202,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     final userWeight = profile?.pesoAtual ?? 70.0;
 
     setState(() {
+      _hasOtherUncompleted = hasOtherUncompleted;
       _max1RM = prevMax1RM;
       _prevLogs = prev;
       final numUniqueSeries = exerciseSessionLogs.map((l) => l.serie).toSet().length;
@@ -357,7 +364,46 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   // ── Convenience getters ─────────────────────────────────────────
 
   Exercise get _current => _exercises[_currentIndex];
-  bool get _isLast => _currentIndex >= _exercises.length - 1;
+  bool get _isLast => !_hasOtherUncompleted;
+
+  double _getWeightStep() {
+    if (_exercises.isEmpty) return 0.5;
+    final ex = _current;
+    final equip = (_equipamentoSelecionado ?? ex.equipamento).trim().toLowerCase();
+    final muscle = ex.grupoMuscular.trim().toLowerCase();
+    final isUnilateral = _executandoUnilateral;
+
+    final isLegs = muscle.contains('perna') ||
+                   muscle.contains('coxa') ||
+                   muscle.contains('gluteo') ||
+                   muscle.contains('quadriceps') ||
+                   muscle.contains('isquiotibiais') ||
+                   muscle.contains('panturrilha') ||
+                   muscle.contains('leg');
+
+    final isLargeUpper = muscle.contains('costas') ||
+                         muscle.contains('dorsal') ||
+                         muscle.contains('back') ||
+                         muscle.contains('peito') ||
+                         muscle.contains('peitorais') ||
+                         muscle.contains('chest');
+
+    if (equip.contains('máquina') || equip.contains('maquina') || equip.contains('cabo') || equip.contains('smith') || equip.contains('polia')) {
+      if (isLegs) {
+        return 10.0;
+      } else {
+        return 5.0;
+      }
+    }
+
+    if (isLegs) {
+      return isUnilateral ? 5.0 : 10.0;
+    } else if (isLargeUpper) {
+      return isUnilateral ? 2.0 : 5.0;
+    } else {
+      return isUnilateral ? 1.0 : 2.0;
+    }
+  }
 
   // ── Actions ─────────────────────────────────────────────────────
 
@@ -764,7 +810,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                           ctrl: c.pesoCtrl,
                           label: 'Peso (kg)',
                           decimal: true,
-                          step: 0.5,
+                          step: _getWeightStep(),
                         ),
                         const SizedBox(height: 12),
                         _NumberField(
@@ -911,10 +957,27 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     if (_isLast) {
       await _confirmarFinalizarTreino();
     } else {
-      setState(() {
-        _currentIndex++;
-      });
-      await _loadExerciseContext();
+      final logDao = ref.read(logDaoProvider);
+      final currentLogs = await logDao.getLogsForSession(widget.sessionId);
+      final completedIds = currentLogs.map((l) => l.exerciseId).toSet();
+
+      int nextUncompletedIndex = -1;
+      for (int step = 1; step < _exercises.length; step++) {
+        final idx = (_currentIndex + step) % _exercises.length;
+        if (!completedIds.contains(_exercises[idx].id)) {
+          nextUncompletedIndex = idx;
+          break;
+        }
+      }
+
+      if (nextUncompletedIndex != -1) {
+        setState(() {
+          _currentIndex = nextUncompletedIndex;
+        });
+        await _loadExerciseContext();
+      } else {
+        await _confirmarFinalizarTreino();
+      }
     }
   }
 
@@ -1147,11 +1210,22 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
 
     AudioService().workoutDone();
 
+    WorkoutSession? completedSession;
+    try {
+      final db = ref.read(databaseProvider);
+      completedSession = await (db.select(db.workoutSessions)
+            ..where((s) => s.id.equals(widget.sessionId)))
+          .getSingleOrNull();
+    } catch (e) {
+      debugPrint('Erro ao recuperar sessao finalizada: $e');
+    }
+
     if (!mounted) return;
     _showFinishDialog(
       totalVolume: totalVolume,
       uniqueExercises: uniqueExercisesCount,
       totalSets: totalSetsCount,
+      completedSession: completedSession,
     );
   }
 
@@ -1159,6 +1233,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     required double totalVolume,
     required int uniqueExercises,
     required int totalSets,
+    required WorkoutSession? completedSession,
   }) {
     final isDark = context.isDark;
     showGeneralDialog(
@@ -1358,6 +1433,47 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // Ver Resumo Button
+                    if (completedSession != null) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).popUntil((route) => route.isFirst);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => WorkoutSessionDetailPage(session: completedSession),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.analytics_rounded, size: 18, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text(
+                                'VER RESUMO',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  letterSpacing: 1,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     
                     // Voltar
                     SizedBox(
@@ -1847,6 +1963,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                     pesoCtrl: _pesoCtrl,
                     repsCtrl: _repsCtrl,
                     obsCtrl: _obsCtrl,
+                    pesoStep: _getWeightStep(),
                     onOpenCalculator: _showPlateCalculator,
                   ),
 
@@ -2303,6 +2420,7 @@ class _InputRow extends StatelessWidget {
   final TextEditingController pesoCtrl;
   final TextEditingController repsCtrl;
   final TextEditingController obsCtrl;
+  final double pesoStep;
   final VoidCallback? onOpenCalculator;
 
   const _InputRow({
@@ -2310,6 +2428,7 @@ class _InputRow extends StatelessWidget {
     required this.pesoCtrl,
     required this.repsCtrl,
     required this.obsCtrl,
+    required this.pesoStep,
     this.onOpenCalculator,
   });
 
@@ -2353,7 +2472,7 @@ class _InputRow extends StatelessWidget {
                 ctrl: pesoCtrl,
                 label: 'Peso (kg)',
                 decimal: true,
-                step: 0.5,
+                step: pesoStep,
               ),
             ),
             const SizedBox(width: 12),
@@ -2446,18 +2565,36 @@ class _NumberField extends StatefulWidget {
 
 class _NumberFieldState extends State<_NumberField> {
   double _value = 0.0;
+  late FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
     _parseValue();
     widget.ctrl.addListener(_onTextChanged);
   }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
     widget.ctrl.removeListener(_onTextChanged);
     super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (_focusNode.hasFocus) {
+      final text = widget.ctrl.text.trim();
+      if (text == '0' || text == '0.0' || text == '0,' || text == '0.00') {
+        widget.ctrl.clear();
+      }
+    } else {
+      if (widget.ctrl.text.trim().isEmpty) {
+        widget.ctrl.text = '0';
+      }
+    }
   }
 
   void _onTextChanged() {
@@ -2507,6 +2644,7 @@ class _NumberFieldState extends State<_NumberField> {
         Expanded(
           child: TextField(
             controller: widget.ctrl,
+            focusNode: _focusNode,
             textAlign: TextAlign.center,
             keyboardType:
                 TextInputType.numberWithOptions(decimal: widget.decimal),
