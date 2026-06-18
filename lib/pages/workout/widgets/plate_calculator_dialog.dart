@@ -74,11 +74,11 @@ class _PlateCalculatorDialogState extends State<PlateCalculatorDialog> {
     return AlertDialog(
       backgroundColor: context.cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Row(
+      title: const Row(
         children: [
-          const Icon(Icons.calculate_rounded, color: AppColors.primaryLight),
-          const SizedBox(width: 10),
-          const Text(
+          Icon(Icons.calculate_rounded, color: AppColors.primaryLight),
+          SizedBox(width: 10),
+          Text(
             'Calculadora de Anilhas',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
@@ -171,7 +171,7 @@ class _PlateCalculatorDialogState extends State<PlateCalculatorDialog> {
                   children: [
                     Text(
                       'CADA LADO RECEBE',
-                      style: TextStyle(fontSize: 10, color: context.onSurface.withOpacity(0.8), letterSpacing: 1.5),
+                      style: TextStyle(fontSize: 10, color: context.onSurface.withValues(alpha: 0.8), letterSpacing: 1.5),
                     ),
                     const SizedBox(height: 4),
                     Text(

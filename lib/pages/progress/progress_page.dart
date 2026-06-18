@@ -2649,7 +2649,7 @@ class _RelativeStrengthCard extends StatelessWidget {
                                 style: TextStyle(fontSize: 10, color: subtextColor),
                               ),
                               Text(
-                                '${overallScore.toStringAsFixed(2)}',
+                                overallScore.toStringAsFixed(2),
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -2988,7 +2988,7 @@ class _BodyMeasurementsTabState extends ConsumerState<_BodyMeasurementsTab> {
                     await dao.insertMeasurement(entry);
                     
                     if (entry.peso.value != null) {
-                      final date = DateTime.tryParse(entry.data.value ?? '') ?? DateTime.now();
+                      final date = DateTime.tryParse(entry.data.value) ?? DateTime.now();
                       await HealthConnectService.instance.syncBodyMeasurement(
                         weightKg: entry.peso.value!,
                         bodyFatPercent: entry.gorduraPercentual.value,

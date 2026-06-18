@@ -56,18 +56,18 @@ class RestTimerNotifier extends StateNotifier<RestTimerState> with WidgetsBindin
   bool _isMinimized = false;
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
-    _isMinimized = lifecycleState == AppLifecycleState.paused ||
-        lifecycleState == AppLifecycleState.inactive;
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isMinimized = state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive;
 
-    if (lifecycleState == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed) {
       NotificationService().cancelNotification();
-      if (state.isActive) {
+      if (super.state.isActive) {
         _updateRemainingTime();
       }
-    } else if (_isMinimized && state.isActive) {
-      NotificationService().showRestTimer(state.remainingSeconds);
-      NotificationService().scheduleRestEndedNotification(state.remainingSeconds);
+    } else if (_isMinimized && super.state.isActive) {
+      NotificationService().showRestTimer(super.state.remainingSeconds);
+      NotificationService().scheduleRestEndedNotification(super.state.remainingSeconds);
     }
   }
 

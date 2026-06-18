@@ -71,8 +71,8 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Icon(Icons.music_note_rounded, color: AppColors.primaryLight),
                     SizedBox(width: 8),
                     Text(
@@ -106,7 +106,7 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                     child: Container(
                       width: 48,
                       height: 48,
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       child: musicState.isLoading
                           ? const Padding(
                               padding: EdgeInsets.all(12.0),
@@ -194,7 +194,7 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary.withOpacity(0.1) : context.surfaceColor,
+                          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : context.surfaceColor,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: isSelected ? AppColors.primary : context.divider,

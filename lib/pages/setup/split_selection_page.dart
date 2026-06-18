@@ -779,6 +779,7 @@ class SplitSelectionPage extends ConsumerWidget {
                                         errorMessage = '';
                                       });
 
+                                      if (!context.mounted) return;
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
                                           content: Text('Treino formatado com sucesso! ✓'),

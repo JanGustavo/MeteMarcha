@@ -5,7 +5,7 @@
 //
 // O arquivo app_database.g.dart é gerado automaticamente.
 
-import 'dart:typed_data';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
@@ -916,7 +916,7 @@ class ProfileDao {
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
-  AppDatabase.forTesting(QueryExecutor e) : super(e);
+  AppDatabase.forTesting(super.e);
 
   late final ProfileDao profileDao = ProfileDao(this);
 

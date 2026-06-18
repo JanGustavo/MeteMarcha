@@ -2552,7 +2552,6 @@ class _NumberField extends StatefulWidget {
   final double step;
 
   const _NumberField({
-    super.key,
     required this.ctrl,
     required this.label,
     this.decimal = false,
