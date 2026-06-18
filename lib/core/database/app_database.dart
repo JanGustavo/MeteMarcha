@@ -921,7 +921,7 @@ class AppDatabase extends _$AppDatabase {
   late final ProfileDao profileDao = ProfileDao(this);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1004,24 +1004,36 @@ class AppDatabase extends _$AppDatabase {
             if (from < 11) {
               await m.createTable(bodyMeasurements);
             }
+            if (from < 12) {
+              // Migra exercícios existentes de 'Perna' para os novos subgrupos específicos de forma inteligente
+              await customStatement(
+                "UPDATE exercises SET grupo_muscular = 'Quadríceps' WHERE grupo_muscular = 'Perna' AND nome IN ('Agachamento Livre', 'Leg Press', 'Cadeira Extensora');"
+              );
+              await customStatement(
+                "UPDATE exercises SET grupo_muscular = 'Posterior' WHERE grupo_muscular = 'Perna' AND nome IN ('Mesa Flexora');"
+              );
+              await customStatement(
+                "UPDATE exercises SET grupo_muscular = 'Panturrilha' WHERE grupo_muscular = 'Perna' AND nome IN ('Gêmeos Sentado');"
+              );
+              // Correspondência inteligente para exercícios customizados criados pelo usuário
+              await customStatement(
+                "UPDATE exercises SET grupo_muscular = 'Panturrilha' WHERE grupo_muscular = 'Perna' AND (nome LIKE '%panturrilha%' OR nome LIKE '%gêmeos%' OR nome LIKE '%gemeos%' OR nome LIKE '%calf%');"
+              );
+              await customStatement(
+                "UPDATE exercises SET grupo_muscular = 'Posterior' WHERE grupo_muscular = 'Perna' AND (nome LIKE '%flexor%' OR nome LIKE '%stiff%' OR nome LIKE '%posterior%' OR nome LIKE '%hamstring%' OR nome LIKE '%terra%');"
+              );
+              await customStatement(
+                "UPDATE exercises SET grupo_muscular = 'Glúteo' WHERE grupo_muscular = 'Perna' AND (nome LIKE '%gluteo%' OR nome LIKE '%glúteo%' OR nome LIKE '%pélvica%' OR nome LIKE '%pelvica%' OR nome LIKE '%elevação%' OR nome LIKE '%elevacao%');"
+              );
+              // Fallback para os restantes
+              await customStatement(
+                "UPDATE exercises SET grupo_muscular = 'Quadríceps' WHERE grupo_muscular = 'Perna';"
+              );
+            }
           }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON;');
-
-          // Migra exercícios existentes de 'Perna' para os novos subgrupos específicos
-          await customStatement(
-            "UPDATE exercises SET grupo_muscular = 'Quadríceps' WHERE grupo_muscular = 'Perna' AND nome IN ('Agachamento Livre', 'Leg Press', 'Cadeira Extensora');"
-          );
-          await customStatement(
-            "UPDATE exercises SET grupo_muscular = 'Posterior' WHERE grupo_muscular = 'Perna' AND nome IN ('Mesa Flexora');"
-          );
-          await customStatement(
-            "UPDATE exercises SET grupo_muscular = 'Panturrilha' WHERE grupo_muscular = 'Perna' AND nome IN ('Gêmeos Sentado');"
-          );
-          await customStatement(
-            "UPDATE exercises SET grupo_muscular = 'Quadríceps' WHERE grupo_muscular = 'Perna';"
-          );
 
           final allExs = await select(exercises).get();
           if (allExs.isEmpty) {

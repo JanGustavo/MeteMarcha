@@ -19,10 +19,10 @@ class HealthConnectService {
   ];
 
   static final List<HealthDataAccess> _permissions = [
-    HealthDataAccess.READ_WRITE,
-    HealthDataAccess.READ_WRITE,
-    HealthDataAccess.READ_WRITE,
-    HealthDataAccess.READ_WRITE,
+    HealthDataAccess.WRITE,
+    HealthDataAccess.WRITE,
+    HealthDataAccess.WRITE,
+    HealthDataAccess.WRITE,
   ];
 
   /// Checks if Health Connect integration is enabled in settings.
@@ -99,8 +99,8 @@ class HealthConnectService {
       // Write BMI if present
       if (bmi != null && bmi > 0) {
         try {
-          final hasBmiPermission = await _health.hasPermissions([HealthDataType.BODY_MASS_INDEX], permissions: [HealthDataAccess.READ_WRITE]);
-          if (hasBmiPermission == true || await _health.requestAuthorization([HealthDataType.BODY_MASS_INDEX], permissions: [HealthDataAccess.READ_WRITE])) {
+          final hasBmiPermission = await _health.hasPermissions([HealthDataType.BODY_MASS_INDEX], permissions: [HealthDataAccess.WRITE]);
+          if (hasBmiPermission == true || await _health.requestAuthorization([HealthDataType.BODY_MASS_INDEX], permissions: [HealthDataAccess.WRITE])) {
             success &= await _health.writeHealthData(
               value: bmi,
               type: HealthDataType.BODY_MASS_INDEX,
