@@ -67,13 +67,53 @@ class _SetupPageState extends ConsumerState<SetupPage>
   }
 }
 
-// \u2500\u2500\u2500 ABA DE GERENCIAMENTO DE EXERC\u00cdCIOS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-class _ExercisesSetupTab extends ConsumerWidget {
+class _ExercisesSetupTab extends ConsumerStatefulWidget {
   const _ExercisesSetupTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ExercisesSetupTab> createState() => _ExercisesSetupTabState();
+}
+
+class _ExercisesSetupTabState extends ConsumerState<_ExercisesSetupTab> {
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedMuscle = 'Todos';
+  String _selectedEquipment = 'Todos';
+
+  static const _muscleGroups = [
+    'Todos',
+    'Peito',
+    'Costas',
+    'Ombro',
+    'Tríceps',
+    'Bíceps',
+    'Quadríceps',
+    'Posterior',
+    'Panturrilha',
+    'Core',
+    'Glúteo'
+  ];
+
+  static const _equipments = [
+    'Todos',
+    'Livre',
+    'Barra',
+    'Haltere',
+    'Cabo',
+    'Máquina',
+    'Smith',
+    'Peso Corporal'
+  ];
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final exercisesAsync = ref.watch(allExercisesProvider);
 
     return Scaffold(
@@ -82,49 +122,147 @@ class _ExercisesSetupTab extends ConsumerWidget {
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: exercisesAsync.when(
-        data: (exercises) {
-          if (exercises.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Nenhum exerc\u00edcio cadastrado.',
-                    style: TextStyle(color: context.onSurface),
+      body: Column(
+        children: [
+          // Painel de Busca e Filtros
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: context.surfaceColor,
+              border: Border(bottom: BorderSide(color: context.divider)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Campo de Busca
+                TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar exercício por nome ou dica...',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddExerciseSheet(context, ref),
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text('CRIAR MEU PRIMEIRO EXERC\u00cdCIO'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
+                ),
+                const SizedBox(height: 10),
+
+                // Filtro de Músculo
+                const Text(
+                  'GRUPO MUSCULAR',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                ),
+                const SizedBox(height: 4),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _muscleGroups.map((muscle) {
+                      final isSelected = _selectedMuscle == muscle;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(muscle, style: const TextStyle(fontSize: 11)),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _selectedMuscle = muscle;
+                              });
+                            }
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Filtro de Equipamento
+                const Text(
+                  'EQUIPAMENTO',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                ),
+                const SizedBox(height: 4),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _equipments.map((eq) {
+                      final isSelected = _selectedEquipment == eq;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(eq, style: const TextStyle(fontSize: 11)),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _selectedEquipment = eq;
+                              });
+                            }
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Lista de Exercícios Filtrada
+          Expanded(
+            child: exercisesAsync.when(
+              data: (exercises) {
+                // Filtrar localmente na memória
+                final query = _searchController.text.trim().toLowerCase();
+                final filtered = exercises.where((ex) {
+                  final matchesQuery = query.isEmpty ||
+                      ex.nome.toLowerCase().contains(query) ||
+                      (ex.observacoes?.toLowerCase().contains(query) ?? false);
+                  final matchesMuscle = _selectedMuscle == 'Todos' ||
+                      ex.grupoMuscular == _selectedMuscle;
+                  final matchesEquip = _selectedEquipment == 'Todos' ||
+                      ex.equipamento == _selectedEquipment;
+                  return matchesQuery && matchesMuscle && matchesEquip;
+                }).toList();
+
+                if (filtered.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Text(
+                        exercises.isEmpty 
+                          ? 'Nenhum exercício cadastrado.'
+                          : 'Nenhum exercício encontrado para os filtros selecionados.',
+                        style: TextStyle(color: context.onSurface),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
+                  );
+                }
 
-          // Agrupa por grupo muscular
-          final grouped = <String, List<Exercise>>{};
-          for (final ex in exercises) {
-            grouped.putIfAbsent(ex.grupoMuscular, () => []).add(ex);
-          }
+                // Agrupa por grupo muscular
+                final grouped = <String, List<Exercise>>{};
+                for (final ex in filtered) {
+                  grouped.putIfAbsent(ex.grupoMuscular, () => []).add(ex);
+                }
 
-          final groups = grouped.keys.toList()..sort();
+                final groups = grouped.keys.toList()..sort();
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-            itemCount: groups.length,
-            itemBuilder: (_, index) {
-              final group = groups[index];
-              final list = grouped[group]!;
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                  itemCount: groups.length,
+                  itemBuilder: (_, index) {
+                    final group = groups[index];
+                    final list = grouped[group]!;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,6 +356,9 @@ class _ExercisesSetupTab extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Erro: $e')),
       ),
+    ),
+  ],
+),
     );
   }
 
@@ -797,89 +938,232 @@ class _RoutineExercisesListState extends ConsumerState<_RoutineExercisesList> {
     );
   }
 
-  void _addExerciseToDay(BuildContext context) async {
-    final allExs = await ref.read(exerciseDaoProvider).getAll();
-    final linkedIds = _exercises.map((e) => e.id).toSet();
-    final unlinked = allExs.where((e) => !linkedIds.contains(e.id)).toList();
-
-    if (!context.mounted) return;
-
+  void _addExerciseToDay(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => _LinkExerciseDialog(
+        day: widget.day,
+        currentExercises: _exercises,
+        onLinked: () {
+          _load();
+        },
+        onCreateAndLink: () {
+          _showCreateAndLinkSheet(context);
+        },
+      ),
+    );
+  }
+}
+
+class _LinkExerciseDialog extends ConsumerStatefulWidget {
+  final WorkoutDay day;
+  final List<Exercise> currentExercises;
+  final VoidCallback onLinked;
+  final VoidCallback onCreateAndLink;
+
+  const _LinkExerciseDialog({
+    required this.day,
+    required this.currentExercises,
+    required this.onLinked,
+    required this.onCreateAndLink,
+  });
+
+  @override
+  ConsumerState<_LinkExerciseDialog> createState() => _LinkExerciseDialogState();
+}
+
+class _LinkExerciseDialogState extends ConsumerState<_LinkExerciseDialog> {
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedMuscle = 'Todos';
+  List<Exercise> _allExercises = [];
+  bool _loading = true;
+
+  static const _muscleGroups = [
+    'Todos',
+    'Peito',
+    'Costas',
+    'Ombro',
+    'Tríceps',
+    'Bíceps',
+    'Quadríceps',
+    'Posterior',
+    'Panturrilha',
+    'Core',
+    'Glúteo'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final all = await ref.read(exerciseDaoProvider).getAll();
+    if (mounted) {
+      setState(() {
+        _allExercises = all;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return AlertDialog(
         backgroundColor: context.cardColor,
-        title: const Text('Vincular Exerc\u00edcio'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (unlinked.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Text(
-                    'Todos os exerc\u00edcios cadastrados j\u00e1 fazem parte deste dia de treino.',
-                    style: TextStyle(color: context.onSurface),
-                    textAlign: TextAlign.center,
-                  ),
-                )
-              else
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: unlinked.length,
-                    itemBuilder: (_, index) {
-                      final ex = unlinked[index];
-                      return ListTile(
-                        title: Text(ex.nome,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(
-                            '${ex.grupoMuscular} \u00b7 ${ex.equipamento}${ex.volume != null && ex.volume!.isNotEmpty ? ' \u00b7 ${ex.volume}' : ''}'),
-                        trailing: ex.link != null
-                            ? const Icon(Icons.play_circle_fill_rounded,
-                                color: AppColors.warning, size: 20)
-                            : null,
-                        onTap: () async {
-                          await ref.read(exerciseDaoProvider).linkExerciseToDay(
-                                WorkoutDayExercisesCompanion.insert(
-                                  dayId: widget.day.id,
-                                  exerciseId: ex.id,
-                                  ordem: _exercises.length,
-                                ),
-                              );
-                          ref.invalidate(activeSplitDaysProvider);
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          _load();
+        content: const SizedBox(
+          height: 100,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final linkedIds = widget.currentExercises.map((e) => e.id).toSet();
+    final unlinked = _allExercises.where((e) => !linkedIds.contains(e.id)).toList();
+
+    // Filtragem local
+    final query = _searchController.text.trim().toLowerCase();
+    final filtered = unlinked.where((ex) {
+      final matchesQuery = query.isEmpty ||
+          ex.nome.toLowerCase().contains(query) ||
+          (ex.observacoes?.toLowerCase().contains(query) ?? false);
+      final matchesMuscle = _selectedMuscle == 'Todos' || ex.grupoMuscular == _selectedMuscle;
+      return matchesQuery && matchesMuscle;
+    }).toList();
+
+    return AlertDialog(
+      backgroundColor: context.cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Vincular Exercício'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Campo de busca
+            TextField(
+              controller: _searchController,
+              onChanged: (val) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: 'Buscar exercício...',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {});
                         },
-                      );
-                    },
-                  ),
-                ),
-              Divider(color: context.divider),
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _showCreateAndLinkSheet(context);
-                },
-                icon: const Icon(Icons.add, color: AppColors.primaryLight),
-                label: const Text(
-                  'CRIAR NOVO E VINCULAR',
-                  style: TextStyle(
-                      color: AppColors.primaryLight,
-                      fontWeight: FontWeight.bold),
+                      )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Chips de grupo muscular
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _muscleGroups.map((muscle) {
+                  final isSelected = _selectedMuscle == muscle;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(muscle, style: const TextStyle(fontSize: 10)),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedMuscle = muscle;
+                          });
+                        }
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Divider(),
+
+            // Lista filtrada
+            Flexible(
+              child: filtered.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Text(
+                        unlinked.isEmpty
+                            ? 'Todos os exercícios cadastrados já fazem parte deste dia de treino.'
+                            : 'Nenhum exercício encontrado para os filtros selecionados.',
+                        style: TextStyle(color: context.onSurface),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: filtered.length,
+                      itemBuilder: (_, index) {
+                        final ex = filtered[index];
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                          title: Text(ex.nome,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          subtitle: Text(
+                            '${ex.grupoMuscular} · ${ex.equipamento}${ex.volume != null && ex.volume!.isNotEmpty ? ' · ${ex.volume}' : ''}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          trailing: ex.link != null
+                              ? const Icon(Icons.play_circle_fill_rounded,
+                                  color: AppColors.warning, size: 18)
+                              : null,
+                          onTap: () async {
+                            await ref.read(exerciseDaoProvider).linkExerciseToDay(
+                                  WorkoutDayExercisesCompanion.insert(
+                                    dayId: widget.day.id,
+                                    exerciseId: ex.id,
+                                    ordem: widget.currentExercises.length,
+                                  ),
+                                );
+                            widget.onLinked();
+                            if (context.mounted) Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+            ),
+            const Divider(),
+            TextButton.icon(
+              onPressed: () {
+                widget.onCreateAndLink();
+              },
+              icon: const Icon(Icons.add, color: AppColors.primaryLight, size: 16),
+              label: const Text(
+                'CRIAR NOVO E VINCULAR',
+                style: TextStyle(
+                  color: AppColors.primaryLight,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Fechar'),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Fechar'),
+        ),
+      ],
     );
   }
 }

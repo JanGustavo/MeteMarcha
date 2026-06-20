@@ -1,56 +1,69 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 class ForegroundTaskService {
   static void init() {
-    FlutterForegroundTask.init(
-      androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'active_workout_channel',
-        channelName: 'Treino Ativo',
-        channelDescription: 'Mantém o treino ativo e o cronômetro funcionando em segundo plano',
-        channelImportance: NotificationChannelImportance.LOW,
-        priority: NotificationPriority.LOW,
-        onlyAlertOnce: true,
-      ),
-      iosNotificationOptions: const IOSNotificationOptions(
-        showNotification: true,
-        playSound: false,
-      ),
-      foregroundTaskOptions: ForegroundTaskOptions(
-        eventAction: ForegroundTaskEventAction.repeat(5000),
-        autoRunOnBoot: false,
-        allowWakeLock: true,
-      ),
-    );
+    if (kIsWeb) return;
+    try {
+      FlutterForegroundTask.init(
+        androidNotificationOptions: AndroidNotificationOptions(
+          channelId: 'active_workout_channel',
+          channelName: 'Treino Ativo',
+          channelDescription: 'Mantém o treino ativo e o cronômetro funcionando em segundo plano',
+          channelImportance: NotificationChannelImportance.LOW,
+          priority: NotificationPriority.LOW,
+          onlyAlertOnce: true,
+        ),
+        iosNotificationOptions: const IOSNotificationOptions(
+          showNotification: true,
+          playSound: false,
+        ),
+        foregroundTaskOptions: ForegroundTaskOptions(
+          eventAction: ForegroundTaskEventAction.repeat(5000),
+          autoRunOnBoot: false,
+          allowWakeLock: true,
+        ),
+      );
+    } catch (_) {}
   }
 
   static Future<void> start(String title, String body) async {
-    if (await FlutterForegroundTask.isRunningService) {
-      await FlutterForegroundTask.updateService(
+    if (kIsWeb) return;
+    try {
+      if (await FlutterForegroundTask.isRunningService) {
+        await FlutterForegroundTask.updateService(
+          notificationTitle: title,
+          notificationText: body,
+        );
+        return;
+      }
+      await FlutterForegroundTask.startService(
         notificationTitle: title,
         notificationText: body,
+        callback: startCallback,
       );
-      return;
-    }
-    await FlutterForegroundTask.startService(
-      notificationTitle: title,
-      notificationText: body,
-      callback: startCallback,
-    );
+    } catch (_) {}
   }
 
   static Future<void> update(String title, String body) async {
-    if (await FlutterForegroundTask.isRunningService) {
-      await FlutterForegroundTask.updateService(
-        notificationTitle: title,
-        notificationText: body,
-      );
-    }
+    if (kIsWeb) return;
+    try {
+      if (await FlutterForegroundTask.isRunningService) {
+        await FlutterForegroundTask.updateService(
+          notificationTitle: title,
+          notificationText: body,
+        );
+      }
+    } catch (_) {}
   }
 
   static Future<void> stop() async {
-    if (await FlutterForegroundTask.isRunningService) {
-      await FlutterForegroundTask.stopService();
-    }
+    if (kIsWeb) return;
+    try {
+      if (await FlutterForegroundTask.isRunningService) {
+        await FlutterForegroundTask.stopService();
+      }
+    } catch (_) {}
   }
 }
 

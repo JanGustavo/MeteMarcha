@@ -3,6 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:web/web.dart' as web;
+
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -120,6 +128,124 @@ class _TreinoTab extends ConsumerWidget {
     );
   }
 
+  Future<void> _exportSplit(BuildContext context, WidgetRef ref, WorkoutSplit split) async {
+    try {
+      final splitJson = await ref.read(workoutDaoProvider).exportWorkoutSplit(split.id);
+      final jsonStr = jsonEncode(splitJson);
+      final displayName = split.nome.isNotEmpty ? split.nome : split.tipo;
+      final fileName = '${displayName.replaceAll(RegExp(r'[^\w\s\-]'), '').replaceAll(' ', '_')}.json';
+
+      if (kIsWeb) {
+        // Na Web, fazemos o download direto do arquivo JSON no navegador
+        final bytes = utf8.encode(jsonStr);
+        final base64Str = base64Encode(bytes);
+        final dataUri = 'data:application/json;base64,$base64Str';
+
+        final anchor = web.HTMLAnchorElement()
+          ..href = dataUri
+          ..download = fileName;
+        anchor.click();
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Download do treino concluído!')),
+          );
+        }
+        return;
+      }
+
+      // No Celular, usamos o compartilhamento nativo do sistema
+      final tempDir = await getTemporaryDirectory();
+      final file = await File('${tempDir.path}/$fileName').writeAsString(jsonStr);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'Fiz a exportação do meu treino "$displayName" do app MeteMarcha!',
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao exportar treino: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _importSplit(BuildContext context, WidgetRef ref) async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.any,
+        withData: kIsWeb,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      String jsonContent;
+      if (kIsWeb) {
+        if (file.bytes == null) return;
+        jsonContent = utf8.decode(file.bytes!);
+      } else {
+        if (file.path == null) return;
+        jsonContent = await File(file.path!).readAsString();
+      }
+
+      final data = jsonDecode(jsonContent) as Map<String, dynamic>;
+
+      // Validação básica do formato
+      if (data['version'] == null || data['nome'] == null || data['days'] == null) {
+        throw const FormatException('Arquivo de treino inválido ou incompatível.');
+      }
+
+      final workoutDao = ref.read(workoutDaoProvider);
+      final newSplitId = await workoutDao.importWorkoutSplit(data);
+
+      // Atualiza a UI
+      ref.invalidate(splitsProvider);
+
+      if (context.mounted) {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: context.cardColor,
+            title: const Text('Treino Importado!'),
+            content: Text('Deseja ativar a rotina "${data['nome']}" agora?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Não'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                child: const Text('Ativar'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm == true) {
+          await workoutDao.setActiveSplit(newSplitId);
+          ref.invalidate(activeSplitProvider);
+          ref.invalidate(activeSplitDaysProvider);
+        }
+
+        if (!context.mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Rotina de treino importada com sucesso!')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao importar treino: $e')),
+        );
+      }
+    }
+  }
+
   void _renameSplitDialog(BuildContext context, WidgetRef ref, WorkoutSplit split) {
     final controller = TextEditingController(text: split.nome.isNotEmpty ? split.nome : split.tipo);
     showDialog(
@@ -194,6 +320,14 @@ class _TreinoTab extends ConsumerWidget {
                 onTap: () {
                   Navigator.pop(ctx);
                   _renameSplitDialog(context, ref, split);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share_rounded, color: AppColors.primaryLight),
+                title: const Text('Compartilhar Treino'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _exportSplit(context, ref, split);
                 },
               ),
               ListTile(
@@ -360,6 +494,14 @@ class _TreinoTab extends ConsumerWidget {
                                 ),
                               );
                             },
+                          ),
+                          ActionChip(
+                            avatar: const Icon(Icons.download_rounded, size: 16, color: AppColors.primaryLight),
+                            label: const Text(
+                              'IMPORTAR',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () => _importSplit(context, ref),
                           ),
                         ],
                       );

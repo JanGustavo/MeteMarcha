@@ -686,6 +686,118 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
       }
     }
   }
+
+  // ── Import / Export Rotina (JSON) ──────────────────────────────
+
+  Future<Map<String, dynamic>> exportWorkoutSplit(int splitId) async {
+    final split = await (select(workoutSplits)..where((s) => s.id.equals(splitId))).getSingle();
+    final days = await (select(workoutDays)
+          ..where((d) => d.splitId.equals(splitId))
+          ..orderBy([(d) => OrderingTerm.asc(d.letra)]))
+        .get();
+
+    final daysJson = <Map<String, dynamic>>[];
+    for (final day in days) {
+      final dayExs = await db.exerciseDao.getExercisesForDay(day.id);
+      final listExsJson = <Map<String, dynamic>>[];
+      for (final ex in dayExs) {
+        listExsJson.add({
+          'nome': ex.nome,
+          'grupoMuscular': ex.grupoMuscular,
+          'link': ex.link,
+          'isUnilateral': ex.isUnilateral,
+          'equipamento': ex.equipamento,
+          'tempoDescansoSegundos': ex.tempoDescansoSegundos,
+          'volume': ex.volume,
+          'observacoes': ex.observacoes,
+        });
+      }
+      daysJson.add({
+        'letra': day.letra,
+        'nome': day.nome,
+        'exercises': listExsJson,
+      });
+    }
+
+    return {
+      'version': 1,
+      'nome': split.nome,
+      'tipo': split.tipo,
+      'days': daysJson,
+    };
+  }
+
+  Future<int> importWorkoutSplit(Map<String, dynamic> data) async {
+    return await transaction(() async {
+      final nome = data['nome'] ?? 'Treino Importado';
+      final tipo = data['tipo'] ?? 'CUSTOM';
+
+      // Criar o split desativado
+      final splitId = await into(workoutSplits).insert(
+        WorkoutSplitsCompanion.insert(
+          nome: nome,
+          tipo: tipo,
+          ativo: const Value(false),
+        ),
+      );
+
+      final days = data['days'] as List<dynamic>? ?? [];
+      for (final dayData in days) {
+        final letra = dayData['letra'] ?? 'A';
+        final nomeDia = dayData['nome'] ?? 'Treino';
+
+        final dayId = await into(workoutDays).insert(
+          WorkoutDaysCompanion.insert(
+            splitId: splitId,
+            letra: letra,
+            nome: nomeDia,
+          ),
+        );
+
+        final exercises = dayData['exercises'] as List<dynamic>? ?? [];
+        for (var i = 0; i < exercises.length; i++) {
+          final exData = exercises[i];
+          final exNome = exData['nome'] ?? '';
+          if (exNome.isEmpty) continue;
+
+          // Verificar se o exercício já existe pelo nome exato (case insensitive)
+          var existingEx = await (select(db.exercises)
+                ..where((e) => e.nome.collate(Collate.noCase).equals(exNome))
+                ..limit(1))
+              .getSingleOrNull();
+
+          int exId;
+          if (existingEx != null) {
+            exId = existingEx.id;
+          } else {
+            exId = await into(db.exercises).insert(
+              ExercisesCompanion.insert(
+                nome: exNome,
+                grupoMuscular: exData['grupoMuscular'] ?? 'Geral',
+                link: Value(exData['link']),
+                isUnilateral: Value(exData['isUnilateral'] ?? false),
+                equipamento: Value(exData['equipamento'] ?? 'Livre'),
+                tempoDescansoSegundos: Value(exData['tempoDescansoSegundos'] ?? 90),
+                volume: Value(exData['volume']),
+                observacoes: Value(exData['observacoes']),
+              ),
+            );
+          }
+
+          // Vincular o exercício ao dia de treino
+          await into(workoutDayExercises).insert(
+            WorkoutDayExercisesCompanion.insert(
+              dayId: dayId,
+              exerciseId: exId,
+              ordem: i,
+            ),
+          );
+        }
+      }
+
+      return splitId;
+    });
+  }
 }
 
 @DriftAccessor(tables: [ExerciseLogs, WorkoutSessions])

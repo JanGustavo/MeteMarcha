@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 import '../../main.dart';
 import '../providers/providers.dart';
@@ -6,15 +7,18 @@ import 'notification_service.dart';
 
 class DeepLinkService {
   static void init() {
-    // Escuta cliques enquanto o app está rodando
-    HomeWidget.widgetClicked.listen((Uri? uri) {
-      _handleUri(uri);
-    });
+    if (kIsWeb) return;
+    try {
+      // Escuta cliques enquanto o app está rodando
+      HomeWidget.widgetClicked.listen((Uri? uri) {
+        _handleUri(uri);
+      });
 
-    // Checa se o app foi aberto via clique no widget
-    HomeWidget.initiallyLaunchedFromHomeWidget().then((Uri? uri) {
-      _handleUri(uri);
-    });
+      // Checa se o app foi aberto via clique no widget
+      HomeWidget.initiallyLaunchedFromHomeWidget().then((Uri? uri) {
+        _handleUri(uri);
+      });
+    } catch (_) {}
   }
 
   static void _handleUri(Uri? uri) {

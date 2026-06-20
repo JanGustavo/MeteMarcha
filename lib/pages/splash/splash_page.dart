@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:math';
 import '../../core/theme/app_theme.dart';
 import '../home/home_page.dart';
@@ -167,7 +168,7 @@ class SplashPage extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          HapticFeedback.vibrate();
+                          if (!kIsWeb) HapticFeedback.vibrate();
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute(builder: (_) => const HomePage()),
                           );
@@ -266,7 +267,7 @@ class _MeteMarchaShakeWidgetState extends State<_MeteMarchaShakeWidget>
       final val = _controller.value;
       if (val < 0.23) {
         if (!_hasVibrated) {
-          HapticFeedback.vibrate();
+          if (!kIsWeb) HapticFeedback.vibrate();
           _hasVibrated = true;
         }
       } else {
