@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:web/web.dart' as web;
+import '../../core/utils/file_saver.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
@@ -137,14 +137,7 @@ class _TreinoTab extends ConsumerWidget {
 
       if (kIsWeb) {
         // Na Web, fazemos o download direto do arquivo JSON no navegador
-        final bytes = utf8.encode(jsonStr);
-        final base64Str = base64Encode(bytes);
-        final dataUri = 'data:application/json;base64,$base64Str';
-
-        final anchor = web.HTMLAnchorElement()
-          ..href = dataUri
-          ..download = fileName;
-        anchor.click();
+        saveFileWeb(jsonStr, fileName);
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
