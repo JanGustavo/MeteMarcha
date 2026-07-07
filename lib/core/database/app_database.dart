@@ -146,6 +146,12 @@ class ExerciseLogs extends Table {
 
   /// Observações adicionais sobre a série (ex: banco 80°, rest-pause, drop set)
   TextColumn get observacoes => text().nullable()();
+
+  /// Esforço percebido (1 a 10)
+  RealColumn get rpe => real().nullable()();
+
+  /// Repetições em reserva (0 a 5)
+  IntColumn get rir => integer().nullable()();
 }
 
 /// Perfil do usuário (única linha)
@@ -389,6 +395,13 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
 
   Future<WorkoutSession?> getActiveSession() =>
       (select(workoutSessions)..where((s) => s.status.equals('em_andamento'))..limit(1))
+          .getSingleOrNull();
+
+  Future<WorkoutSession?> getPreviousCompletedSession(int dayId, int currentSessionId) =>
+      (select(workoutSessions)
+            ..where((s) => s.dayId.equals(dayId) & s.status.equals('concluido') & s.id.equals(currentSessionId).not())
+            ..orderBy([(s) => OrderingTerm.desc(s.data)])
+            ..limit(1))
           .getSingleOrNull();
 
   Stream<WorkoutSession?> watchActiveSession() =>
@@ -873,12 +886,14 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
   Future<int> deleteLog(int logId) =>
       (delete(exerciseLogs)..where((l) => l.id.equals(logId))).go();
 
-  Future<int> updateLog(int logId, double peso, int reps, String? observacoes) =>
+  Future<int> updateLog(int logId, double peso, int reps, String? observacoes, {double? rpe, int? rir}) =>
       (update(exerciseLogs)..where((l) => l.id.equals(logId))).write(
         ExerciseLogsCompanion(
           peso: Value(peso),
           repeticoes: Value(reps),
           observacoes: Value(observacoes),
+          rpe: Value(rpe),
+          rir: Value(rir),
         ),
       );
 
@@ -1033,7 +1048,7 @@ class AppDatabase extends _$AppDatabase {
   late final ProfileDao profileDao = ProfileDao(this);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1141,6 +1156,10 @@ class AppDatabase extends _$AppDatabase {
               await customStatement(
                 "UPDATE exercises SET grupo_muscular = 'Quadríceps' WHERE grupo_muscular = 'Perna';"
               );
+            }
+            if (from < 13) {
+              await m.addColumn(exerciseLogs, exerciseLogs.rpe);
+              await m.addColumn(exerciseLogs, exerciseLogs.rir);
             }
           }
         },

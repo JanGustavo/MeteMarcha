@@ -9,13 +9,17 @@
 //   6. Na última: [Finalizar] → dialog de resumo → volta ao Home
 
 import 'dart:async';
+import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/constants/equipment_options.dart';
@@ -41,6 +45,8 @@ class _SetEntry {
   final String lado;
   final String? equipamento;
   final String? observacoes;
+  final double? rpe;
+  final int? rir;
   _SetEntry({
     this.id,
     required this.serie,
@@ -49,6 +55,8 @@ class _SetEntry {
     required this.lado,
     this.equipamento,
     this.observacoes,
+    this.rpe,
+    this.rir,
   });
 }
 
@@ -89,9 +97,22 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   String? _equipamentoSelecionado;
   bool _executandoUnilateral = false;
 
+  double? _currentRpe;
+  int? _currentRir;
+
+  // ── Overtraining & Inactivity Alerts ─────────────────────────────
+  bool _warnedDesgaste = false;
+  bool _warnedOverwork = false;
+  bool _warnedInactivity = false;
+  DateTime _lastActivityTime = DateTime.now();
+  int? _lastLoadedExerciseId;
+
   // ── Session timer ───────────────────────────────────────────────
   int _sessionSecs = 0;
   Timer? _sessionTimer;
+  double _sessionVolume = 0.0;
+  double? _prevSessionVolume;
+  final GlobalKey _shareCardKey = GlobalKey();
 
   // ── Lifecycle ───────────────────────────────────────────────────
 
@@ -164,9 +185,22 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
       debugPrint('Erro ao restaurar indice do exercicio: $e');
     }
 
+    // Carrega o volume do treino anterior para comparar
+    double? prevVol;
+    try {
+      final prevSession = await ref.read(workoutDaoProvider).getPreviousCompletedSession(widget.dayId, widget.sessionId);
+      if (prevSession != null) {
+        final prevLogs = await ref.read(logDaoProvider).getLogsForSession(prevSession.id);
+        prevVol = prevLogs.fold<double>(0.0, (sum, log) => sum + (log.peso * log.repeticoes));
+      }
+    } catch (e) {
+      debugPrint('Erro ao carregar volume do treino anterior: $e');
+    }
+
     setState(() {
       _exercises = exs;
       _currentIndex = initialIndex;
+      _prevSessionVolume = prevVol;
       _loading = false;
     });
     if (exs.isNotEmpty) await _loadExerciseContext();
@@ -205,6 +239,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
       _hasOtherUncompleted = hasOtherUncompleted;
       _max1RM = prevMax1RM;
       _prevLogs = prev;
+      _sessionVolume = currentLogs.fold<double>(0.0, (sum, log) => sum + (log.peso * log.repeticoes));
       final numUniqueSeries = exerciseSessionLogs.map((l) => l.serie).toSet().length;
       _currentSerie = numUniqueSeries + 1;
       _setsLogged.clear();
@@ -216,6 +251,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
             lado: l.lado,
             equipamento: l.equipamento,
             observacoes: l.observacoes,
+            rpe: l.rpe,
+            rir: l.rir,
           )));
       _lado = 'ambos';
       _executandoUnilateral = ex.isUnilateral;
@@ -1229,6 +1266,39 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     );
   }
 
+  Future<void> _shareWorkoutAsImage() async {
+    try {
+      final boundary = _shareCardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return;
+      
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+      final bytes = byteData.buffer.asUint8List();
+      
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/metemacha_treino.png');
+      await file.writeAsBytes(bytes);
+      
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'Mais um treino concluído! Mete Marcha! 🔥💪',
+        ),
+      );
+    } catch (e) {
+      debugPrint('Erro ao compartilhar imagem: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao gerar imagem: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   void _showFinishDialog({
     required double totalVolume,
     required int uniqueExercises,
@@ -1236,12 +1306,46 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     required WorkoutSession? completedSession,
   }) {
     final isDark = context.isDark;
+    final Widget? volumeCompareWidget;
+    if (_prevSessionVolume != null && _prevSessionVolume! > 0) {
+      final diff = totalVolume - _prevSessionVolume!;
+      final percent = (diff / _prevSessionVolume!) * 100;
+      final isOverload = diff > 0;
+      
+      volumeCompareWidget = Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isOverload ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+              size: 11,
+              color: isOverload ? Colors.greenAccent : Colors.orangeAccent,
+            ),
+            const SizedBox(width: 2),
+            Text(
+              isOverload 
+                  ? '+${diff.toStringAsFixed(0)} kg (+${percent.toStringAsFixed(1)}%)'
+                  : '${diff.toStringAsFixed(0)} kg (${percent.toStringAsFixed(1)}%)',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                color: isOverload ? Colors.greenAccent : Colors.orangeAccent,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      volumeCompareWidget = null;
+    }
+
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
       barrierColor: isDark
-          ? Colors.black.withValues(alpha: 0.8)
-          : Colors.white.withValues(alpha: 0.85),
+          ? Colors.black.withValues(alpha: 0.85)
+          : Colors.white.withValues(alpha: 0.9),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
       transitionBuilder: (context, anim1, anim2, child) {
@@ -1254,135 +1358,147 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               contentPadding: EdgeInsets.zero,
-              content: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      context.cardColor.withValues(alpha: 0.95),
-                      context.cardColor.withValues(alpha: 0.85),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.35),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      blurRadius: 24,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+              content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Glowing circular Trophy/Cup Container
-                    Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.amber.shade300,
-                            Colors.orange.shade600,
+                    RepaintBoundary(
+                      key: _shareCardKey,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              context.cardColor,
+                              context.cardColor.withValues(alpha: 0.95),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              blurRadius: 24,
+                              spreadRadius: 4,
+                            ),
                           ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
                         ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.orange.withValues(alpha: 0.4),
-                            blurRadius: 16,
-                            spreadRadius: 2,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.emoji_events_rounded,
-                        size: 40,
-                        color: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Glowing circular Trophy/Cup Container
+                            Container(
+                              width: 76,
+                              height: 76,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.amber.shade300,
+                                    Colors.orange.shade600,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.orange.withValues(alpha: 0.4),
+                                    blurRadius: 16,
+                                    spreadRadius: 2,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.emoji_events_rounded,
+                                size: 40,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            
+                            // Congratulations Text
+                            Text(
+                              'TREINO CONCLUÍDO!',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: isDark ? AppColors.primaryLight : AppColors.primary,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Mais um treino pra conta, Mete Marcha! 🔥',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: context.onSurface.withValues(alpha: 0.8),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Divider(color: context.divider, height: 1),
+                            const SizedBox(height: 20),
+
+                            // Stats Rows (Row 1 + Row 2 instead of GridView)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildFinishStatCard(
+                                    icon: Icons.timer_rounded,
+                                    iconColor: Colors.blueAccent,
+                                    label: 'Duração',
+                                    value: WeekUtils.formatDuration(_sessionSecs),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildFinishStatCard(
+                                    icon: Icons.fitness_center_rounded,
+                                    iconColor: AppColors.primaryLight,
+                                    label: 'Exercícios',
+                                    value: '$uniqueExercises',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildFinishStatCard(
+                                    icon: Icons.view_headline_rounded,
+                                    iconColor: Colors.purpleAccent,
+                                    label: 'Séries',
+                                    value: '$totalSets',
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildFinishStatCard(
+                                    icon: Icons.flash_on_rounded,
+                                    iconColor: Colors.greenAccent,
+                                    label: 'Volume Total',
+                                    value: '${totalVolume.toStringAsFixed(0)} kg',
+                                    extra: volumeCompareWidget,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    
-                    // Congratulations Text
-                    Text(
-                      'TREINO CONCLUÍDO!',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? AppColors.primaryLight : AppColors.primary,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Mais um treino pra conta, Mete Marcha! 🔥',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: context.onSurface.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Divider(color: context.divider, height: 1),
                     const SizedBox(height: 20),
 
-                    // Stats Rows (Row 1 + Row 2 instead of GridView)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildFinishStatCard(
-                            icon: Icons.timer_rounded,
-                            iconColor: Colors.blueAccent,
-                            label: 'Duração',
-                            value: WeekUtils.formatDuration(_sessionSecs),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildFinishStatCard(
-                            icon: Icons.fitness_center_rounded,
-                            iconColor: AppColors.primaryLight,
-                            label: 'Exercícios',
-                            value: '$uniqueExercises',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildFinishStatCard(
-                            icon: Icons.view_headline_rounded,
-                            iconColor: Colors.purpleAccent,
-                            label: 'Séries',
-                            value: '$totalSets',
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildFinishStatCard(
-                            icon: Icons.flash_on_rounded,
-                            iconColor: Colors.greenAccent,
-                            label: 'Volume Total',
-                            value: '${totalVolume.toStringAsFixed(0)} kg',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Glowing Button to Share
+                    // Buttons Area
+                    // 1. Compartilhar Imagem
                     SizedBox(
                       width: double.infinity,
                       child: Container(
@@ -1397,16 +1513,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                           ],
                         ),
                         child: ElevatedButton(
-                          onPressed: () {
-                            final dayNameClean = widget.dayName.toLowerCase().contains('treino')
-                                ? widget.dayName
-                                : 'Treino de ${widget.dayName}';
-                            final durationMin = (_sessionSecs / 60).round();
-                            final formattedVolume = _formatVolume(totalVolume);
-                            final shareText =
-                                "Meteu Marcha! 🔥 $dayNameClean concluído: $uniqueExercises ${uniqueExercises == 1 ? 'exercício' : 'exercícios'} | $durationMin min | ${formattedVolume}kg totais. #MeteMarcha";
-                            SharePlus.instance.share(ShareParams(text: shareText));
-                          },
+                          onPressed: _shareWorkoutAsImage,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1417,14 +1524,15 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.share_rounded, size: 18, color: Colors.white),
+                              Icon(Icons.image_rounded, size: 18, color: Colors.white),
                               SizedBox(width: 8),
                               Text(
-                                'COMPARTILHAR TREINO',
+                                'COMPARTILHAR CARD (IMAGEM)',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  letterSpacing: 1,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
+                                  color: Colors.white,
                                 ),
                               ),
                             ],
@@ -1434,7 +1542,48 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Ver Resumo Button
+                    // 2. Compartilhar Texto
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          final dayNameClean = widget.dayName.toLowerCase().contains('treino')
+                              ? widget.dayName
+                              : 'Treino de ${widget.dayName}';
+                          final durationMin = (_sessionSecs / 60).round();
+                          final formattedVolume = _formatVolume(totalVolume);
+                          final shareText =
+                              "Meteu Marcha! 🔥 $dayNameClean concluído: $uniqueExercises ${uniqueExercises == 1 ? 'exercício' : 'exercícios'} | $durationMin min | ${formattedVolume}kg totais. #MeteMarcha";
+                          SharePlus.instance.share(ShareParams(text: shareText));
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.primaryLight, width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.text_fields_rounded, size: 18, color: AppColors.primaryLight),
+                            SizedBox(width: 8),
+                            Text(
+                              'COMPARTILHAR TEXTO',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
+                                color: AppColors.primaryLight,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 3. Ver Resumo
                     if (completedSession != null) ...[
                       SizedBox(
                         width: double.infinity,
@@ -1463,8 +1612,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                                 'VER RESUMO',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  letterSpacing: 1,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
                                   color: Colors.white,
                                 ),
                               ),
@@ -1474,8 +1623,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                       ),
                       const SizedBox(height: 12),
                     ],
-                    
-                    // Voltar
+
+                    // 4. Voltar ao Início
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
@@ -1484,7 +1633,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                         },
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.12),
+                            color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.12),
                             width: 1,
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1495,14 +1644,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.home_rounded, size: 18, color: context.onSurface),
+                            Icon(Icons.home_rounded, size: 18, color: context.onBackground),
                             const SizedBox(width: 8),
                             Text(
                               'VOLTAR AO INÍCIO',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                letterSpacing: 1,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
                                 color: context.onBackground,
                               ),
                             ),
@@ -1538,6 +1687,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     required Color iconColor,
     required String label,
     required String value,
+    Widget? extra,
   }) {
     final isDark = context.isDark;
     return Container(
@@ -1588,6 +1738,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
               color: context.onBackground,
             ),
           ),
+          if (extra != null) ...[
+            const SizedBox(height: 4),
+            extra,
+          ],
         ],
       ),
     );
@@ -1691,6 +1845,31 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                 ),
               ),
             ),
+            if (_sessionVolume > 0) ...[
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.greenAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.flash_on_rounded, color: Colors.greenAccent, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_sessionVolume.toStringAsFixed(0)} kg',
+                      style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(width: 8),
             IconButton(
               icon: const Icon(Icons.music_note_rounded, color: AppColors.primaryLight),
@@ -1727,6 +1906,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                 left: restLeft,
                 total: restTotal,
                 onSkip: _skipRest,
+                onAdjust: (sec) => ref.read(restTimerProvider.notifier).adjustTime(sec),
               ),
 
             // Conteúdo scrollável
@@ -1966,6 +2146,65 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                     pesoStep: _getWeightStep(),
                     onOpenCalculator: _showPlateCalculator,
                   ),
+                  if (ref.watch(rpeEnabledProvider)) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<double?>(
+                            value: _currentRpe,
+                            decoration: const InputDecoration(
+                              labelText: 'RPE (Esforço 1-10)',
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            dropdownColor: context.cardColor,
+                            style: TextStyle(color: context.onBackground, fontSize: 14),
+                            items: [
+                              const DropdownMenuItem(value: null, child: Text('Nulo')),
+                              ...[10.0, 9.5, 9.0, 8.5, 8.0, 7.5, 7.0, 6.5, 6.0, 5.5, 5.0]
+                                  .map((val) => DropdownMenuItem(value: val, child: Text(val % 1 == 0 ? val.toInt().toString() : val.toString())))
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _currentRpe = val;
+                                if (val != null) {
+                                  final calculatedRir = (10.0 - val).round();
+                                  if (calculatedRir >= 0 && calculatedRir <= 5) {
+                                    _currentRir = calculatedRir;
+                                  }
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<int?>(
+                            value: _currentRir,
+                            decoration: const InputDecoration(
+                              labelText: 'RIR (Repetições de Reserva)',
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            dropdownColor: context.cardColor,
+                            style: TextStyle(color: context.onBackground, fontSize: 14),
+                            items: [
+                              const DropdownMenuItem(value: null, child: Text('Nulo')),
+                              ...[0, 1, 2, 3, 4, 5]
+                                  .map((val) => DropdownMenuItem(value: val, child: Text(val == 0 ? 'Falha (0 RIR)' : '$val RIR')))
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _currentRir = val;
+                                if (val != null) {
+                                  _currentRpe = 10.0 - val;
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
 
                   // ── Modo de Execução ──
                   const SizedBox(height: 16),
@@ -2103,8 +2342,42 @@ class _RestBanner extends StatelessWidget {
   final int left;
   final int total;
   final VoidCallback onSkip;
-  const _RestBanner(
-      {required this.left, required this.total, required this.onSkip});
+  final Function(int) onAdjust;
+  
+  const _RestBanner({
+    required this.left,
+    required this.total,
+    required this.onSkip,
+    required this.onAdjust,
+  });
+
+  Widget _buildAdjustButton(BuildContext context, String label, int seconds) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      height: 28,
+      child: OutlinedButton(
+        onPressed: () => onAdjust(seconds),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          side: BorderSide(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            width: 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primaryLight,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2118,59 +2391,77 @@ class _RestBanner extends StatelessWidget {
         color: context.cardColor,
         border: Border(bottom: BorderSide(color: context.divider)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 44,
-            height: 44,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 3,
-                  backgroundColor: context.divider,
-                  valueColor: const AlwaysStoppedAnimation(AppColors.primary),
-                ),
-                Text(
-                  '$m:$s',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: context.onBackground,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text(
-                'DESCANSO',
-                style: TextStyle(
-                  color: context.onSurface,
-                  fontSize: 10,
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w600,
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 3,
+                      backgroundColor: context.divider,
+                      valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                    ),
+                    Text(
+                      '$m:$s',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: context.onBackground,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                'Próxima série quando pronto',
-                style: TextStyle(color: context.onSurface, fontSize: 12),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'DESCANSO',
+                    style: TextStyle(
+                      color: context.onSurface,
+                      fontSize: 10,
+                      letterSpacing: 1.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Próxima série quando pronto',
+                    style: TextStyle(color: context.onSurface, fontSize: 12),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: onSkip,
+                child: const Text('Pular'),
+              ),
+              IconButton(
+                icon: Icon(Icons.close_rounded, color: context.onSurface, size: 20),
+                onPressed: onSkip,
+                tooltip: 'Fechar',
               ),
             ],
           ),
-          const Spacer(),
-          TextButton(
-            onPressed: onSkip,
-            child: const Text('Pular'),
-          ),
-          IconButton(
-            icon: Icon(Icons.close_rounded, color: context.onSurface, size: 20),
-            onPressed: onSkip,
-            tooltip: 'Fechar',
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildAdjustButton(context, '-30s', -30),
+                _buildAdjustButton(context, '-15s', -15),
+                _buildAdjustButton(context, '+15s', 15),
+                _buildAdjustButton(context, '+30s', 30),
+              ],
+            ),
           ),
         ],
       ),
@@ -2381,12 +2672,13 @@ class _SetsList extends StatelessWidget {
     final obsStr = (s.observacoes != null && s.observacoes!.isNotEmpty)
         ? ' (${s.observacoes})'
         : '';
+    final rpeStr = (s.rpe != null) ? ' @RPE ${s.rpe! % 1 == 0 ? s.rpe!.toInt() : s.rpe}' : '';
 
     if (entries.length == 1) {
       final ladoStr = (s.lado != 'ambos') 
           ? ' (${s.lado == 'esquerdo' ? 'E' : s.lado == 'direito' ? 'D' : s.lado})' 
           : '';
-      return '$serieLabel ${s.peso}kg × ${s.reps}$ladoStr$eqStr$obsStr';
+      return '$serieLabel ${s.peso}kg × ${s.reps}$ladoStr$rpeStr$eqStr$obsStr';
     }
 
     // Check if all entries in this series have the same weight
@@ -2395,14 +2687,14 @@ class _SetsList extends StatelessWidget {
       final allSameReps = entries.every((e) => e.reps == s.reps);
       if (allSameReps) {
         // S1: 10kg × 10 (E+D)
-        return '$serieLabel ${s.peso}kg × ${s.reps} (E+D)$eqStr$obsStr';
+        return '$serieLabel ${s.peso}kg × ${s.reps} (E+D)$rpeStr$eqStr$obsStr';
       } else {
         // S1: 10kg × 10(E) / 8(D)
         final repsMap = entries.map((e) {
           final sideLetter = e.lado == 'esquerdo' ? 'E' : e.lado == 'direito' ? 'D' : e.lado;
           return '${e.reps}($sideLetter)';
         }).join(' / ');
-        return '$serieLabel ${s.peso}kg × $repsMap$eqStr$obsStr';
+        return '$serieLabel ${s.peso}kg × $repsMap$rpeStr$eqStr$obsStr';
       }
     } else {
       // S1: 10kg × 10(E) / 12kg × 8(D)
@@ -2410,7 +2702,7 @@ class _SetsList extends StatelessWidget {
         final sideLetter = e.lado == 'esquerdo' ? 'E' : e.lado == 'direito' ? 'D' : e.lado;
         return '${e.peso}kg × ${e.reps}($sideLetter)';
       }).join(' / ');
-      return '$serieLabel $parts$eqStr$obsStr';
+      return '$serieLabel $parts$rpeStr$eqStr$obsStr';
     }
   }
 }

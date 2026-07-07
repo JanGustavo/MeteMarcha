@@ -440,3 +440,24 @@ final widgetSyncControllerProvider = Provider<void>((ref) {
 
 final homeTabProvider = StateProvider<int>((ref) => 0);
 
+class RpeEnabledNotifier extends StateNotifier<bool> {
+  RpeEnabledNotifier() : super(false) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('rpe_enabled') ?? false;
+  }
+
+  Future<void> toggle(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('rpe_enabled', enabled);
+    state = enabled;
+  }
+}
+
+final rpeEnabledProvider = StateNotifierProvider<RpeEnabledNotifier, bool>((ref) {
+  return RpeEnabledNotifier();
+});
+

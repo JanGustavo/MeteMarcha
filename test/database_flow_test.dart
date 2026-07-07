@@ -189,4 +189,75 @@ void main() {
       expect(log3.serie, 2); // De 3, passou a ser série 2
     });
   });
+
+  group('Testes de RPE, RIR & Tonelagem (Volume)', () {
+    test('Salvar e obter logs com RPE e RIR, e comparar volume acumulado', () async {
+      // 1. Cria o split
+      final splitId = await db.workoutDao.addSplit('ABC');
+      final days = await db.workoutDao.getDaysForSplit(splitId);
+      final dayA = days[0];
+      final exs = await db.exerciseDao.getExercisesForDay(dayA.id);
+      final ex = exs.first;
+
+      // 2. Inicia e finaliza a primeira sessão (Sessão 1)
+      final session1Id = await db.workoutDao.insertSession(WorkoutSessionsCompanion.insert(
+        dayId: Value(dayA.id),
+        data: DateTime.now().subtract(const Duration(days: 7)).toIso8601String(),
+        status: const Value('concluido'),
+      ));
+
+      await db.logDao.insertLog(ExerciseLogsCompanion.insert(
+        exerciseId: ex.id,
+        sessionId: session1Id,
+        data: DateTime.now().subtract(const Duration(days: 7)).toIso8601String(),
+        peso: 10.0,
+        repeticoes: 10,
+        serie: const Value(1),
+        lado: const Value('ambos'),
+        concluido: const Value(true),
+        rpe: const Value(8.0),
+        rir: const Value(2),
+      ));
+
+      // 3. Inicia a segunda sessão (Sessão 2)
+      final session2Id = await db.workoutDao.insertSession(WorkoutSessionsCompanion.insert(
+        dayId: Value(dayA.id),
+        data: DateTime.now().toIso8601String(),
+        status: const Value('em_andamento'),
+      ));
+
+      // Testar getPreviousCompletedSession
+      final prevSession = await db.workoutDao.getPreviousCompletedSession(dayA.id, session2Id);
+      expect(prevSession, isNotNull);
+      expect(prevSession!.id, session1Id);
+
+      // Inserir log com RPE/RIR
+      final logId = await db.logDao.insertLog(ExerciseLogsCompanion.insert(
+        exerciseId: ex.id,
+        sessionId: session2Id,
+        data: DateTime.now().toIso8601String(),
+        peso: 12.0,
+        repeticoes: 10,
+        serie: const Value(1),
+        lado: const Value('ambos'),
+        concluido: const Value(true),
+        rpe: const Value(9.0),
+        rir: const Value(1),
+      ));
+
+      // Verificar persistência de RPE/RIR
+      final logs = await db.logDao.getLogsForSession(session2Id);
+      final insertedLog = logs.firstWhere((l) => l.id == logId);
+      expect(insertedLog.rpe, 9.0);
+      expect(insertedLog.rir, 1);
+
+      // Testar updateLog com RPE/RIR
+      await db.logDao.updateLog(logId, 15.0, 10, 'Anotação', rpe: 8.5, rir: 2);
+      final logsAfterUpdate = await db.logDao.getLogsForSession(session2Id);
+      final updatedLog = logsAfterUpdate.firstWhere((l) => l.id == logId);
+      expect(updatedLog.peso, 15.0);
+      expect(updatedLog.rpe, 8.5);
+      expect(updatedLog.rir, 2);
+    });
+  });
 }

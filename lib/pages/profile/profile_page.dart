@@ -834,6 +834,66 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
           SliverToBoxAdapter(
             child: Card(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: context.divider),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.fitness_center_rounded,
+                        color: AppColors.primaryLight,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'RPE / RIR',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: context.onBackground,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Registrar esforço percebido (RPE) e repetições de reserva (RIR) nas séries',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: ref.watch(rpeEnabledProvider),
+                      onChanged: (val) {
+                        ref.read(rpeEnabledProvider.notifier).toggle(val);
+                      },
+                      activeColor: AppColors.primaryLight,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: Card(
                 margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),

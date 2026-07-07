@@ -1306,7 +1306,16 @@ void _showAddExerciseSheet(
                   Switch(
                     value: unilateral,
                     activeThumbColor: AppColors.primary,
-                    onChanged: (v) => setModalState(() => unilateral = v),
+                    onChanged: (v) {
+                      setModalState(() {
+                        unilateral = v;
+                        if (v && restCtrl.text == '90') {
+                          restCtrl.text = '45';
+                        } else if (!v && restCtrl.text == '45') {
+                          restCtrl.text = '90';
+                        }
+                      });
+                    },
                   ),
                 ],
               ),

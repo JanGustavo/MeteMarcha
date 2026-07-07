@@ -1805,6 +1805,16 @@ class $ExerciseLogsTable extends ExerciseLogs
   late final GeneratedColumn<String> observacoes = GeneratedColumn<String>(
       'observacoes', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _rpeMeta = const VerificationMeta('rpe');
+  @override
+  late final GeneratedColumn<double> rpe = GeneratedColumn<double>(
+      'rpe', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _rirMeta = const VerificationMeta('rir');
+  @override
+  late final GeneratedColumn<int> rir = GeneratedColumn<int>(
+      'rir', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1817,7 +1827,9 @@ class $ExerciseLogsTable extends ExerciseLogs
         lado,
         concluido,
         equipamento,
-        observacoes
+        observacoes,
+        rpe,
+        rir
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1890,6 +1902,14 @@ class $ExerciseLogsTable extends ExerciseLogs
           observacoes.isAcceptableOrUnknown(
               data['observacoes']!, _observacoesMeta));
     }
+    if (data.containsKey('rpe')) {
+      context.handle(
+          _rpeMeta, rpe.isAcceptableOrUnknown(data['rpe']!, _rpeMeta));
+    }
+    if (data.containsKey('rir')) {
+      context.handle(
+          _rirMeta, rir.isAcceptableOrUnknown(data['rir']!, _rirMeta));
+    }
     return context;
   }
 
@@ -1921,6 +1941,10 @@ class $ExerciseLogsTable extends ExerciseLogs
           .read(DriftSqlType.string, data['${effectivePrefix}equipamento']),
       observacoes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}observacoes']),
+      rpe: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}rpe']),
+      rir: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}rir']),
     );
   }
 
@@ -1955,6 +1979,12 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
 
   /// Observações adicionais sobre a série (ex: banco 80°, rest-pause, drop set)
   final String? observacoes;
+
+  /// Esforço percebido (1 a 10)
+  final double? rpe;
+
+  /// Repetições em reserva (0 a 5)
+  final int? rir;
   const ExerciseLog(
       {required this.id,
       required this.exerciseId,
@@ -1966,7 +1996,9 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
       required this.lado,
       required this.concluido,
       this.equipamento,
-      this.observacoes});
+      this.observacoes,
+      this.rpe,
+      this.rir});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1984,6 +2016,12 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
     }
     if (!nullToAbsent || observacoes != null) {
       map['observacoes'] = Variable<String>(observacoes);
+    }
+    if (!nullToAbsent || rpe != null) {
+      map['rpe'] = Variable<double>(rpe);
+    }
+    if (!nullToAbsent || rir != null) {
+      map['rir'] = Variable<int>(rir);
     }
     return map;
   }
@@ -2005,6 +2043,8 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
       observacoes: observacoes == null && nullToAbsent
           ? const Value.absent()
           : Value(observacoes),
+      rpe: rpe == null && nullToAbsent ? const Value.absent() : Value(rpe),
+      rir: rir == null && nullToAbsent ? const Value.absent() : Value(rir),
     );
   }
 
@@ -2023,6 +2063,8 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
       concluido: serializer.fromJson<bool>(json['concluido']),
       equipamento: serializer.fromJson<String?>(json['equipamento']),
       observacoes: serializer.fromJson<String?>(json['observacoes']),
+      rpe: serializer.fromJson<double?>(json['rpe']),
+      rir: serializer.fromJson<int?>(json['rir']),
     );
   }
   @override
@@ -2040,6 +2082,8 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
       'concluido': serializer.toJson<bool>(concluido),
       'equipamento': serializer.toJson<String?>(equipamento),
       'observacoes': serializer.toJson<String?>(observacoes),
+      'rpe': serializer.toJson<double?>(rpe),
+      'rir': serializer.toJson<int?>(rir),
     };
   }
 
@@ -2054,7 +2098,9 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
           String? lado,
           bool? concluido,
           Value<String?> equipamento = const Value.absent(),
-          Value<String?> observacoes = const Value.absent()}) =>
+          Value<String?> observacoes = const Value.absent(),
+          Value<double?> rpe = const Value.absent(),
+          Value<int?> rir = const Value.absent()}) =>
       ExerciseLog(
         id: id ?? this.id,
         exerciseId: exerciseId ?? this.exerciseId,
@@ -2067,6 +2113,8 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
         concluido: concluido ?? this.concluido,
         equipamento: equipamento.present ? equipamento.value : this.equipamento,
         observacoes: observacoes.present ? observacoes.value : this.observacoes,
+        rpe: rpe.present ? rpe.value : this.rpe,
+        rir: rir.present ? rir.value : this.rir,
       );
   ExerciseLog copyWithCompanion(ExerciseLogsCompanion data) {
     return ExerciseLog(
@@ -2085,6 +2133,8 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
           data.equipamento.present ? data.equipamento.value : this.equipamento,
       observacoes:
           data.observacoes.present ? data.observacoes.value : this.observacoes,
+      rpe: data.rpe.present ? data.rpe.value : this.rpe,
+      rir: data.rir.present ? data.rir.value : this.rir,
     );
   }
 
@@ -2101,14 +2151,16 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
           ..write('lado: $lado, ')
           ..write('concluido: $concluido, ')
           ..write('equipamento: $equipamento, ')
-          ..write('observacoes: $observacoes')
+          ..write('observacoes: $observacoes, ')
+          ..write('rpe: $rpe, ')
+          ..write('rir: $rir')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, exerciseId, sessionId, data, peso,
-      repeticoes, serie, lado, concluido, equipamento, observacoes);
+      repeticoes, serie, lado, concluido, equipamento, observacoes, rpe, rir);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2123,7 +2175,9 @@ class ExerciseLog extends DataClass implements Insertable<ExerciseLog> {
           other.lado == this.lado &&
           other.concluido == this.concluido &&
           other.equipamento == this.equipamento &&
-          other.observacoes == this.observacoes);
+          other.observacoes == this.observacoes &&
+          other.rpe == this.rpe &&
+          other.rir == this.rir);
 }
 
 class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
@@ -2138,6 +2192,8 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
   final Value<bool> concluido;
   final Value<String?> equipamento;
   final Value<String?> observacoes;
+  final Value<double?> rpe;
+  final Value<int?> rir;
   const ExerciseLogsCompanion({
     this.id = const Value.absent(),
     this.exerciseId = const Value.absent(),
@@ -2150,6 +2206,8 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
     this.concluido = const Value.absent(),
     this.equipamento = const Value.absent(),
     this.observacoes = const Value.absent(),
+    this.rpe = const Value.absent(),
+    this.rir = const Value.absent(),
   });
   ExerciseLogsCompanion.insert({
     this.id = const Value.absent(),
@@ -2163,6 +2221,8 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
     this.concluido = const Value.absent(),
     this.equipamento = const Value.absent(),
     this.observacoes = const Value.absent(),
+    this.rpe = const Value.absent(),
+    this.rir = const Value.absent(),
   })  : exerciseId = Value(exerciseId),
         sessionId = Value(sessionId),
         data = Value(data),
@@ -2180,6 +2240,8 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
     Expression<bool>? concluido,
     Expression<String>? equipamento,
     Expression<String>? observacoes,
+    Expression<double>? rpe,
+    Expression<int>? rir,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2193,6 +2255,8 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
       if (concluido != null) 'concluido': concluido,
       if (equipamento != null) 'equipamento': equipamento,
       if (observacoes != null) 'observacoes': observacoes,
+      if (rpe != null) 'rpe': rpe,
+      if (rir != null) 'rir': rir,
     });
   }
 
@@ -2207,7 +2271,9 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
       Value<String>? lado,
       Value<bool>? concluido,
       Value<String?>? equipamento,
-      Value<String?>? observacoes}) {
+      Value<String?>? observacoes,
+      Value<double?>? rpe,
+      Value<int?>? rir}) {
     return ExerciseLogsCompanion(
       id: id ?? this.id,
       exerciseId: exerciseId ?? this.exerciseId,
@@ -2220,6 +2286,8 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
       concluido: concluido ?? this.concluido,
       equipamento: equipamento ?? this.equipamento,
       observacoes: observacoes ?? this.observacoes,
+      rpe: rpe ?? this.rpe,
+      rir: rir ?? this.rir,
     );
   }
 
@@ -2259,6 +2327,12 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
     if (observacoes.present) {
       map['observacoes'] = Variable<String>(observacoes.value);
     }
+    if (rpe.present) {
+      map['rpe'] = Variable<double>(rpe.value);
+    }
+    if (rir.present) {
+      map['rir'] = Variable<int>(rir.value);
+    }
     return map;
   }
 
@@ -2275,7 +2349,9 @@ class ExerciseLogsCompanion extends UpdateCompanion<ExerciseLog> {
           ..write('lado: $lado, ')
           ..write('concluido: $concluido, ')
           ..write('equipamento: $equipamento, ')
-          ..write('observacoes: $observacoes')
+          ..write('observacoes: $observacoes, ')
+          ..write('rpe: $rpe, ')
+          ..write('rir: $rir')
           ..write(')'))
         .toString();
   }
@@ -6153,6 +6229,8 @@ typedef $$ExerciseLogsTableCreateCompanionBuilder = ExerciseLogsCompanion
   Value<bool> concluido,
   Value<String?> equipamento,
   Value<String?> observacoes,
+  Value<double?> rpe,
+  Value<int?> rir,
 });
 typedef $$ExerciseLogsTableUpdateCompanionBuilder = ExerciseLogsCompanion
     Function({
@@ -6167,6 +6245,8 @@ typedef $$ExerciseLogsTableUpdateCompanionBuilder = ExerciseLogsCompanion
   Value<bool> concluido,
   Value<String?> equipamento,
   Value<String?> observacoes,
+  Value<double?> rpe,
+  Value<int?> rir,
 });
 
 final class $$ExerciseLogsTableReferences
@@ -6240,6 +6320,12 @@ class $$ExerciseLogsTableFilterComposer
 
   ColumnFilters<String> get observacoes => $composableBuilder(
       column: $table.observacoes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get rpe => $composableBuilder(
+      column: $table.rpe, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get rir => $composableBuilder(
+      column: $table.rir, builder: (column) => ColumnFilters(column));
 
   $$ExercisesTableFilterComposer get exerciseId {
     final $$ExercisesTableFilterComposer composer = $composerBuilder(
@@ -6318,6 +6404,12 @@ class $$ExerciseLogsTableOrderingComposer
   ColumnOrderings<String> get observacoes => $composableBuilder(
       column: $table.observacoes, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get rpe => $composableBuilder(
+      column: $table.rpe, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get rir => $composableBuilder(
+      column: $table.rir, builder: (column) => ColumnOrderings(column));
+
   $$ExercisesTableOrderingComposer get exerciseId {
     final $$ExercisesTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -6395,6 +6487,12 @@ class $$ExerciseLogsTableAnnotationComposer
   GeneratedColumn<String> get observacoes => $composableBuilder(
       column: $table.observacoes, builder: (column) => column);
 
+  GeneratedColumn<double> get rpe =>
+      $composableBuilder(column: $table.rpe, builder: (column) => column);
+
+  GeneratedColumn<int> get rir =>
+      $composableBuilder(column: $table.rir, builder: (column) => column);
+
   $$ExercisesTableAnnotationComposer get exerciseId {
     final $$ExercisesTableAnnotationComposer composer = $composerBuilder(
         composer: this,
@@ -6470,6 +6568,8 @@ class $$ExerciseLogsTableTableManager extends RootTableManager<
             Value<bool> concluido = const Value.absent(),
             Value<String?> equipamento = const Value.absent(),
             Value<String?> observacoes = const Value.absent(),
+            Value<double?> rpe = const Value.absent(),
+            Value<int?> rir = const Value.absent(),
           }) =>
               ExerciseLogsCompanion(
             id: id,
@@ -6483,6 +6583,8 @@ class $$ExerciseLogsTableTableManager extends RootTableManager<
             concluido: concluido,
             equipamento: equipamento,
             observacoes: observacoes,
+            rpe: rpe,
+            rir: rir,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -6496,6 +6598,8 @@ class $$ExerciseLogsTableTableManager extends RootTableManager<
             Value<bool> concluido = const Value.absent(),
             Value<String?> equipamento = const Value.absent(),
             Value<String?> observacoes = const Value.absent(),
+            Value<double?> rpe = const Value.absent(),
+            Value<int?> rir = const Value.absent(),
           }) =>
               ExerciseLogsCompanion.insert(
             id: id,
@@ -6509,6 +6613,8 @@ class $$ExerciseLogsTableTableManager extends RootTableManager<
             concluido: concluido,
             equipamento: equipamento,
             observacoes: observacoes,
+            rpe: rpe,
+            rir: rir,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

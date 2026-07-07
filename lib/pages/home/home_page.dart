@@ -13,6 +13,7 @@ import '../../core/utils/file_saver.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
+import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
 import '../../widgets/weekly_weight_banner.dart';
@@ -420,6 +421,8 @@ class _TreinoTab extends ConsumerWidget {
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
             ),
+
+            const ConsistencyCalendar(),
 
             // ── Seleção de Divisão (Split) ─────────────────────────────
             Padding(
@@ -944,6 +947,255 @@ class _DayListTile extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class ConsistencyCalendar extends ConsumerWidget {
+  const ConsistencyCalendar({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final completedSessionsAsync = ref.watch(completedSessionsProvider);
+    final streak = ref.watch(streakProvider);
+    final isDark = context.isDark;
+
+    return completedSessionsAsync.when(
+      data: (sessions) {
+        final now = DateTime.now();
+        final trainedDates = sessions.map((s) {
+          try {
+            final dt = DateTime.parse(s.data);
+            return DateTime(dt.year, dt.month, dt.day);
+          } catch (_) {
+            return DateTime(1970);
+          }
+        }).toSet();
+
+        int trainedInLast4Weeks = 0;
+
+        // Render past weeks first, current week at the bottom
+        final weekWidgets = List.generate(4, (wIndex) {
+          final weekOffset = 3 - wIndex;
+          final monday = now
+              .subtract(Duration(days: now.weekday - 1))
+              .subtract(Duration(days: weekOffset * 7));
+
+          final isCurrentWeek = weekOffset == 0;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 32,
+                  child: Text(
+                    isCurrentWeek ? 'Atu' : 'S-$weekOffset',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: isCurrentWeek
+                          ? AppColors.primaryLight
+                          : context.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
+                ...List.generate(7, (dIndex) {
+                  final day = monday.add(Duration(days: dIndex));
+                  final dayDate = DateTime(day.year, day.month, day.day);
+                  final isTrained = trainedDates.contains(dayDate);
+                  final isToday = dayDate == DateTime(now.year, now.month, now.day);
+                  final isFuture = dayDate.isAfter(DateTime(now.year, now.month, now.day));
+
+                  if (isTrained) {
+                    trainedInLast4Weeks++;
+                  }
+
+                  Color dotColor;
+                  BoxBorder? border;
+                  Widget? child;
+
+                  if (isTrained) {
+                    dotColor = Colors.greenAccent.withValues(alpha: 0.2);
+                    border = Border.all(color: Colors.greenAccent, width: 1.5);
+                    child = const Icon(
+                      Icons.check_rounded,
+                      size: 11,
+                      color: Colors.greenAccent,
+                    );
+                  } else if (isToday) {
+                    dotColor = AppColors.primary.withValues(alpha: 0.15);
+                    border = Border.all(color: AppColors.primary, width: 1.5);
+                    child = Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    );
+                  } else if (isFuture) {
+                    dotColor = Colors.transparent;
+                    border = Border.all(
+                      color: context.onSurface.withValues(alpha: 0.05),
+                      width: 1,
+                    );
+                  } else {
+                    dotColor = context.onSurface.withValues(alpha: 0.05);
+                    border = Border.all(
+                      color: context.onSurface.withValues(alpha: 0.1),
+                      width: 1,
+                    );
+                  }
+
+                  return Expanded(
+                    child: Center(
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: dotColor,
+                          shape: BoxShape.circle,
+                          border: border,
+                          boxShadow: isTrained
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.greenAccent.withValues(alpha: 0.2),
+                                    blurRadius: 4,
+                                    spreadRadius: 1,
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Center(child: child),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        });
+
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          elevation: 0,
+          color: context.cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.08),
+              width: 1.5,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.local_fire_department_rounded,
+                            color: Colors.orangeAccent,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'CONSISTÊNCIA',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                color: context.onSurface.withValues(alpha: 0.6),
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Calendário de Treinos',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: context.onBackground,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    if (streak > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Colors.orangeAccent, Colors.deepOrangeAccent],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '$streak ${streak == 1 ? 'SEMANA' : 'SEMANAS'} 🔥',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const SizedBox(width: 32),
+                    ...['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((day) => Expanded(
+                          child: Center(
+                            child: Text(
+                              day,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: context.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        )),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...weekWidgets,
+                const SizedBox(height: 12),
+                Divider(color: context.divider, height: 1),
+                const SizedBox(height: 12),
+                Text(
+                  trainedInLast4Weeks == 0
+                      ? 'Nenhum treino registrado nas últimas 4 semanas. Vamos começar! ⚡'
+                      : 'Você completou $trainedInLast4Weeks ${trainedInLast4Weeks == 1 ? 'treino' : 'treinos'} nas últimas 4 semanas. Mete Marcha! 🔥',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: context.onSurface.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }
