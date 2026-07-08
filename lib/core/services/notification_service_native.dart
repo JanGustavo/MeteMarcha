@@ -131,6 +131,7 @@ class NotificationService {
       usesChronometer: true,
       chronometerCountDown: true,
       ongoing: true,
+      timeoutAfter: secondsLeft * 1000,
       actions: actions,
     );
 
@@ -153,7 +154,7 @@ class NotificationService {
     final scheduledDate = tz.TZDateTime.now(tz.local).add(Duration(seconds: secondsDelay));
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'rest_timer_ended_channel',
+      'rest_timer_ended_channel_v2',
       'Fim do Descanso (Alerta)',
       channelDescription: 'Dispara um alerta sonoro e visual ao fim do descanso',
       importance: Importance.max,
@@ -181,7 +182,7 @@ class NotificationService {
     await _notificationsPlugin.cancel(id: 999); // Limpa o cronômetro ativo
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'rest_timer_ended_channel',
+      'rest_timer_ended_channel_v2',
       'Fim do Descanso (Alerta)',
       channelDescription: 'Dispara um alerta sonoro e visual ao fim do descanso',
       importance: Importance.max,
