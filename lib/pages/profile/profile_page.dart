@@ -17,6 +17,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/constants/achievements.dart';
 import '../../core/utils/week_utils.dart';
 import '../../core/utils/decimal_input_formatter.dart';
 import '../../core/utils/string_input_formatter.dart';
@@ -484,6 +485,49 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+
+          // ── Conquistas / Achievements Title ──────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.emoji_events_rounded, color: Colors.amber, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'CONQUISTAS',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: context.onBackground,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Conquistas / Achievements Grid ───────────────────
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1.15,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final list = ref.watch(achievementsStatusProvider);
+                  if (index >= list.length) return const SizedBox();
+                  return _AchievementCard(status: list[index]);
+                },
+                childCount: ref.watch(achievementsStatusProvider).length,
               ),
             ),
           ),
@@ -1270,5 +1314,319 @@ class _WeightRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _AchievementCard extends StatelessWidget {
+  final AchievementStatus status;
+
+  const _AchievementCard({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.isDark;
+    final ach = status.achievement;
+    final levelIdx = status.unlockedLevelIndex;
+    final isLocked = levelIdx == -1;
+
+    // Determine badge styling based on unlocked level
+    Color badgeColor;
+    String badgeEmoji;
+    String levelName;
+
+    if (isLocked) {
+      badgeColor = Colors.grey;
+      badgeEmoji = '🔒';
+      levelName = 'Bloqueado';
+    } else {
+      final currentLevel = ach.levels[levelIdx];
+      levelName = currentLevel.name;
+      badgeEmoji = currentLevel.icon;
+      if (levelName == 'Bronze') {
+        badgeColor = const Color(0xFFCD7F32); // Bronze
+      } else if (levelName == 'Prata') {
+        badgeColor = const Color(0xFFC0C0C0); // Silver
+      } else {
+        badgeColor = const Color(0xFFFFD700); // Gold
+      }
+    }
+
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isLocked
+              ? context.divider.withValues(alpha: 0.3)
+              : badgeColor.withValues(alpha: 0.4),
+          width: isLocked ? 1.0 : 1.5,
+        ),
+      ),
+      child: InkWell(
+        onTap: () => _showAchievementDetail(context),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isLocked
+                          ? Colors.grey.withValues(alpha: 0.1)
+                          : badgeColor.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      badgeEmoji,
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ach.title,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: context.onBackground,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          levelName,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: isLocked ? Colors.grey : badgeColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                ach.description,
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: status.progress,
+                  minHeight: 5,
+                  backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isLocked ? AppColors.primary : badgeColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                status.nextTargetLabel,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                  color: context.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAchievementDetail(BuildContext context) {
+    final ach = status.achievement;
+    final levelIdx = status.unlockedLevelIndex;
+    final isDark = context.isDark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: context.cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          actionsPadding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.workspace_premium_rounded, color: AppColors.primaryLight, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ach.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: isDark ? AppColors.primaryLight : AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      ach.description,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.normal),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              // Current Value
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.divider.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Seu valor atual:',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                    Text(
+                      _formatValue(status.currentValue, ach.type),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primaryLight),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Level details list
+              ...List.generate(ach.levels.length, (index) {
+                final level = ach.levels[index];
+                final isUnlocked = levelIdx >= index;
+                final isNext = levelIdx + 1 == index;
+
+                Color color;
+                if (level.name == 'Bronze') {
+                  color = const Color(0xFFCD7F32);
+                } else if (level.name == 'Prata') {
+                  color = const Color(0xFFC0C0C0);
+                } else {
+                  color = const Color(0xFFFFD700);
+                }
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isUnlocked
+                        ? color.withValues(alpha: 0.05)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isUnlocked
+                          ? color.withValues(alpha: 0.3)
+                          : isNext
+                              ? AppColors.primary.withValues(alpha: 0.4)
+                              : context.divider.withValues(alpha: 0.15),
+                      width: isUnlocked || isNext ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(level.icon, style: const TextStyle(fontSize: 22)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              level.name,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isUnlocked ? color : context.onBackground.withValues(alpha: 0.7),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Meta: ${_formatValue(level.value, ach.type)}',
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isUnlocked)
+                        const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20)
+                      else if (isNext)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Próximo',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.primaryLight),
+                          ),
+                        )
+                      else
+                        const Icon(Icons.lock_outline_rounded, color: Colors.grey, size: 18),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Fechar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _formatValue(double val, AchievementType type) {
+    if (type == AchievementType.exercise1rm) {
+      return '${val.toStringAsFixed(1)} kg';
+    } else if (type == AchievementType.totalVolumeTons) {
+      return '${val.toStringAsFixed(1)} t';
+    } else if (type == AchievementType.totalWorkouts) {
+      return '${val.toInt()} ${val.toInt() == 1 ? "treino" : "treinos"}';
+    } else if (type == AchievementType.weekStreak) {
+      return '${val.toInt()} ${val.toInt() == 1 ? "semana" : "semanas"}';
+    } else {
+      return '${val.toInt()} ${val.toInt() == 1 ? "série" : "séries"}';
+    }
   }
 }

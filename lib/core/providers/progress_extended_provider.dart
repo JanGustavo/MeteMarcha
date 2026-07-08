@@ -10,6 +10,7 @@ import 'package:drift/drift.dart' as drift;
 import '../database/app_database.dart';
 import '../utils/week_utils.dart';
 import '../services/notification_service.dart';
+import '../constants/achievements.dart';
 import 'providers.dart';
 
 class GoalsNotifier extends StateNotifier<List<Goal>> {
@@ -464,4 +465,140 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
   });
 
   return insights;
+});
+
+class AchievementStatus {
+  final Achievement achievement;
+  final double currentValue;
+  final int unlockedLevelIndex; // -1 = bloqueado, 0 = bronze, 1 = prata, 2 = ouro
+  final double progress; // 0.0 a 1.0 para o próximo nível
+  final String nextTargetLabel;
+
+  AchievementStatus({
+    required this.achievement,
+    required this.currentValue,
+    required this.unlockedLevelIndex,
+    required this.progress,
+    required this.nextTargetLabel,
+  });
+}
+
+final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
+  final exercises = ref.watch(allExercisesProvider).value ?? [];
+  final logs = ref.watch(allCompletedLogsProvider).value ?? [];
+  final completedSessions = ref.watch(completedSessionsProvider).value ?? [];
+  final streak = ref.watch(streakProvider);
+
+  // Mapear exercícios por ID
+  final Map<int, Exercise> exerciseMap = {for (final e in exercises) e.id: e};
+
+  // 1. Calcular volume total
+  double totalVol = 0.0;
+  for (final log in logs) {
+    final ex = exerciseMap[log.exerciseId];
+    if (ex != null) {
+      totalVol += LogDao.calcularVolume(log, isUnilateral: ex.isUnilateral);
+    } else {
+      totalVol += log.peso * log.repeticoes;
+    }
+  }
+  final totalVolumeTons = totalVol / 1000.0;
+
+  // 2. Calcular 1RM máxima de cada exercício
+  final Map<int, double> max1RMPerExercise = {};
+  for (final log in logs) {
+    final oneRM = log.repeticoes == 1
+        ? log.peso
+        : log.peso * (1 + log.repeticoes / 30.0);
+    final currentMax = max1RMPerExercise[log.exerciseId] ?? 0.0;
+    if (oneRM > currentMax) {
+      max1RMPerExercise[log.exerciseId] = oneRM;
+    }
+  }
+
+  return achievements.map((ach) {
+    double currentValue = 0.0;
+
+    switch (ach.type) {
+      case AchievementType.exercise1rm:
+        double best1RM = 0.0;
+        max1RMPerExercise.forEach((exId, max1RM) {
+          final ex = exerciseMap[exId];
+          if (ex != null) {
+            final matches = ach.keywords?.any((kw) => ex.nome.toLowerCase().contains(kw.toLowerCase())) ?? false;
+            if (matches && max1RM > best1RM) {
+              best1RM = max1RM;
+            }
+          }
+        });
+        currentValue = best1RM;
+        break;
+
+      case AchievementType.exerciseSetsCount:
+        int setsCount = 0;
+        for (final log in logs) {
+          final ex = exerciseMap[log.exerciseId];
+          if (ex != null) {
+            final matches = ach.keywords?.any((kw) => ex.nome.toLowerCase().contains(kw.toLowerCase())) ?? false;
+            if (matches) {
+              setsCount++;
+            }
+          }
+        }
+        currentValue = setsCount.toDouble();
+        break;
+
+      case AchievementType.totalWorkouts:
+        currentValue = completedSessions.length.toDouble();
+        break;
+
+      case AchievementType.weekStreak:
+        currentValue = streak.toDouble();
+        break;
+
+      case AchievementType.totalVolumeTons:
+        currentValue = totalVolumeTons;
+        break;
+    }
+
+    // Calcular nível desbloqueado
+    int unlockedLevelIndex = -1;
+    for (int i = 0; i < ach.levels.length; i++) {
+      if (currentValue >= ach.levels[i].value) {
+        unlockedLevelIndex = i;
+      }
+    }
+
+    double progress = 0.0;
+    String nextTargetLabel = '';
+
+    if (unlockedLevelIndex == ach.levels.length - 1) {
+      progress = 1.0;
+      nextTargetLabel = 'Concluído! 🏆';
+    } else {
+      final nextLevelIndex = unlockedLevelIndex + 1;
+      final nextLevel = ach.levels[nextLevelIndex];
+      final prevLevelValue = unlockedLevelIndex == -1 ? 0.0 : ach.levels[unlockedLevelIndex].value;
+
+      final range = nextLevel.value - prevLevelValue;
+      final currentInRange = currentValue - prevLevelValue;
+      progress = range > 0 ? (currentInRange / range).clamp(0.0, 1.0) : 0.0;
+
+      final needed = nextLevel.value - currentValue;
+      final unit = (ach.type == AchievementType.exercise1rm || ach.type == AchievementType.totalVolumeTons)
+          ? (ach.type == AchievementType.totalVolumeTons ? 't' : ' kg')
+          : (ach.type == AchievementType.totalWorkouts ? ' treinos' : ach.type == AchievementType.weekStreak ? ' semanas' : ' séries');
+
+      final neededStr = needed % 1 == 0 ? needed.toInt().toString() : needed.toStringAsFixed(1);
+      nextTargetLabel = 'Faltam $neededStr$unit para ${nextLevel.name}';
+    }
+
+    return AchievementStatus(
+      achievement: ach,
+      currentValue: currentValue,
+      unlockedLevelIndex: unlockedLevelIndex,
+      progress: progress,
+      nextTargetLabel: nextTargetLabel,
+    );
+  }).toList();
 });
