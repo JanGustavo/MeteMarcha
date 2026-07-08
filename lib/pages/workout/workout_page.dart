@@ -25,6 +25,8 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/database/app_database.dart';
 import '../../core/constants/equipment_options.dart';
 import '../../core/providers/providers.dart';
+import '../../core/providers/progress_extended_provider.dart';
+import '../../core/widgets/achievement_unlock_overlay.dart';
 import '../../core/providers/rest_timer_provider.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/services/notification_service.dart';
@@ -1257,9 +1259,25 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
       debugPrint('Erro ao calcular estatísticas do treino: $e');
     }
 
+    // Salva conquistas pré-finalização para detectar novos desbloqueios
+    final prevAchievements = ref.read(achievementsStatusProvider);
+
     await ref
         .read(workoutDaoProvider)
         .finishSession(widget.sessionId, _sessionSecs);
+
+    // Aguarda atualização assíncrona nos streams do Riverpod
+    await Future.delayed(const Duration(milliseconds: 250));
+    final nextAchievements = ref.read(achievementsStatusProvider);
+
+    final newlyUnlocked = <AchievementStatus>[];
+    for (int i = 0; i < prevAchievements.length; i++) {
+      final prev = prevAchievements[i];
+      final next = nextAchievements[i];
+      if (next.unlockedLevelIndex > prev.unlockedLevelIndex) {
+        newlyUnlocked.add(next);
+      }
+    }
 
     // Sincronizar treino finalizado com o Health Connect
     try {
@@ -1289,6 +1307,20 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     }
 
     if (!mounted) return;
+
+    // Dispara animações sequenciais de conquistas desbloqueadas
+    if (newlyUnlocked.isNotEmpty) {
+      int delayMs = 500;
+      for (final status in newlyUnlocked) {
+        Future.delayed(Duration(milliseconds: delayMs), () {
+          if (mounted) {
+            AchievementUnlockOverlay.show(context, status);
+          }
+        });
+        delayMs += 5000;
+      }
+    }
+
     _showFinishDialog(
       totalVolume: totalVolume,
       uniqueExercises: uniqueExercisesCount,

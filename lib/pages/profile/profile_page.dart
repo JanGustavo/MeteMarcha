@@ -1353,7 +1353,7 @@ class _AchievementCard extends StatelessWidget {
     } else {
       final currentLevel = ach.levels[levelIdx];
       levelName = currentLevel.name;
-      badgeEmoji = currentLevel.icon;
+      badgeEmoji = ach.emoji;
       if (levelName == 'Bronze') {
         bgGradient = const LinearGradient(
           colors: [Color(0xFF8C5230), Color(0xFFE2A785), Color(0xFF8C5230)],

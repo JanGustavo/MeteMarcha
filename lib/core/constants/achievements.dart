@@ -28,6 +28,7 @@ class Achievement {
   final AchievementType type;
   final List<String>? keywords;
   final List<AchievementLevel> levels;
+  final String emoji;
 
   const Achievement({
     required this.id,
@@ -37,6 +38,7 @@ class Achievement {
     required this.type,
     this.keywords,
     required this.levels,
+    required this.emoji,
   });
 }
 
@@ -48,6 +50,7 @@ const List<Achievement> achievements = [
     description: 'Força máxima estimada no supino',
     type: AchievementType.exercise1rm,
     keywords: ['supino'],
+    emoji: '🏋️‍♂️',
     levels: [
       AchievementLevel(name: 'Bronze', value: 60.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 100.0, icon: '🥈'),
@@ -61,6 +64,7 @@ const List<Achievement> achievements = [
     description: 'Força máxima estimada no agachamento',
     type: AchievementType.exercise1rm,
     keywords: ['agachamento'],
+    emoji: '🦵',
     levels: [
       AchievementLevel(name: 'Bronze', value: 80.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 120.0, icon: '🥈'),
@@ -74,6 +78,7 @@ const List<Achievement> achievements = [
     description: 'Força máxima estimada no terra',
     type: AchievementType.exercise1rm,
     keywords: ['terra'],
+    emoji: '💀',
     levels: [
       AchievementLevel(name: 'Bronze', value: 100.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 150.0, icon: '🥈'),
@@ -87,6 +92,7 @@ const List<Achievement> achievements = [
     description: 'Força máxima estimada em roscas/bíceps',
     type: AchievementType.exercise1rm,
     keywords: ['rosca', 'biceps', 'bíceps'],
+    emoji: '💪',
     levels: [
       AchievementLevel(name: 'Bronze', value: 20.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 40.0, icon: '🥈'),
@@ -100,6 +106,7 @@ const List<Achievement> achievements = [
     description: 'Força máxima estimada em puxadas/remadas',
     type: AchievementType.exercise1rm,
     keywords: ['puxada', 'remada', 'barra fixa', 'pulldown'],
+    emoji: '🚪',
     levels: [
       AchievementLevel(name: 'Bronze', value: 60.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 90.0, icon: '🥈'),
@@ -113,6 +120,7 @@ const List<Achievement> achievements = [
     description: 'Força máxima estimada na panturrilha',
     type: AchievementType.exercise1rm,
     keywords: ['panturrilha', 'gemeos', 'gêmeos'],
+    emoji: '👟',
     levels: [
       AchievementLevel(name: 'Bronze', value: 45.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 80.0, icon: '🥈'),
@@ -126,6 +134,7 @@ const List<Achievement> achievements = [
     description: 'Total de séries de abdômen concluídas',
     type: AchievementType.exerciseSetsCount,
     keywords: ['abdominal', 'infra', 'supra', 'prancha'],
+    emoji: '🍫',
     levels: [
       AchievementLevel(name: 'Bronze', value: 30.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 100.0, icon: '🥈'),
@@ -138,6 +147,7 @@ const List<Achievement> achievements = [
     shortTitle: 'Treinos',
     description: 'Complete sessões de treino',
     type: AchievementType.totalWorkouts,
+    emoji: '🔥',
     levels: [
       AchievementLevel(name: 'Bronze', value: 10.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 50.0, icon: '🥈'),
@@ -150,6 +160,7 @@ const List<Achievement> achievements = [
     shortTitle: 'Semanas',
     description: 'Mantenha semanas ativas consecutivas',
     type: AchievementType.weekStreak,
+    emoji: '⚡',
     levels: [
       AchievementLevel(name: 'Bronze', value: 3.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 6.0, icon: '🥈'),
@@ -162,6 +173,7 @@ const List<Achievement> achievements = [
     shortTitle: 'Volume',
     description: 'Volume total acumulado em toneladas',
     type: AchievementType.totalVolumeTons,
+    emoji: '🚜',
     levels: [
       AchievementLevel(name: 'Bronze', value: 10.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 50.0, icon: '🥈'),
