@@ -935,6 +935,34 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
     return max1RM;
   }
 
+  /// Retorna o registro correspondente ao maior 1RM estimado (Epley) registrado para o exercício.
+  Future<ExerciseLog?> getMax1RMLogForExercise(int exerciseId) async {
+    final query = select(exerciseLogs).join([
+      innerJoin(db.workoutSessions, db.workoutSessions.id.equalsExp(exerciseLogs.sessionId))
+    ])..where(
+      exerciseLogs.exerciseId.equals(exerciseId) &
+      exerciseLogs.concluido.equals(true) &
+      db.workoutSessions.status.equals('concluido')
+    );
+
+    final rows = await query.get();
+    if (rows.isEmpty) return null;
+
+    double max1RM = 0.0;
+    ExerciseLog? bestLog;
+    for (final row in rows) {
+      final log = row.readTable(exerciseLogs);
+      final oneRM = log.repeticoes == 1
+          ? log.peso
+          : log.peso * (1 + log.repeticoes / 30.0);
+      if (oneRM > max1RM) {
+        max1RM = oneRM;
+        bestLog = log;
+      }
+    }
+    return bestLog;
+  }
+
   // ── Cálculo de volume ──────────────────────────────────────────
 
   /// Volume mecânico (kg × reps).

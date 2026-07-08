@@ -13,6 +13,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -88,6 +89,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   final List<_SetEntry> _setsLogged = [];
   List<ExerciseLog> _prevLogs = []; // último treino deste exercício
   double _max1RM = 0.0; // recorde máximo 1RM histórico do exercício
+  ExerciseLog? _max1RMLog; // registro do recorde máximo 1RM histórico do exercício
 
   // ── Inputs ──────────────────────────────────────────────────────
   final _pesoCtrl = TextEditingController(text: '0');
@@ -218,6 +220,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
 
     // Busca recorde máximo 1RM histórico
     final prevMax1RM = await ref.read(logDaoProvider).getMax1RMForExercise(ex.id);
+    final prevMax1RMLog = await ref.read(logDaoProvider).getMax1RMLogForExercise(ex.id);
 
     // Busca logs já realizados na sessão atual para este exercício
     final currentLogs =
@@ -235,9 +238,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     final profile = await ref.read(profileDaoProvider).getProfile();
     final userWeight = profile?.pesoAtual ?? 70.0;
 
+    final exerciseChanged = _lastLoadedExerciseId != ex.id;
+    _lastLoadedExerciseId = ex.id;
+
     setState(() {
       _hasOtherUncompleted = hasOtherUncompleted;
       _max1RM = prevMax1RM;
+      _max1RMLog = prevMax1RMLog;
       _prevLogs = prev;
       _sessionVolume = currentLogs.fold<double>(0.0, (sum, log) => sum + (log.peso * log.repeticoes));
       final numUniqueSeries = exerciseSessionLogs.map((l) => l.serie).toSet().length;
@@ -256,7 +263,17 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
           )));
       _lado = 'ambos';
       _executandoUnilateral = ex.isUnilateral;
-      _equipamentoSelecionado = ex.equipamento;
+      if (exerciseChanged) {
+        if (exerciseSessionLogs.isNotEmpty) {
+          _equipamentoSelecionado = exerciseSessionLogs.last.equipamento ?? ex.equipamento;
+        } else {
+          _equipamentoSelecionado = ex.equipamento;
+        }
+      } else {
+        _equipamentoSelecionado ??= (exerciseSessionLogs.isNotEmpty
+            ? (exerciseSessionLogs.last.equipamento ?? ex.equipamento)
+            : ex.equipamento);
+      }
 
       if (exerciseSessionLogs.isNotEmpty) {
         final lastPeso = exerciseSessionLogs.last.peso;
@@ -267,7 +284,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
       } else if (prev.isNotEmpty) {
         final totalPeso = prev.map((l) => l.peso).fold<double>(0.0, (a, b) => a + b);
         final totalReps = prev.map((l) => l.repeticoes).fold<int>(0, (a, b) => a + b);
-        double avgPeso = ((totalPeso / prev.length) / 2).round() * 2.0;
+        double avgPeso = ((totalPeso / prev.length) * 2).round() / 2.0;
         final avgReps = (totalReps / prev.length).round();
 
         if (isBodyWeight && avgPeso <= 0.0) {
@@ -618,6 +635,19 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
       if (isPR || prevMax1RM == 0.0) {
         if (new1RM > _max1RM) {
           _max1RM = new1RM;
+          _max1RMLog = ExerciseLog(
+            id: insertedIds[0],
+            exerciseId: _current.id,
+            sessionId: widget.sessionId,
+            data: DateTime.now().toIso8601String(),
+            peso: peso,
+            repeticoes: reps,
+            serie: _currentSerie,
+            lado: _lado,
+            concluido: true,
+            equipamento: _equipamentoSelecionado,
+            observacoes: obs.isNotEmpty ? obs : null,
+          );
         }
       }
       if (_executandoUnilateral && _lado == 'ambos') {
@@ -656,7 +686,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     _startRestTimer(_current.tempoDescansoSegundos);
 
     final expectedSets = _obterSeriesEsperadas(_current.volume);
-    if (expectedSets != null && _setsLogged.length >= expectedSets) {
+    final completedSets = _setsLogged.map((e) => e.serie).toSet().length;
+    if (expectedSets != null && completedSets >= expectedSets) {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2051,10 +2082,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                         color: AppColors.info,
                       ),
                       if (_max1RM > 0)
-                        _BadgeTag(
-                          label: 'PR: ${_max1RM.toStringAsFixed(1)} kg',
-                          icon: Icons.emoji_events_rounded,
-                          color: Colors.amber,
+                        GestureDetector(
+                          onTap: () => _showPrDetailsDialog(context),
+                          child: _BadgeTag(
+                            label: 'PR: ${_max1RM.toStringAsFixed(1)} kg',
+                            icon: Icons.emoji_events_rounded,
+                            color: Colors.amber,
+                          ),
                         ),
                       if (ex.link != null && ex.link!.isNotEmpty)
                         GestureDetector(
@@ -2333,6 +2367,207 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     } catch (_) {
       // Falha silenciosa ou log
     }
+  }
+
+  void _showPrDetailsDialog(BuildContext context) {
+    final log = _max1RMLog;
+    final isDark = context.isDark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: context.cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          actionsPadding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: isDark ? 0.15 : 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.emoji_events_rounded,
+                  size: 24,
+                  color: Colors.amber,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Recorde Pessoal (PR)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.amber,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  'Sua estimativa de 1RM (Força Máxima) mais alta para este exercício:',
+                  style: TextStyle(color: context.onSurface, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surface.withValues(alpha: 0.5)
+                        : AppColors.lightBackground.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: context.divider.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '${_max1RM.toStringAsFixed(1)} kg',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '1RM Estimada (One-Rep Max)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (log != null) ...[
+                  Text(
+                    'Série que atingiu o recorde:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: context.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildDetailRow(
+                    label: 'Carga levantada:',
+                    value: '${log.peso.toStringAsFixed(1)} kg',
+                  ),
+                  _buildDetailRow(
+                    label: 'Repetições:',
+                    value: '${log.repeticoes}',
+                  ),
+                  _buildDetailRow(
+                    label: 'Série original:',
+                    value: 'Série ${log.serie}',
+                  ),
+                  if (log.lado != 'ambos')
+                    _buildDetailRow(
+                      label: 'Lado:',
+                      value: log.lado == 'esquerdo' ? 'Esquerdo' : 'Direito',
+                    ),
+                  if (log.equipamento != null)
+                    _buildDetailRow(
+                      label: 'Equipamento:',
+                      value: log.equipamento!,
+                    ),
+                  _buildDetailRow(
+                    label: 'Data de realização:',
+                    value: _formatLogDate(log.data),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                Text(
+                  'Fórmula de cálculo (Epley):',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: context.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.black.withValues(alpha: 0.15)
+                        : Colors.grey.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    log != null && log.repeticoes == 1
+                        ? '1RM = Carga (pois foi realizada 1 repetição)'
+                        : '1RM = Carga × (1 + Repetições / 30)',
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.black87,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Entendi', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow({required String label, required String value}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: Colors.grey),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatLogDate(String dateStr) {
+    final parsed = DateTime.tryParse(dateStr);
+    if (parsed == null) return dateStr;
+    return DateFormat('dd/MM/yyyy - HH:mm').format(parsed.toLocal());
   }
 }
 
