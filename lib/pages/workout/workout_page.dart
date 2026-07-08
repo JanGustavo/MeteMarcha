@@ -9,7 +9,11 @@
 //   6. Na última: [Finalizar] → dialog de resumo → volta ao Home
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -79,7 +83,7 @@ class WorkoutPage extends ConsumerStatefulWidget {
   ConsumerState<WorkoutPage> createState() => _WorkoutPageState();
 }
 
-class _WorkoutPageState extends ConsumerState<WorkoutPage> {
+class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingObserver {
   // ── Exercise list ───────────────────────────────────────────────
   List<Exercise> _exercises = [];
   int _currentIndex = 0;
@@ -123,6 +127,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     NotificationService.requestPermission();
     _loadExercises();
     _initSessionDuration().whenComplete(() {
@@ -131,6 +136,43 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(restTimerProvider.notifier).setInWorkoutPage(true);
     });
+
+    if (!kIsWeb) {
+      FlutterOverlayWindow.overlayListener.listen((event) async {
+        if (event == null) return;
+        try {
+          final Map<String, dynamic> msg = event is Map
+              ? Map<String, dynamic>.from(event)
+              : Map<String, dynamic>.from(jsonDecode(event.toString()));
+
+          final type = msg['type'];
+          if (type == 'save_series') {
+            final double peso = (msg['peso'] as num).toDouble();
+            final int reps = msg['reps'] as int;
+
+            _pesoCtrl.text = peso.toString();
+            _repsCtrl.text = reps.toString();
+
+            await _salvarSerie();
+            await _enviarEstadoParaOverlay();
+          } else if (type == 'next_exercise') {
+            await _proximoExercicio();
+            await _enviarEstadoParaOverlay();
+          } else if (type == 'select_exercise') {
+            final int index = msg['index'] as int;
+            await _selecionarExercicio(index);
+            await _enviarEstadoParaOverlay();
+          } else if (type == 'open_app') {
+            FlutterForegroundTask.launchApp();
+            await FlutterOverlayWindow.closeOverlay();
+          } else if (type == 'close_overlay') {
+            await FlutterOverlayWindow.closeOverlay();
+          }
+        } catch (e) {
+          debugPrint('Erro ao processar mensagem do overlay: $e');
+        }
+      });
+    }
   }
 
   Future<void> _initSessionDuration() async {
@@ -157,6 +199,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    if (!kIsWeb) {
+      try {
+        FlutterOverlayWindow.closeOverlay();
+      } catch (_) {}
+    }
     _sessionTimer?.cancel();
     _pesoCtrl.dispose();
     _repsCtrl.dispose();
@@ -165,6 +213,95 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
       ref.read(restTimerProvider.notifier).setInWorkoutPage(false);
     } catch (_) {}
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (kIsWeb) return;
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _ativarOverlaySePermitido();
+    } else if (state == AppLifecycleState.resumed) {
+      _fecharOverlay();
+    }
+  }
+
+  Future<void> _ativarOverlaySePermitido() async {
+    if (kIsWeb) return;
+    if (_exercises.isEmpty) return;
+    try {
+      final isGranted = await FlutterOverlayWindow.isPermissionGranted();
+      if (!isGranted) {
+        return;
+      }
+      final isActive = await FlutterOverlayWindow.isActive();
+      if (!isActive) {
+        await FlutterOverlayWindow.showOverlay(
+          alignment: OverlayAlignment.center,
+          height: 390,
+          width: 330,
+          enableDrag: true,
+          overlayTitle: 'Mete Marcha Fit',
+          overlayContent: 'Painel Flutuante do Treino',
+        );
+      }
+      await _enviarEstadoParaOverlay();
+    } catch (e) {
+      debugPrint('Erro ao ativar overlay: $e');
+    }
+  }
+
+  Future<void> _fecharOverlay() async {
+    if (kIsWeb) return;
+    try {
+      final isActive = await FlutterOverlayWindow.isActive();
+      if (isActive) {
+        await FlutterOverlayWindow.closeOverlay();
+      }
+    } catch (e) {
+      debugPrint('Erro ao fechar overlay: $e');
+    }
+  }
+
+  Future<void> _enviarEstadoParaOverlay() async {
+    if (kIsWeb) return;
+    try {
+      final isOverlayActive = await FlutterOverlayWindow.isActive();
+      if (!isOverlayActive) return;
+
+      final timerState = ref.read(restTimerProvider);
+      final completedLogs = await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
+      final completedIds = completedLogs.map((l) => l.exerciseId).toSet();
+
+      final exercisesList = _exercises.map((e) => e.nome).toList();
+      final exercisesCompleted = _exercises.map((e) => completedIds.contains(e.id)).toList();
+
+      final data = {
+        'type': 'state_update',
+        'exerciseName': _current.nome,
+        'weight': double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
+        'reps': int.tryParse(_repsCtrl.text) ?? 10,
+        'exerciseIndex': _currentIndex,
+        'exercises': exercisesList,
+        'exercisesCompleted': exercisesCompleted,
+        'currentSerie': _currentSerie,
+        'timerSeconds': timerState.remainingSeconds,
+        'timerMax': timerState.totalSeconds,
+        'isResting': timerState.isActive,
+      };
+
+      await FlutterOverlayWindow.shareData(data);
+    } catch (e) {
+      debugPrint('Erro ao enviar estado para overlay: $e');
+    }
+  }
+
+  Future<void> _selecionarExercicio(int index) async {
+    if (index >= 0 && index < _exercises.length) {
+      setState(() {
+        _currentIndex = index;
+      });
+      await _loadExerciseContext();
+    }
   }
 
   // ── Data loading ────────────────────────────────────────────────
@@ -1853,6 +1990,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<RestTimerState>(restTimerProvider, (previous, next) {
+      _enviarEstadoParaOverlay();
+    });
     final timerState = ref.watch(restTimerProvider);
     final resting = timerState.isActive;
     final restLeft = timerState.remainingSeconds;
@@ -2218,7 +2358,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<double?>(
-                            value: _currentRpe,
+                            initialValue: _currentRpe,
                             decoration: const InputDecoration(
                               labelText: 'RPE (Esforço 1-10)',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -2246,7 +2386,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<int?>(
-                            value: _currentRir,
+                            initialValue: _currentRir,
                             decoration: const InputDecoration(
                               labelText: 'RIR (Repetições de Reserva)',
                               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),

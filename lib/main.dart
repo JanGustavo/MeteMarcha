@@ -8,9 +8,19 @@ import 'core/services/foreground_service.dart';
 import 'core/services/deep_link_service.dart';
 import 'core/widgets/global_rest_timer_overlay.dart';
 import 'pages/splash/splash_page.dart';
+import 'core/widgets/overlay_control_panel.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 late final ProviderContainer globalProviderContainer;
+
+@pragma("vm:entry-point")
+void overlayMain() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: OverlayControlPanel(),
+  ));
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
