@@ -2,7 +2,7 @@ name: gym_tracker
 description: Gym workout tracker – sem backend, sem Firebase, só SQLite.
 
 publish_to: "none"
-version: 2.04.0+28
+version: 2.05.0+29
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
