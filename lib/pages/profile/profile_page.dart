@@ -136,7 +136,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao escolher imagem: $e')),
+          SnackBar(content: Text('Erro ao escolher imagem: ${e.toString()}')),
         );
       }
     }
@@ -295,7 +295,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao exportar backup: $e')),
+          SnackBar(content: Text('Erro ao exportar backup: ${e.toString()}')),
         );
       }
     }
@@ -346,8 +346,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       await db.close();
 
       if (kIsWeb) {
-        AppDatabase.bytesToImport = file.bytes;
+        saveBackupBytesToLocalStorage(file.bytes!);
         await deleteWebDatabase('gym_tracker');
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Restaurando dados... O aplicativo será recarregado.')),
+          );
+        }
+        await Future.delayed(const Duration(milliseconds: 1000));
+        reloadWebPage();
+        return;
       } else {
         final path = file.path!;
         final dbFolder = await getApplicationDocumentsDirectory();
@@ -358,21 +367,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         }
 
         await File(path).copy(dbFile.path);
-      }
 
-      ref.invalidate(databaseProvider);
-      // Forçar recriação imediata do banco no mesmo loop de eventos
-      ref.read(databaseProvider);
+        ref.invalidate(databaseProvider);
+        ref.read(databaseProvider);
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Dados restaurados com sucesso!')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Dados restaurados com sucesso!')),
+          );
+        }
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao restaurar backup: $e')),
+          SnackBar(content: Text('Erro ao restaurar backup: ${e.toString()}')),
         );
       }
     }

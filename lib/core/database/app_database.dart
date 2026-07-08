@@ -6,8 +6,11 @@
 // O arquivo app_database.g.dart é gerado automaticamente.
 
 
+import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'database_helper.dart'
+    if (dart.library.js_interop) 'database_helper_web.dart';
 
 export 'package:drift/drift.dart' hide Column, Table;
 
@@ -1217,6 +1220,10 @@ class AppDatabase extends _$AppDatabase {
             final bytes = bytesToImport!;
             bytesToImport = null;
             return bytes;
+          }
+          final stored = getBackupBytesFromLocalStorage();
+          if (stored != null) {
+            return stored;
           }
           return null;
         },
