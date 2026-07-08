@@ -23,6 +23,7 @@ enum AchievementType {
 class Achievement {
   final String id;
   final String title;
+  final String shortTitle;
   final String description;
   final AchievementType type;
   final List<String>? keywords;
@@ -31,6 +32,7 @@ class Achievement {
   const Achievement({
     required this.id,
     required this.title,
+    required this.shortTitle,
     required this.description,
     required this.type,
     this.keywords,
@@ -42,6 +44,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'bench_press',
     title: 'Monstro do Supino',
+    shortTitle: 'Supino',
     description: 'Força máxima estimada no supino',
     type: AchievementType.exercise1rm,
     keywords: ['supino'],
@@ -54,6 +57,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'squat',
     title: 'Rei do Agachamento',
+    shortTitle: 'Agachamento',
     description: 'Força máxima estimada no agachamento',
     type: AchievementType.exercise1rm,
     keywords: ['agachamento'],
@@ -66,6 +70,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'deadlift',
     title: 'Mestre do Terra',
+    shortTitle: 'Terra',
     description: 'Força máxima estimada no terra',
     type: AchievementType.exercise1rm,
     keywords: ['terra'],
@@ -78,6 +83,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'biceps',
     title: 'Levantando o Mundo',
+    shortTitle: 'Bíceps',
     description: 'Força máxima estimada em roscas/bíceps',
     type: AchievementType.exercise1rm,
     keywords: ['rosca', 'biceps', 'bíceps'],
@@ -90,6 +96,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'back',
     title: 'Mais Largo que a Porta',
+    shortTitle: 'Costas',
     description: 'Força máxima estimada em puxadas/remadas',
     type: AchievementType.exercise1rm,
     keywords: ['puxada', 'remada', 'barra fixa', 'pulldown'],
@@ -102,6 +109,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'calves',
     title: 'No Sapatinho',
+    shortTitle: 'Panturrilha',
     description: 'Força máxima estimada na panturrilha',
     type: AchievementType.exercise1rm,
     keywords: ['panturrilha', 'gemeos', 'gêmeos'],
@@ -114,6 +122,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'abs',
     title: 'É pra Trincar',
+    shortTitle: 'Abdômen',
     description: 'Total de séries de abdômen concluídas',
     type: AchievementType.exerciseSetsCount,
     keywords: ['abdominal', 'infra', 'supra', 'prancha'],
@@ -126,6 +135,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'workouts_count',
     title: 'Consistência de Aço',
+    shortTitle: 'Treinos',
     description: 'Complete sessões de treino',
     type: AchievementType.totalWorkouts,
     levels: [
@@ -137,6 +147,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'week_streak',
     title: 'Foco Inabalável',
+    shortTitle: 'Semanas',
     description: 'Mantenha semanas ativas consecutivas',
     type: AchievementType.weekStreak,
     levels: [
@@ -148,6 +159,7 @@ const List<Achievement> achievements = [
   Achievement(
     id: 'total_volume',
     title: 'Trator Humano',
+    shortTitle: 'Volume',
     description: 'Volume total acumulado em toneladas',
     type: AchievementType.totalVolumeTons,
     levels: [

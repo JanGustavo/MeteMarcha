@@ -516,10 +516,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+                crossAxisCount: 3,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
-                childAspectRatio: 1.15,
+                childAspectRatio: 0.95,
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -1322,6 +1322,92 @@ class _AchievementCard extends StatelessWidget {
 
   const _AchievementCard({required this.status});
 
+  Widget _buildEmblem(BuildContext context, {double size = 48}) {
+    final ach = status.achievement;
+    final levelIdx = status.unlockedLevelIndex;
+    final isLocked = levelIdx == -1;
+
+    Gradient borderGradient;
+    Gradient bgGradient;
+    String badgeEmoji;
+    String levelName;
+
+    if (isLocked) {
+      bgGradient = const LinearGradient(
+        colors: [Color(0xFF2C2C2C), Color(0xFF1E1E1E)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      );
+      borderGradient = const LinearGradient(
+        colors: [Color(0xFF444444), Color(0xFF333333)],
+      );
+      badgeEmoji = '🔒';
+    } else {
+      final currentLevel = ach.levels[levelIdx];
+      levelName = currentLevel.name;
+      badgeEmoji = currentLevel.icon;
+      if (levelName == 'Bronze') {
+        bgGradient = const LinearGradient(
+          colors: [Color(0xFF8C5230), Color(0xFFE2A785), Color(0xFF8C5230)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+        borderGradient = const LinearGradient(
+          colors: [Color(0xFFCD7F32), Color(0xFFFFE5D9), Color(0xFFCD7F32)],
+        );
+      } else if (levelName == 'Prata') {
+        bgGradient = const LinearGradient(
+          colors: [Color(0xFF6B7B8C), Color(0xFFEBF3FA), Color(0xFF6B7B8C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+        borderGradient = const LinearGradient(
+          colors: [Color(0xFFB0B8C0), Color(0xFFFFFFFF), Color(0xFFB0B8C0)],
+        );
+      } else {
+        bgGradient = const LinearGradient(
+          colors: [Color(0xFFB59410), Color(0xFFFFFAAF), Color(0xFFB59410)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+        borderGradient = const LinearGradient(
+          colors: [Color(0xFFFFD700), Color(0xFFFFFFE0), Color(0xFFFFD700)],
+        );
+      }
+    }
+
+    final double width = size;
+    final double height = size * 1.15;
+
+    return ClipPath(
+      clipper: HexagonClipper(),
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          gradient: borderGradient,
+        ),
+        padding: const EdgeInsets.all(2.0),
+        child: ClipPath(
+          clipper: HexagonClipper(),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: bgGradient,
+            ),
+            child: Center(
+              child: Text(
+                badgeEmoji,
+                style: TextStyle(
+                  fontSize: size * 0.45,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDark;
@@ -1329,124 +1415,55 @@ class _AchievementCard extends StatelessWidget {
     final levelIdx = status.unlockedLevelIndex;
     final isLocked = levelIdx == -1;
 
-    // Determine badge styling based on unlocked level
-    Color badgeColor;
-    String badgeEmoji;
-    String levelName;
-
-    if (isLocked) {
-      badgeColor = Colors.grey;
-      badgeEmoji = '🔒';
-      levelName = 'Bloqueado';
-    } else {
-      final currentLevel = ach.levels[levelIdx];
-      levelName = currentLevel.name;
-      badgeEmoji = currentLevel.icon;
+    Color barColor = Colors.grey;
+    if (!isLocked) {
+      final levelName = ach.levels[levelIdx].name;
       if (levelName == 'Bronze') {
-        badgeColor = const Color(0xFFCD7F32); // Bronze
+        barColor = const Color(0xFFCD7F32);
       } else if (levelName == 'Prata') {
-        badgeColor = const Color(0xFFC0C0C0); // Silver
+        barColor = const Color(0xFFB0B8C0);
       } else {
-        badgeColor = const Color(0xFFFFD700); // Gold
+        barColor = const Color(0xFFFFD700);
       }
     }
 
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isLocked
-              ? context.divider.withValues(alpha: 0.3)
-              : badgeColor.withValues(alpha: 0.4),
-          width: isLocked ? 1.0 : 1.5,
-        ),
-      ),
-      child: InkWell(
-        onTap: () => _showAchievementDetail(context),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(14.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isLocked
-                          ? Colors.grey.withValues(alpha: 0.1)
-                          : badgeColor.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      badgeEmoji,
-                      style: const TextStyle(fontSize: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ach.title,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: context.onBackground,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          levelName,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: isLocked ? Colors.grey : badgeColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+    return InkWell(
+      onTap: () => _showAchievementDetail(context),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildEmblem(context, size: 52),
+            const SizedBox(height: 6),
+            Text(
+              ach.shortTitle,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isLocked ? context.onSurface.withValues(alpha: 0.5) : context.onBackground,
               ),
-              const SizedBox(height: 12),
-              Text(
-                ach.description,
-                style: const TextStyle(fontSize: 10, color: Colors.grey),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 5),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(1.5),
                 child: LinearProgressIndicator(
                   value: status.progress,
-                  minHeight: 5,
+                  minHeight: 3,
                   backgroundColor: isDark ? Colors.white10 : Colors.black12,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    isLocked ? AppColors.primary : badgeColor,
+                    isLocked ? AppColors.primary : barColor,
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                status.nextTargetLabel,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w500,
-                  color: context.onSurface,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1457,160 +1474,179 @@ class _AchievementCard extends StatelessWidget {
     final levelIdx = status.unlockedLevelIndex;
     final isDark = context.isDark;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      backgroundColor: context.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: context.cardColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          actionsPadding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
-                child: const Icon(Icons.workspace_premium_rounded, color: AppColors.primaryLight, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 16),
+                Row(
                   children: [
-                    Text(
-                      ach.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: isDark ? AppColors.primaryLight : AppColors.primary,
+                    _buildEmblem(context, size: 56),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ach.title,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: context.onBackground,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            ach.description,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      ach.description,
-                      style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.normal),
-                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              // Current Value
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: context.divider.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Seu valor atual:',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                    Text(
-                      _formatValue(status.currentValue, ach.type),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primaryLight),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Level details list
-              ...List.generate(ach.levels.length, (index) {
-                final level = ach.levels[index];
-                final isUnlocked = levelIdx >= index;
-                final isNext = levelIdx + 1 == index;
-
-                Color color;
-                if (level.name == 'Bronze') {
-                  color = const Color(0xFFCD7F32);
-                } else if (level.name == 'Prata') {
-                  color = const Color(0xFFC0C0C0);
-                } else {
-                  color = const Color(0xFFFFD700);
-                }
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: isUnlocked
-                        ? color.withValues(alpha: 0.05)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isUnlocked
-                          ? color.withValues(alpha: 0.3)
-                          : isNext
-                              ? AppColors.primary.withValues(alpha: 0.4)
-                              : context.divider.withValues(alpha: 0.15),
-                      width: isUnlocked || isNext ? 1.5 : 1.0,
-                    ),
+                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: context.divider.withValues(alpha: 0.3)),
                   ),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(level.icon, style: const TextStyle(fontSize: 22)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              level.name,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: isUnlocked ? color : context.onBackground.withValues(alpha: 0.7),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Meta: ${_formatValue(level.value, ach.type)}',
-                              style: const TextStyle(fontSize: 10, color: Colors.grey),
-                            ),
-                          ],
+                      const Text(
+                        'Progresso Atual:',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      Text(
+                        _formatValue(status.currentValue, ach.type),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryLight,
                         ),
                       ),
-                      if (isUnlocked)
-                        const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20)
-                      else if (isNext)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Próximo',
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.primaryLight),
-                          ),
-                        )
-                      else
-                        const Icon(Icons.lock_outline_rounded, color: Colors.grey, size: 18),
                     ],
                   ),
-                );
-              }),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Fechar'),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  status.nextTargetLabel,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryLight,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Column(
+                  children: List.generate(ach.levels.length, (index) {
+                    final level = ach.levels[index];
+                    final isUnlocked = levelIdx >= index;
+                    final isNext = levelIdx + 1 == index;
+
+                    Color color;
+                    if (level.name == 'Bronze') {
+                      color = const Color(0xFFCD7F32);
+                    } else if (level.name == 'Prata') {
+                      color = const Color(0xFFB0B8C0);
+                    } else {
+                      color = const Color(0xFFFFD700);
+                    }
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isUnlocked ? color.withValues(alpha: 0.05) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isUnlocked
+                              ? color.withValues(alpha: 0.3)
+                              : isNext
+                                  ? AppColors.primary.withValues(alpha: 0.4)
+                                  : context.divider.withValues(alpha: 0.15),
+                          width: isUnlocked || isNext ? 1.5 : 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(level.icon, style: const TextStyle(fontSize: 20)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  level.name,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: isUnlocked ? color : context.onBackground.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Exige: ${_formatValue(level.value, ach.type)}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isUnlocked)
+                            const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18)
+                          else if (isNext)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Próximo',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryLight,
+                                ),
+                              ),
+                            )
+                          else
+                            const Icon(Icons.lock_outline_rounded, color: Colors.grey, size: 16),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -1629,4 +1665,27 @@ class _AchievementCard extends StatelessWidget {
       return '${val.toInt()} ${val.toInt() == 1 ? "série" : "séries"}';
     }
   }
+}
+
+class HexagonClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    final w = size.width;
+    final h = size.height;
+    
+    // Vertical pointed hexagon (point at top center and bottom center)
+    path.moveTo(w * 0.5, 0);
+    path.lineTo(w, h * 0.25);
+    path.lineTo(w, h * 0.75);
+    path.lineTo(w * 0.5, h);
+    path.lineTo(0, h * 0.75);
+    path.lineTo(0, h * 0.25);
+    path.close();
+    
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
