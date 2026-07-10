@@ -118,6 +118,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   // ── Session timer ───────────────────────────────────────────────
   int _sessionSecs = 0;
   Timer? _sessionTimer;
+  StreamSubscription? _overlaySubscription;
   double _sessionVolume = 0.0;
   double? _prevSessionVolume;
   final GlobalKey _shareCardKey = GlobalKey();
@@ -138,7 +139,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
     });
 
     if (!kIsWeb) {
-      FlutterOverlayWindow.overlayListener.listen((event) async {
+      _overlaySubscription = FlutterOverlayWindow.overlayListener.listen((event) async {
         if (event == null) return;
         try {
           final Map<String, dynamic> msg = event is Map
@@ -200,6 +201,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _overlaySubscription?.cancel();
     if (!kIsWeb) {
       try {
         FlutterOverlayWindow.closeOverlay();
@@ -388,6 +390,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
       _sessionVolume = currentLogs.fold<double>(0.0, (sum, log) => sum + (log.peso * log.repeticoes));
       final numUniqueSeries = exerciseSessionLogs.map((l) => l.serie).toSet().length;
       _currentSerie = numUniqueSeries + 1;
+      _currentRpe = null;
+      _currentRir = null;
       _setsLogged.clear();
       _setsLogged.addAll(exerciseSessionLogs.map((l) => _SetEntry(
             id: l.id,
@@ -729,6 +733,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
             lado: Value(l),
             equipamento: Value(_equipamentoSelecionado),
             observacoes: valueObs,
+            rpe: _currentRpe != null ? Value(_currentRpe) : const Value.absent(),
+            rir: _currentRir != null ? Value(_currentRir) : const Value.absent(),
           ));
           insertedIds.add(id);
         }
@@ -743,6 +749,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
           lado: Value(_lado),
           equipamento: Value(_equipamentoSelecionado),
           observacoes: valueObs,
+          rpe: _currentRpe != null ? Value(_currentRpe) : const Value.absent(),
+          rir: _currentRir != null ? Value(_currentRir) : const Value.absent(),
         ));
         insertedIds.add(id);
       }
@@ -786,6 +794,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
             concluido: true,
             equipamento: _equipamentoSelecionado,
             observacoes: obs.isNotEmpty ? obs : null,
+            rpe: _currentRpe,
+            rir: _currentRir,
           );
         }
       }
@@ -798,6 +808,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
           lado: 'esquerdo',
           equipamento: _equipamentoSelecionado,
           observacoes: obs.isNotEmpty ? obs : null,
+          rpe: _currentRpe,
+          rir: _currentRir,
         ));
         _setsLogged.add(_SetEntry(
           id: insertedIds[1],
@@ -807,6 +819,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
           lado: 'direito',
           equipamento: _equipamentoSelecionado,
           observacoes: obs.isNotEmpty ? obs : null,
+          rpe: _currentRpe,
+          rir: _currentRir,
         ));
       } else {
         _setsLogged.add(_SetEntry(
@@ -817,9 +831,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
           lado: _lado,
           equipamento: _equipamentoSelecionado,
           observacoes: obs.isNotEmpty ? obs : null,
+          rpe: _currentRpe,
+          rir: _currentRir,
         ));
       }
       _currentSerie++;
+      _currentRpe = null;
+      _currentRir = null;
     });
 
     _startRestTimer(_current.tempoDescansoSegundos);
@@ -2358,6 +2376,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<double?>(
+                            key: ValueKey('rpe_${ex.id}_$_currentRpe'),
                             initialValue: _currentRpe,
                             decoration: const InputDecoration(
                               labelText: 'RPE (Esforço 1-10)',
@@ -2386,6 +2405,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<int?>(
+                            key: ValueKey('rir_${ex.id}_$_currentRir'),
                             initialValue: _currentRir,
                             decoration: const InputDecoration(
                               labelText: 'RIR (Repetições de Reserva)',
@@ -2484,6 +2504,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
                   ),
                   const SizedBox(height: 8),
                    DropdownButtonFormField<String>(
+                    key: ValueKey('equip_${ex.id}_$_equipamentoSelecionado'),
                     isExpanded: true,
                     initialValue: _equipamentoSelecionado,
                     decoration: const InputDecoration(

@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/services/health_connect_service.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 import '../../core/database/database_helper.dart'
     if (dart.library.js_interop) '../../core/database/database_helper_web.dart';
@@ -31,7 +32,7 @@ class ProfilePage extends ConsumerStatefulWidget {
   ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends ConsumerState<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingObserver {
   final _nomeCtrl = TextEditingController();
   final _alturaCtrl = TextEditingController();
   final _pesoCtrl = TextEditingController();
@@ -39,11 +40,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _saving = false;
   bool _populated = false;
   bool _healthConnectEnabled = false;
+  bool _overlayPermissionGranted = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadHealthConnectStatus();
+    _loadOverlayPermissionStatus();
   }
 
   void _loadHealthConnectStatus() async {
@@ -55,8 +59,26 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
   }
 
+  void _loadOverlayPermissionStatus() async {
+    if (kIsWeb) return;
+    final granted = await FlutterOverlayWindow.isPermissionGranted();
+    if (mounted) {
+      setState(() {
+        _overlayPermissionGranted = granted;
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadOverlayPermissionStatus();
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nomeCtrl.dispose();
     _alturaCtrl.dispose();
     _pesoCtrl.dispose();
@@ -943,6 +965,88 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ),
             ),
           ),
+
+          if (!kIsWeb)
+            SliverToBoxAdapter(
+              child: Card(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: context.divider),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.picture_in_picture_alt_rounded,
+                          color: AppColors.primaryLight,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Painel Flutuante (Overlay)',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: context.onBackground,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Exibir controle flutuante sobre outros apps ao minimizar o treino',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: context.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _overlayPermissionGranted,
+                        onChanged: (val) async {
+                          if (val) {
+                            await FlutterOverlayWindow.requestPermission();
+                            final granted = await FlutterOverlayWindow.isPermissionGranted();
+                            if (mounted) {
+                              setState(() {
+                                _overlayPermissionGranted = granted;
+                              });
+                            }
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Para desativar, remova a permissão "Sobrepor a outros apps" nas configurações.'),
+                              ),
+                            );
+                            await FlutterOverlayWindow.requestPermission();
+                            final granted = await FlutterOverlayWindow.isPermissionGranted();
+                            if (mounted) {
+                              setState(() {
+                                _overlayPermissionGranted = granted;
+                              });
+                            }
+                          }
+                        },
+                        activeColor: AppColors.primaryLight,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
           SliverToBoxAdapter(
             child: Card(
