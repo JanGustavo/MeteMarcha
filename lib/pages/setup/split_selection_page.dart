@@ -4,10 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../core/database/app_database.dart';
+import '../../core/database/database_helper.dart'
+    if (dart.library.js_interop) '../../core/database/database_helper_web.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import 'setup_page.dart';
@@ -210,29 +216,55 @@ class SplitSelectionPage extends ConsumerWidget {
                 ),
               ),
 
-              // Botão Importar JSON
+              // Row com os botões de Importar JSON e Importar SQLite
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.primary, width: 1.2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    onPressed: () => _showImportJsonDialog(context, ref),
-                    icon: const Icon(Icons.code_rounded, color: AppColors.primaryLight),
-                    label: const Text(
-                      'IMPORTAR TREINO (JSON)',
-                      style: TextStyle(
-                        color: AppColors.primaryLight,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        letterSpacing: 1,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.primary, width: 1.2),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: () => _showImportJsonDialog(context, ref),
+                        icon: const Icon(Icons.code_rounded, color: AppColors.primaryLight),
+                        label: const Text(
+                          'TREINO (JSON)',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.primaryLight,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.primary, width: 1.2),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: () => _importBackup(context, ref),
+                        icon: const Icon(Icons.backup_rounded, color: AppColors.primaryLight),
+                        label: const Text(
+                          'BACKUP (SQLITE)',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.primaryLight,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -486,6 +518,91 @@ class SplitSelectionPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.any,
+        withData: kIsWeb,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final file = result.files.first;
+      if (!kIsWeb && file.path == null) return;
+      if (kIsWeb && file.bytes == null) return;
+
+      if (!context.mounted) return;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: context.cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Restaurar Backup?'),
+          content: const Text(
+            'ATENÇÃO: Isso irá substituir todos os dados atuais do aplicativo pelo arquivo selecionado. Esta ação não pode ser desfeita.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Restaurar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+
+      final db = ref.read(databaseProvider);
+      await db.close();
+
+      if (kIsWeb) {
+        saveBackupBytesToLocalStorage(file.bytes!);
+        await deleteWebDatabase('gym_tracker');
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Restaurando dados... O aplicativo será recarregado.')),
+          );
+        }
+        await Future.delayed(const Duration(milliseconds: 1000));
+        reloadWebPage();
+        return;
+      } else {
+        final path = file.path!;
+        final dbFolder = await getApplicationDocumentsDirectory();
+        final dbFile = File('${dbFolder.path}/gym_tracker.sqlite');
+
+        if (await dbFile.exists()) {
+          await dbFile.delete();
+        }
+
+        await File(path).copy(dbFile.path);
+
+        ref.invalidate(databaseProvider);
+        ref.read(databaseProvider);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Dados restaurados com sucesso!')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao restaurar backup: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   void _showImportJsonDialog(BuildContext context, WidgetRef ref) {

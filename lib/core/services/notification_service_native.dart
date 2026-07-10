@@ -168,14 +168,26 @@ class NotificationService {
       android: androidDetails,
     );
 
-    await _notificationsPlugin.zonedSchedule(
-      id: 998,
-      title: 'Descanso Concluído! 🔥',
-      body: 'Hora de meter marcha na próxima série!',
-      scheduledDate: scheduledDate,
-      notificationDetails: platformDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id: 998,
+        title: 'Descanso Concluído! 🔥',
+        body: 'Hora de meter marcha na próxima série!',
+        scheduledDate: scheduledDate,
+        notificationDetails: platformDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } catch (e) {
+      debugPrint('Erro ao agendar com alarme exato: $e. Tentando modo aproximado...');
+      await _notificationsPlugin.zonedSchedule(
+        id: 998,
+        title: 'Descanso Concluído! 🔥',
+        body: 'Hora de meter marcha na próxima série!',
+        scheduledDate: scheduledDate,
+        notificationDetails: platformDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
   }
 
   Future<void> showRestEnded() async {
