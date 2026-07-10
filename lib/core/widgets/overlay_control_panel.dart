@@ -329,7 +329,7 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
                         // Carga (Peso)
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.02),
                               borderRadius: BorderRadius.circular(16),
@@ -348,35 +348,45 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    IconButton(
-                                      onPressed: () {
+                                    GestureDetector(
+                                      onTap: () {
                                         setState(() {
                                           if (weight >= 0.5) weight -= 0.5;
                                         });
                                       },
-                                      icon: const Icon(Icons.remove, color: Colors.white, size: 16),
-                                      constraints: const BoxConstraints(),
-                                      padding: const EdgeInsets.all(4),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.08),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.remove, color: Colors.white, size: 14),
+                                      ),
                                     ),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: 6),
                                     Text(
                                       '${weight.toStringAsFixed(1)} kg',
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w900,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    IconButton(
-                                      onPressed: () {
+                                    const SizedBox(width: 6),
+                                    GestureDetector(
+                                      onTap: () {
                                         setState(() {
                                           weight += 0.5;
                                         });
                                       },
-                                      icon: const Icon(Icons.add, color: Colors.white, size: 16),
-                                      constraints: const BoxConstraints(),
-                                      padding: const EdgeInsets.all(4),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.08),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.add, color: Colors.white, size: 14),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -389,7 +399,7 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
                         // Repetições
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.02),
                               borderRadius: BorderRadius.circular(16),
@@ -408,35 +418,45 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    IconButton(
-                                      onPressed: () {
+                                    GestureDetector(
+                                      onTap: () {
                                         setState(() {
                                           if (reps > 1) reps--;
                                         });
                                       },
-                                      icon: const Icon(Icons.remove, color: Colors.white, size: 16),
-                                      constraints: const BoxConstraints(),
-                                      padding: const EdgeInsets.all(4),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.08),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.remove, color: Colors.white, size: 14),
+                                      ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 10),
                                     Text(
                                       '$reps',
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w900,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      onPressed: () {
+                                    const SizedBox(width: 10),
+                                    GestureDetector(
+                                      onTap: () {
                                         setState(() {
                                           reps++;
                                         });
                                       },
-                                      icon: const Icon(Icons.add, color: Colors.white, size: 16),
-                                      constraints: const BoxConstraints(),
-                                      padding: const EdgeInsets.all(4),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.08),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.add, color: Colors.white, size: 14),
+                                      ),
                                     ),
                                   ],
                                 ),

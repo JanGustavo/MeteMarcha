@@ -252,6 +252,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
           enableDrag: true,
           overlayTitle: 'Mete Marcha Fit',
           overlayContent: 'Painel Flutuante do Treino',
+          flag: OverlayFlag.focusPointer,
         );
       }
       await _enviarEstadoParaOverlay();
