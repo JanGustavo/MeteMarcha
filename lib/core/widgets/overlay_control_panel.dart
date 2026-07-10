@@ -1,6 +1,7 @@
 // lib/core/widgets/overlay_control_panel.dart
 
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
@@ -31,37 +32,58 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
   bool isExpanded = true;
   bool showExerciseList = false;
 
+  ReceivePort? _overlayPort;
+
   @override
   void initState() {
     super.initState();
 
-    // Escuta atualizações de estado vindas do app principal
+    // Escuta atualizações de estado vindas do app principal via channel
     FlutterOverlayWindow.overlayListener.listen((event) {
-      if (event == null) return;
-      try {
-        final Map<String, dynamic> msg = event is Map
-            ? Map<String, dynamic>.from(event)
-            : Map<String, dynamic>.from(jsonDecode(event.toString()));
-
-        if (msg['type'] == 'state_update') {
-          setState(() {
-            exerciseName = msg['exerciseName'] ?? 'Exercício';
-            weight = (msg['weight'] as num?)?.toDouble() ?? 0.0;
-            reps = msg['reps'] as int? ?? 10;
-            exerciseIndex = msg['exerciseIndex'] as int? ?? 0;
-            exercises = List<String>.from(msg['exercises'] ?? []);
-            exercisesCompleted = List<bool>.from(msg['exercisesCompleted'] ?? []);
-            currentSerie = msg['currentSerie'] as int? ?? 1;
-            timerSeconds = msg['timerSeconds'] as int? ?? 0;
-            timerMax = msg['timerMax'] as int? ?? 0;
-            isResting = msg['isResting'] as bool? ?? false;
-          });
-        }
-      } catch (e) {
-        // ignore: avoid_print
-        print('Erro no overlay ao processar estado: $e');
-      }
+      _processStateUpdate(event);
     });
+
+    // Também escuta via IsolatePort para contornar suspensão do platform channel
+    _overlayPort = ReceivePort();
+    IsolateNameServer.removePortNameMapping('workout_overlay_port');
+    IsolateNameServer.registerPortWithName(_overlayPort!.sendPort, 'workout_overlay_port');
+    _overlayPort!.listen((event) {
+      debugPrint('[OverlayControlPanel] Recebeu estado via IsolatePort: $event');
+      _processStateUpdate(event);
+    });
+  }
+
+  @override
+  void dispose() {
+    IsolateNameServer.removePortNameMapping('workout_overlay_port');
+    _overlayPort?.close();
+    super.dispose();
+  }
+
+  void _processStateUpdate(dynamic event) {
+    if (event == null) return;
+    try {
+      final Map<String, dynamic> msg = event is Map
+          ? Map<String, dynamic>.from(event)
+          : Map<String, dynamic>.from(jsonDecode(event.toString()));
+
+      if (msg['type'] == 'state_update') {
+        setState(() {
+          exerciseName = msg['exerciseName'] ?? 'Exercício';
+          weight = (msg['weight'] as num?)?.toDouble() ?? 0.0;
+          reps = msg['reps'] as int? ?? 10;
+          exerciseIndex = msg['exerciseIndex'] as int? ?? 0;
+          exercises = List<String>.from(msg['exercises'] ?? []);
+          exercisesCompleted = List<bool>.from(msg['exercisesCompleted'] ?? []);
+          currentSerie = msg['currentSerie'] as int? ?? 1;
+          timerSeconds = msg['timerSeconds'] as int? ?? 0;
+          timerMax = msg['timerMax'] as int? ?? 0;
+          isResting = msg['isResting'] as bool? ?? false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erro no overlay ao processar estado: $e');
+    }
   }
 
   void _sendAction(String type, [Map<String, dynamic>? extra]) {
@@ -69,6 +91,17 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
     if (extra != null) {
       msg.addAll(extra);
     }
+
+    // Tenta enviar via IsolateNameServer
+    final sendPort = IsolateNameServer.lookupPortByName('workout_main_port');
+    if (sendPort != null) {
+      debugPrint('[OverlayControlPanel] Enviando acao via IsolatePort: $type');
+      sendPort.send(msg);
+    } else {
+      debugPrint('[OverlayControlPanel] IsolatePort nao encontrado, enviando via shareData: $type');
+    }
+
+    // Sempre envia via shareData para manter compatibilidade e redundância
     FlutterOverlayWindow.shareData(msg);
   }
 
@@ -99,11 +132,10 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
 
   @override
   Widget build(BuildContext context) {
-    if (!isExpanded) {
-      return _buildMinimizedBubble();
-    }
-
-    return _buildExpandedPanel();
+    return Material(
+      color: Colors.transparent,
+      child: !isExpanded ? _buildMinimizedBubble() : _buildExpandedPanel(),
+    );
   }
 
   Widget _buildMinimizedBubble() {
@@ -147,9 +179,10 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
                       ),
                     ],
                   )
-                : const Text(
-                    '💪',
-                    style: TextStyle(fontSize: 28),
+                : const Icon(
+                    Icons.local_fire_department_rounded,
+                    color: Colors.white,
+                    size: 32,
                   ),
           ),
         ),
@@ -188,143 +221,191 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
               child: Column(
                 children: [
                   // Cabeçalho (Title Bar)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
+                  GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onPanUpdate: (details) async {
+                      try {
+                        final position = await FlutterOverlayWindow.getOverlayPosition();
+                        final double newX = position.x + details.delta.dx;
+                        final double newY = position.y + details.delta.dy;
+                        await FlutterOverlayWindow.moveOverlay(OverlayPosition(newX, newY));
+                      } catch (e) {
+                        debugPrint('Erro ao mover overlay: $e');
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFE53935),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Text(
-                                '🎵',
-                                style: TextStyle(fontSize: 12, color: Colors.white),
+                          Row(
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFE53935),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    '🎵',
+                                    style: TextStyle(fontSize: 12, color: Colors.white),
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'TREINO EM PROGRESSO',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'TREINO EM PROGRESSO',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: _minimize,
+                                icon: const Icon(Icons.remove, color: Colors.grey, size: 18),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              const SizedBox(width: 12),
+                              IconButton(
+                                onPressed: () async {
+                                  try {
+                                    await FlutterOverlayWindow.closeOverlay();
+                                  } catch (e) {
+                                    debugPrint('Erro ao fechar overlay: $e');
+                                  }
+                                },
+                                icon: const Icon(Icons.close, color: Colors.redAccent, size: 18),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      IconButton(
-                        onPressed: _minimize,
-                        icon: const Icon(Icons.close, color: Colors.grey, size: 18),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 12),
 
                   // Caixa do Exercício com seletor
-                  Stack(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            showExerciseList = !showExerciseList;
-                          });
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.05),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        showExerciseList = !showExerciseList;
+                      });
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.05),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
                                   exerciseName,
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.bold,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              Icon(
-                                showExerciseList ? Icons.keyboard_arrow_up : Icons.edit,
-                                color: const Color(0xFFE53935),
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Lista Dropdown Suspensa de Exercícios
-                      if (showExerciseList && exercises.isNotEmpty)
-                        Positioned(
-                          top: 48,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            height: 180,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2A2A2A),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.1),
-                              ),
-                            ),
-                            child: ListView.builder(
-                              itemCount: exercises.length,
-                              itemBuilder: (context, index) {
-                                final isCurrent = index == exerciseIndex;
-                                final isCompleted = index < exercisesCompleted.length && exercisesCompleted[index];
-                                return ListTile(
-                                  dense: true,
-                                  title: Text(
-                                    exercises[index],
-                                    style: TextStyle(
-                                      color: isCurrent
-                                          ? const Color(0xFFE53935)
-                                          : Colors.white.withValues(alpha: 0.8),
-                                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                                    ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Série Atual: $currentSerie',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  trailing: isCompleted
-                                      ? const Icon(Icons.check_circle, color: Colors.green, size: 16)
-                                      : null,
-                                  onTap: () {
-                                    _sendAction('select_exercise', {'index': index});
-                                    setState(() {
-                                      showExerciseList = false;
-                                    });
-                                  },
-                                );
-                              },
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                    ],
+                          Icon(
+                            showExerciseList ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            color: const Color(0xFFE53935),
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
 
-                  // Área de Carga e Repetição
-                  Expanded(
-                    child: Row(
+                  if (showExerciseList)
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2A2A2A),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        child: exercises.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'Nenhum exercício carregado.',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                itemCount: exercises.length,
+                                itemBuilder: (context, index) {
+                                  final isCurrent = index == exerciseIndex;
+                                  final isCompleted = index < exercisesCompleted.length && exercisesCompleted[index];
+                                  return ListTile(
+                                    dense: true,
+                                    title: Text(
+                                      exercises[index],
+                                      style: TextStyle(
+                                        color: isCurrent
+                                            ? const Color(0xFFE53935)
+                                            : Colors.white.withValues(alpha: 0.8),
+                                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
+                                    trailing: isCompleted
+                                        ? const Icon(Icons.check_circle, color: Colors.green, size: 16)
+                                        : null,
+                                    onTap: () {
+                                      _sendAction('select_exercise', {'index': index});
+                                      setState(() {
+                                        showExerciseList = false;
+                                      });
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                    )
+                  else ...[
+                    // Área de Carga e Repetição
+                    Expanded(
+                      child: Row(
                       children: [
                         // Carga (Peso)
                         Expanded(
@@ -489,6 +570,20 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
                             '${timerSeconds}s restantes',
                             style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () {
+                              _sendAction('stop_rest_timer');
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 4),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.redAccent,
+                                size: 16,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -500,6 +595,7 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
+                            debugPrint('[OverlayControlPanel] Clique em SALVAR SÉRIE - peso: $weight, reps: $reps');
                             _sendAction('save_series', {'peso': weight, 'reps': reps});
                           },
                           style: ElevatedButton.styleFrom(
@@ -526,6 +622,7 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
+                            debugPrint('[OverlayControlPanel] Clique em PRÓXIMO');
                             _sendAction('next_exercise');
                           },
                           style: ElevatedButton.styleFrom(
@@ -549,6 +646,7 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
                     ],
                   ),
                   const SizedBox(height: 8),
+                ],
 
                   // Clique para abrir o app completo
                   GestureDetector(

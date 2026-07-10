@@ -889,7 +889,7 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
   Future<int> deleteLog(int logId) =>
       (delete(exerciseLogs)..where((l) => l.id.equals(logId))).go();
 
-  Future<int> updateLog(int logId, double peso, int reps, String? observacoes, {double? rpe, int? rir}) =>
+  Future<int> updateLog(int logId, double peso, int reps, String? observacoes, {double? rpe, int? rir, String? equipamento}) =>
       (update(exerciseLogs)..where((l) => l.id.equals(logId))).write(
         ExerciseLogsCompanion(
           peso: Value(peso),
@@ -897,6 +897,7 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
           observacoes: Value(observacoes),
           rpe: Value(rpe),
           rir: Value(rir),
+          equipamento: Value(equipamento),
         ),
       );
 
