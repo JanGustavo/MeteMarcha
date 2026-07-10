@@ -77,14 +77,24 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
       isExpanded = false;
       showExerciseList = false;
     });
-    await FlutterOverlayWindow.resizeOverlay(76, 76, true);
+    final double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+    await FlutterOverlayWindow.resizeOverlay(
+      (76 * pixelRatio).round(),
+      (76 * pixelRatio).round(),
+      true,
+    );
   }
 
   Future<void> _maximize() async {
     setState(() {
       isExpanded = true;
     });
-    await FlutterOverlayWindow.resizeOverlay(330, 390, true);
+    final double pixelRatio = MediaQuery.of(context).devicePixelRatio;
+    await FlutterOverlayWindow.resizeOverlay(
+      (330 * pixelRatio).round(),
+      (390 * pixelRatio).round(),
+      true,
+    );
   }
 
   @override

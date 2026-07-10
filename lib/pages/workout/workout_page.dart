@@ -242,11 +242,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
         return;
       }
       final isActive = await FlutterOverlayWindow.isActive();
+      if (!mounted) return;
       if (!isActive) {
+        final double pixelRatio = MediaQuery.of(context).devicePixelRatio;
         await FlutterOverlayWindow.showOverlay(
           alignment: OverlayAlignment.center,
-          height: 390,
-          width: 330,
+          height: (390 * pixelRatio).round(),
+          width: (330 * pixelRatio).round(),
           enableDrag: true,
           overlayTitle: 'Mete Marcha Fit',
           overlayContent: 'Painel Flutuante do Treino',
