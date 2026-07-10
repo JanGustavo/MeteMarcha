@@ -67,6 +67,8 @@ class _SetEntry {
   });
 }
 
+Stream<dynamic>? _globalOverlayStream;
+
 class WorkoutPage extends ConsumerStatefulWidget {
   final int dayId;
   final String dayName;
@@ -139,7 +141,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
     });
 
     if (!kIsWeb && Platform.isAndroid) {
-      _overlaySubscription = FlutterOverlayWindow.overlayListener.listen((event) async {
+      if (_globalOverlayStream == null) {
+        _globalOverlayStream = FlutterOverlayWindow.overlayListener.asBroadcastStream();
+        _globalOverlayStream!.listen((_) {}); // Dummy listener to keep underlying subscription alive
+      }
+      _overlaySubscription = _globalOverlayStream!.listen((event) async {
         if (event == null) return;
         try {
           final Map<String, dynamic> msg = event is Map
@@ -311,10 +317,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   Future<void> _loadExercises() async {
     final exs =
         await ref.read(exerciseDaoProvider).getExercisesForDay(widget.dayId);
+    if (!mounted) return;
     
     int initialIndex = 0;
     try {
       final currentLogs = await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
+      if (!mounted) return;
       if (currentLogs.isNotEmpty) {
         final sortedLogs = List<ExerciseLog>.from(currentLogs)..sort((a, b) => a.id.compareTo(b.id));
         final lastLog = sortedLogs.last;
@@ -332,8 +340,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
     double? prevVol;
     try {
       final prevSession = await ref.read(workoutDaoProvider).getPreviousCompletedSession(widget.dayId, widget.sessionId);
+      if (!mounted) return;
       if (prevSession != null) {
         final prevLogs = await ref.read(logDaoProvider).getLogsForSession(prevSession.id);
+        if (!mounted) return;
         prevVol = prevLogs.fold<double>(0.0, (sum, log) => sum + (log.peso * log.repeticoes));
       }
     } catch (e) {
@@ -358,14 +368,18 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
           ex.id,
           excludeSessionId: widget.sessionId,
         );
+    if (!mounted) return;
 
     // Busca recorde máximo 1RM histórico
     final prevMax1RM = await ref.read(logDaoProvider).getMax1RMForExercise(ex.id);
+    if (!mounted) return;
     final prevMax1RMLog = await ref.read(logDaoProvider).getMax1RMLogForExercise(ex.id);
+    if (!mounted) return;
 
     // Busca logs já realizados na sessão atual para este exercício
     final currentLogs =
         await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
+    if (!mounted) return;
     final exerciseSessionLogs =
         currentLogs.where((l) => l.exerciseId == ex.id).toList();
 
@@ -377,6 +391,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
 
     // Busca o peso do perfil diretamente do banco de dados (evita race conditions com providers reativos em carregamento)
     final profile = await ref.read(profileDaoProvider).getProfile();
+    if (!mounted) return;
     final userWeight = profile?.pesoAtual ?? 70.0;
 
     final exerciseChanged = _lastLoadedExerciseId != ex.id;
