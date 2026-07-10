@@ -60,7 +60,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
   }
 
   void _loadOverlayPermissionStatus() async {
-    if (kIsWeb) return;
+    if (kIsWeb || !Platform.isAndroid) return;
     final granted = await FlutterOverlayWindow.isPermissionGranted();
     if (mounted) {
       setState(() {

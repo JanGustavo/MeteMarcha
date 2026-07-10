@@ -138,7 +138,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
       ref.read(restTimerProvider.notifier).setInWorkoutPage(true);
     });
 
-    if (!kIsWeb) {
+    if (!kIsWeb && Platform.isAndroid) {
       _overlaySubscription = FlutterOverlayWindow.overlayListener.listen((event) async {
         if (event == null) return;
         try {
@@ -202,7 +202,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _overlaySubscription?.cancel();
-    if (!kIsWeb) {
+    if (!kIsWeb && Platform.isAndroid) {
       try {
         FlutterOverlayWindow.closeOverlay();
       } catch (_) {}
@@ -219,7 +219,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (kIsWeb) return;
+    if (kIsWeb || !Platform.isAndroid) return;
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _ativarOverlaySePermitido();
     } else if (state == AppLifecycleState.resumed) {
@@ -228,7 +228,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   }
 
   Future<void> _ativarOverlaySePermitido() async {
-    if (kIsWeb) return;
+    if (kIsWeb || !Platform.isAndroid) return;
     if (_exercises.isEmpty) return;
     try {
       final isGranted = await FlutterOverlayWindow.isPermissionGranted();
@@ -253,7 +253,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   }
 
   Future<void> _fecharOverlay() async {
-    if (kIsWeb) return;
+    if (kIsWeb || !Platform.isAndroid) return;
     try {
       final isActive = await FlutterOverlayWindow.isActive();
       if (isActive) {
@@ -265,7 +265,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   }
 
   Future<void> _enviarEstadoParaOverlay() async {
-    if (kIsWeb) return;
+    if (kIsWeb || !Platform.isAndroid) return;
     try {
       final isOverlayActive = await FlutterOverlayWindow.isActive();
       if (!isOverlayActive) return;
