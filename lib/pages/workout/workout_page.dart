@@ -293,8 +293,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         final double pixelRatio = MediaQuery.of(context).devicePixelRatio;
         await FlutterOverlayWindow.showOverlay(
           alignment: OverlayAlignment.center,
-          height: (390 * pixelRatio).round(),
-          width: (330 * pixelRatio).round(),
+          height: (76 * pixelRatio).round(),
+          width: (76 * pixelRatio).round(),
           enableDrag: false,
           overlayTitle: 'Mete Marcha Fit',
           overlayContent: 'Painel Flutuante do Treino',

@@ -29,7 +29,7 @@ class _OverlayControlPanelState extends State<OverlayControlPanel> {
   bool isResting = false;
 
   // Estado da Janela Flutuante
-  bool isExpanded = true;
+  bool isExpanded = false;
   bool showExerciseList = false;
 
   ReceivePort? _overlayPort;
