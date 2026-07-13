@@ -23,6 +23,7 @@ import '../../core/utils/week_utils.dart';
 import '../../core/utils/decimal_input_formatter.dart';
 import '../../core/utils/string_input_formatter.dart';
 import '../../core/widgets/streak_badge.dart';
+import '../../core/widgets/achievement_image.dart';
 import '../../core/services/ota_update_service.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -392,6 +393,36 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
 
         ref.invalidate(databaseProvider);
         ref.read(databaseProvider);
+
+        // Invalida todos os DAOs e StreamProviders dependentes do DB
+        ref.invalidate(workoutDaoProvider);
+        ref.invalidate(profileDaoProvider);
+        ref.invalidate(logDaoProvider);
+        ref.invalidate(exerciseDaoProvider);
+        ref.invalidate(splitsProvider);
+        ref.invalidate(activeSplitProvider);
+        ref.invalidate(activeSplitDaysProvider);
+        ref.invalidate(profileProvider);
+        ref.invalidate(weeklyWeightsProvider);
+        ref.invalidate(bodyMeasurementsProvider);
+        ref.invalidate(recentSessionsProvider);
+        ref.invalidate(completedSessionsProvider);
+        ref.invalidate(achievementsStatusProvider);
+
+        // Verifica se há splits e sessões
+        final splits = await ref.read(workoutDaoProvider).watchSplits().first;
+        final sessions = await ref.read(workoutDaoProvider).watchCompletedSessions().first;
+
+        if (splits.isEmpty && sessions.isNotEmpty) {
+          await ref.read(workoutDaoProvider).insertSplit(
+            WorkoutSplitsCompanion.insert(
+              nome: 'Meu Treino',
+              tipo: 'CUSTOM',
+              ativo: const Value(true),
+            ),
+          );
+          ref.invalidate(splitsProvider);
+        }
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1438,11 +1469,22 @@ class _AchievementCard extends StatelessWidget {
     final ach = status.achievement;
     final levelIdx = status.unlockedLevelIndex;
     final isLocked = levelIdx == -1;
+    final String? levelNameTemp = isLocked ? null : ach.levels[levelIdx].name;
+
+    if (AchievementImage.isSupported(ach.id, levelNameTemp, isLocked: isLocked)) {
+      return AchievementImage(
+        achievementId: ach.id,
+        levelName: levelNameTemp,
+        fallbackEmoji: isLocked ? '🔒' : ach.emoji,
+        size: size * 1.15,
+        isLocked: isLocked,
+      );
+    }
 
     Gradient borderGradient;
     Gradient bgGradient;
     String badgeEmoji;
-    String levelName;
+    String? levelName;
 
     if (isLocked) {
       bgGradient = const LinearGradient(
@@ -1507,11 +1549,12 @@ class _AchievementCard extends StatelessWidget {
               gradient: bgGradient,
             ),
             child: Center(
-              child: Text(
-                badgeEmoji,
-                style: TextStyle(
-                  fontSize: size * 0.45,
-                ),
+              child: AchievementImage(
+                achievementId: ach.id,
+                levelName: isLocked ? null : levelName,
+                fallbackEmoji: badgeEmoji,
+                size: size * 0.7,
+                isLocked: isLocked,
               ),
             ),
           ),
@@ -1709,7 +1752,15 @@ class _AchievementCard extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Text(level.icon, style: const TextStyle(fontSize: 20)),
+                          Opacity(
+                            opacity: isUnlocked ? 1.0 : 0.4,
+                            child: AchievementImage(
+                              achievementId: ach.id,
+                              levelName: level.name,
+                              fallbackEmoji: level.icon,
+                              size: 20,
+                            ),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(

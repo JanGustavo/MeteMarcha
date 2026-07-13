@@ -66,5 +66,6 @@ flutter:
   assets:
     - assets/sounds/
     - assets/images/
+    - assets/images/achievements/
     - assets/metemacha_standalone_icon.svg
     - assets/metemacha_app_icon.svg

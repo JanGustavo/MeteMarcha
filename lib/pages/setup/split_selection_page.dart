@@ -15,9 +15,11 @@ import '../../core/database/app_database.dart';
 import '../../core/database/database_helper.dart'
     if (dart.library.js_interop) '../../core/database/database_helper_web.dart';
 import '../../core/providers/providers.dart';
+import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import 'setup_page.dart';
 import '../../main.dart';
+import '../home/home_page.dart';
 
 const bool groqBeta = true;
 
@@ -590,10 +592,52 @@ class SplitSelectionPage extends ConsumerWidget {
         ref.invalidate(databaseProvider);
         ref.read(databaseProvider);
 
+        // Invalida todos os DAOs e StreamProviders dependentes do DB
+        ref.invalidate(workoutDaoProvider);
+        ref.invalidate(profileDaoProvider);
+        ref.invalidate(logDaoProvider);
+        ref.invalidate(exerciseDaoProvider);
+        ref.invalidate(splitsProvider);
+        ref.invalidate(activeSplitProvider);
+        ref.invalidate(activeSplitDaysProvider);
+        ref.invalidate(profileProvider);
+        ref.invalidate(weeklyWeightsProvider);
+        ref.invalidate(bodyMeasurementsProvider);
+        ref.invalidate(recentSessionsProvider);
+        ref.invalidate(completedSessionsProvider);
+        ref.invalidate(achievementsStatusProvider);
+
+        // Verifica os treinos importados
+        final splits = await ref.read(workoutDaoProvider).watchSplits().first;
+        final sessions = await ref.read(workoutDaoProvider).watchCompletedSessions().first;
+
+        // Se o backup contiver histórico mas nenhum split cadastrado (como no mock DB),
+        // cria um split padrão para ir direto à tela principal.
+        if (splits.isEmpty && sessions.isNotEmpty) {
+          await ref.read(workoutDaoProvider).insertSplit(
+            WorkoutSplitsCompanion.insert(
+              nome: 'Meu Treino',
+              tipo: 'CUSTOM',
+              ativo: const Value(true),
+            ),
+          );
+          ref.invalidate(splitsProvider);
+        }
+
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Dados restaurados com sucesso!')),
           );
+
+          if (splits.isNotEmpty || sessions.isNotEmpty) {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const HomePage()),
+              );
+            }
+          }
         }
       }
     } catch (e) {

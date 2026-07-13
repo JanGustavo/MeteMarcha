@@ -3,6 +3,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../providers/progress_extended_provider.dart';
+import 'achievement_image.dart';
 
 class AchievementUnlockOverlay extends StatefulWidget {
   final AchievementStatus status;
@@ -161,27 +162,36 @@ class _AchievementUnlockOverlayState extends State<AchievementUnlockOverlay>
                     child: Row(
                       children: [
                         // Hexágono do Emblema
-                        ClipPath(
-                          clipper: HexagonClipperOverlay(),
-                          child: Container(
-                            width: 52,
-                            height: 60,
-                            decoration: BoxDecoration(gradient: borderGradient),
-                            padding: const EdgeInsets.all(2.0),
-                            child: ClipPath(
-                              clipper: HexagonClipperOverlay(),
-                              child: Container(
-                                decoration: BoxDecoration(gradient: bgGradient),
-                                child: Center(
-                                  child: Text(
-                                    ach.emoji,
-                                    style: const TextStyle(fontSize: 26),
+                        AchievementImage.isSupported(ach.id, levelName)
+                            ? AchievementImage(
+                                achievementId: ach.id,
+                                levelName: levelName,
+                                fallbackEmoji: ach.emoji,
+                                size: 60,
+                              )
+                            : ClipPath(
+                                clipper: HexagonClipperOverlay(),
+                                child: Container(
+                                  width: 52,
+                                  height: 60,
+                                  decoration: BoxDecoration(gradient: borderGradient),
+                                  padding: const EdgeInsets.all(2.0),
+                                  child: ClipPath(
+                                    clipper: HexagonClipperOverlay(),
+                                    child: Container(
+                                      decoration: BoxDecoration(gradient: bgGradient),
+                                      child: Center(
+                                        child: AchievementImage(
+                                          achievementId: ach.id,
+                                          levelName: levelName,
+                                          fallbackEmoji: ach.emoji,
+                                          size: 32,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
                         const SizedBox(width: 16),
                         // Informações da Conquista
                         Expanded(

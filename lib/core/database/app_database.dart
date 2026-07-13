@@ -38,7 +38,7 @@ class Exercises extends Table {
   /// Impacta o cálculo de volume: peso × reps × 2 quando lado = 'ambos'.
   BoolColumn get isUnilateral => boolean().withDefault(const Constant(false))();
 
-  /// Livre | Barra | Haltere | Cabo | Máquina | Peso Corporal | Smith
+  /// Livre | Barra | Haltere | Cabo | Máquina | Peso Corporal | Smith  
   TextColumn get equipamento => text().withDefault(const Constant('Livre'))();
 
   /// Tempo de descanso padrão em segundos (padrão 90s)
