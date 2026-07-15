@@ -7,6 +7,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../setup/split_selection_page.dart';
+import '../../core/utils/premium_page_route.dart';
 import 'workout_page.dart';
 
 class WorkoutDaySelectionPage extends ConsumerWidget {
@@ -25,7 +26,10 @@ class WorkoutDaySelectionPage extends ConsumerWidget {
             return _NoSplitHint(onConfigure: () {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const SplitSelectionPage()),
+                PremiumPageRoute(
+                  page: const SplitSelectionPage(),
+                  transitionType: TransitionType.slideRight,
+                ),
               );
             });
           }
@@ -73,12 +77,13 @@ class _DayCard extends ConsumerWidget {
             // Retoma sessão em andamento
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => WorkoutPage(
+              PremiumPageRoute(
+                page: WorkoutPage(
                   dayId: day.id,
                   dayName: day.nome,
                   sessionId: existing.id,
                 ),
+                transitionType: TransitionType.slideRight,
               ),
             );
             return;
@@ -121,12 +126,13 @@ class _DayCard extends ConsumerWidget {
           if (!context.mounted) return;
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => WorkoutPage(
+            PremiumPageRoute(
+              page: WorkoutPage(
                 dayId: day.id,
                 dayName: day.nome,
                 sessionId: sessionId,
               ),
+              transitionType: TransitionType.slideRight,
             ),
           );
         },

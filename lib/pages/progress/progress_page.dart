@@ -14,6 +14,8 @@ import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/decimal_input_formatter.dart';
 import 'workout_session_detail_page.dart';
+import 'exercise_comparison_page.dart';
+import '../../core/utils/premium_page_route.dart';
 import '../../core/services/health_connect_service.dart';
 
 class ProgressPage extends ConsumerStatefulWidget {
@@ -166,6 +168,28 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                               _LoadEvolutionChart(
                                 logs: logs,
                                 exerciseId: selectedExercise.id,
+                              ),
+                              const SizedBox(height: 12),
+                              Center(
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      PremiumPageRoute(
+                                        page: ExerciseComparisonPage(
+                                          initialExerciseId: selectedExercise.id,
+                                          initialExerciseName: selectedExercise.nome,
+                                        ),
+                                        transitionType: TransitionType.slideRight,
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.table_chart_rounded, size: 18),
+                                  label: const Text('Ver Tabela Comparativa Completa'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.primaryLight,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -1155,8 +1179,9 @@ class _MonthCalendarGrid extends StatelessWidget {
                         onTap: () {
                           Navigator.pop(ctx); // Fecha o bottom sheet
                           Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => WorkoutSessionDetailPage(session: s),
+                            PremiumPageRoute(
+                              page: WorkoutSessionDetailPage(session: s),
+                              transitionType: TransitionType.slideRight,
                             ),
                           );
                         },
@@ -1205,8 +1230,9 @@ class _MonthSessionsList extends StatelessWidget {
         return InkWell(
           onTap: () {
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => WorkoutSessionDetailPage(session: s),
+              PremiumPageRoute(
+                page: WorkoutSessionDetailPage(session: s),
+                transitionType: TransitionType.slideRight,
               ),
             );
           },
@@ -3623,11 +3649,12 @@ class _MeasurementCardState extends State<_MeasurementCard> {
                     GestureDetector(
                       onTap: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => _FullscreenImageViewer(
+                          PremiumPageRoute(
+                            page: _FullscreenImageViewer(
                               imagePath: m.fotoPath!,
                               dateStr: dateStr,
                             ),
+                            transitionType: TransitionType.fade,
                           ),
                         );
                       },

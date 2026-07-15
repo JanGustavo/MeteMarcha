@@ -6,12 +6,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AudioService {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
   AudioService._internal() {
     _configureAudioContext();
+    loadSettings();
   }
 
   void _configureAudioContext() {
@@ -108,6 +110,32 @@ class AudioService {
         await _player.play(AssetSource('sounds/beep.mp3'));
         await Future.delayed(const Duration(milliseconds: 150));
       }
+    } catch (_) {}
+  }
+
+  bool _clickSoundsEnabled = true;
+  bool get clickSoundsEnabled => _clickSoundsEnabled;
+
+  Future<void> loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _clickSoundsEnabled = prefs.getBool('click_sounds_enabled') ?? true;
+    } catch (_) {}
+  }
+
+  Future<void> setClickSoundsEnabled(bool enabled) async {
+    _clickSoundsEnabled = enabled;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('click_sounds_enabled', enabled);
+    } catch (_) {}
+  }
+
+  /// Som de clique nativo para botões
+  Future<void> playClick() async {
+    if (!_clickSoundsEnabled) return;
+    try {
+      await SystemSound.play(SystemSoundType.click);
     } catch (_) {}
   }
 

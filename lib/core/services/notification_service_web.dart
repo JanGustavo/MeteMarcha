@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../../pages/workout/workout_page.dart';
 import '../providers/rest_timer_provider.dart';
+import '../database/app_database.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -70,6 +71,35 @@ class NotificationService {
   }
 
   Future<void> cancelMusicNotification() async {
+    // No-op on web
+  }
+
+  Future<void> scheduleMembershipNotifications({
+    required double value,
+    required int months,
+    required DateTime nextDueDate,
+    required bool alertOnDay,
+    required bool alert3Days,
+    required bool alert1Week,
+  }) async {
+    // No-op on web
+  }
+
+  Future<void> cancelMembershipNotifications() async {
+    // No-op on web
+  }
+
+  Future<void> scheduleWorkoutReminders({
+    required List<WeeklySchedule> schedules,
+    required List<WorkoutDay> workoutDays,
+    required bool enabled,
+    required String globalTimeStr,
+    required Map<String, String> customTimes,
+  }) async {
+    // No-op on web
+  }
+
+  Future<void> cancelWorkoutReminders() async {
     // No-op on web
   }
 }

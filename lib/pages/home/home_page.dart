@@ -14,8 +14,11 @@ import '../../core/utils/file_saver.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/progress_extended_provider.dart';
+import '../../core/providers/alerts_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
+import '../../core/utils/premium_page_route.dart';
+import '../../core/services/audio_service.dart';
 import '../../widgets/weekly_weight_banner.dart';
 import '../../widgets/weekly_schedule_banner.dart';
 import '../../core/widgets/streak_badge.dart';
@@ -25,6 +28,8 @@ import '../setup/setup_page.dart';
 import '../setup/split_selection_page.dart';
 import '../workout/workout_page.dart';
 import '../../core/services/ota_update_service.dart';
+
+final membershipToastTriggeredProvider = StateProvider<bool>((ref) => false);
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -348,6 +353,46 @@ class _TreinoTab extends ConsumerWidget {
     final splitsAsync = ref.watch(splitsProvider);
     final daysAsync = ref.watch(activeSplitDaysProvider);
 
+    final membership = ref.watch(membershipSettingsProvider);
+    final triggered = ref.read(membershipToastTriggeredProvider);
+    if (membership.enabled && !triggered) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final due = DateTime(membership.nextDueDate.year, membership.nextDueDate.month, membership.nextDueDate.day);
+      final difference = due.difference(today).inDays;
+      if (difference <= 3) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (ref.read(membershipToastTriggeredProvider)) return;
+          ref.read(membershipToastTriggeredProvider.notifier).state = true;
+          
+          final formattedValue = membership.value.toStringAsFixed(2);
+          final String msg;
+          if (difference < 0) {
+            msg = 'Mensalidade de R\$ $formattedValue está atrasada há ${-difference} dias! ⚠️';
+          } else if (difference == 0) {
+            msg = 'Mensalidade de R\$ $formattedValue vence hoje! 💳';
+          } else {
+            msg = 'Mensalidade de R\$ $formattedValue vence em $difference dias! 📅';
+          }
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(msg),
+              backgroundColor: Colors.orangeAccent,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: 'MARCAR PAGO',
+                textColor: Colors.white,
+                onPressed: () {
+                  ref.read(membershipSettingsProvider.notifier).markAsPaid();
+                },
+              ),
+            ),
+          );
+        });
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -381,8 +426,12 @@ class _TreinoTab extends ConsumerWidget {
             icon: const Icon(Icons.tune_rounded),
             tooltip: 'Configurar Treinos',
             onPressed: () {
+              AudioService().playClick();
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SetupPage()),
+                PremiumPageRoute(
+                  page: const SetupPage(),
+                  transitionType: TransitionType.slideUp,
+                ),
               );
             },
           ),
@@ -400,6 +449,114 @@ class _TreinoTab extends ConsumerWidget {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
+            // ── Alerta de Mensalidade (Vencimento) ──────────────────────
+            if (membership.enabled) (() {
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              final due = DateTime(membership.nextDueDate.year, membership.nextDueDate.month, membership.nextDueDate.day);
+              final difference = due.difference(today).inDays;
+              
+              if (difference > 3) return const SizedBox.shrink();
+              
+              final formattedValue = membership.value.toStringAsFixed(2);
+              final isOverdue = difference < 0;
+              final isToday = difference == 0;
+              
+              final String text;
+              if (isOverdue) {
+                text = 'Sua mensalidade de R\$ $formattedValue está atrasada há ${-difference} ${-difference == 1 ? "dia" : "dias"}!';
+              } else if (isToday) {
+                text = 'Sua mensalidade de R\$ $formattedValue vence hoje!';
+              } else {
+                text = 'Sua mensalidade de R\$ $formattedValue vence em $difference ${difference == 1 ? "dia" : "dias"}.';
+              }
+              
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Colors.amber, Colors.orangeAccent],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isOverdue ? 'MENSALIDADE ATRASADA ⚠️' : 'ALERTA DE VENCIMENTO 💳',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                text,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () {
+                            AudioService().playClick();
+                            ref.read(membershipSettingsProvider.notifier).markAsPaid();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Mensalidade registrada como paga!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.orange.shade900,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          ),
+                          child: const Text(
+                            'PAGO',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }()) else const SizedBox.shrink(),
+
             // ── Planejamento Semanal (Notificações) ────────────────────
             const WeeklyScheduleBanner(),
 
@@ -484,9 +641,11 @@ class _TreinoTab extends ConsumerWidget {
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                             onPressed: () {
+                              AudioService().playClick();
                               Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SplitSelectionPage(isOnboarding: false),
+                                PremiumPageRoute(
+                                  page: const SplitSelectionPage(isOnboarding: false),
+                                  transitionType: TransitionType.slideRight,
                                 ),
                               );
                             },
@@ -526,8 +685,12 @@ class _TreinoTab extends ConsumerWidget {
                   ),
                   TextButton.icon(
                     onPressed: () {
+                      AudioService().playClick();
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const SetupPage()),
+                        PremiumPageRoute(
+                          page: const SetupPage(),
+                          transitionType: TransitionType.slideUp,
+                        ),
                       );
                     },
                     icon: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryLight),
@@ -655,13 +818,15 @@ class _ActiveSessionCard extends ConsumerWidget {
                     const SizedBox(width: 8),
                     ElevatedButton(
                       onPressed: () {
+                        AudioService().playClick();
                         Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => WorkoutPage(
+                          PremiumPageRoute(
+                            page: WorkoutPage(
                               dayId: session.dayId ?? 0,
                               dayName: name,
                               sessionId: session.id,
                             ),
+                            transitionType: TransitionType.slideRight,
                           ),
                         );
                       },
@@ -789,9 +954,13 @@ class _DayListTile extends ConsumerWidget {
                   ),
                   TextButton.icon(
                     onPressed: () {
+                      AudioService().playClick();
                       Navigator.pop(ctx);
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const SetupPage()),
+                        PremiumPageRoute(
+                          page: const SetupPage(),
+                          transitionType: TransitionType.slideUp,
+                        ),
                       );
                     },
                     icon: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryLight),
@@ -880,16 +1049,19 @@ class _DayListTile extends ConsumerWidget {
                               );
 
                           // Abre o treino
-                          // ignore: use_build_context_synchronously
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => WorkoutPage(
-                                dayId: day.id,
-                                dayName: dayName,
-                                sessionId: sessionId,
+                          if (context.mounted) {
+                            AudioService().playClick();
+                            Navigator.of(context).push(
+                              PremiumPageRoute(
+                                page: WorkoutPage(
+                                  dayId: day.id,
+                                  dayName: dayName,
+                                  sessionId: sessionId,
+                                ),
+                                transitionType: TransitionType.slideRight,
                               ),
-                            ),
-                          );
+                            );
+                          }
                         },
                   child: const Text('INICIAR TREINO'),
                 ),
@@ -931,13 +1103,15 @@ class _DayListTile extends ConsumerWidget {
                   );
               // ignore: use_build_context_synchronously
               if (context.mounted) {
+                AudioService().playClick();
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => WorkoutPage(
+                  PremiumPageRoute(
+                    page: WorkoutPage(
                       dayId: day.id,
                       dayName: 'Dia ${day.letra} - ${day.nome}',
                       sessionId: sessionId,
                     ),
+                    transitionType: TransitionType.slideRight,
                   ),
                 );
               }

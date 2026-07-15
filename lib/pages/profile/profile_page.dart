@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/services/health_connect_service.dart';
+import '../../core/services/audio_service.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 import '../../core/database/database_helper.dart'
@@ -17,6 +18,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/progress_extended_provider.dart';
+import '../../core/providers/alerts_provider.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/achievements.dart';
 import '../../core/utils/week_utils.dart';
@@ -1079,6 +1082,496 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
               ),
             ),
 
+          // ── Alerta de Mensalidade ───────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Consumer(
+              builder: (context, ref, child) {
+                final membership = ref.watch(membershipSettingsProvider);
+                final notifier = ref.read(membershipSettingsProvider.notifier);
+                final dateFormatter = DateFormat('dd/MM/yyyy');
+                
+                return Card(
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: context.divider),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.credit_card_rounded,
+                                color: Colors.amber,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Alerta de Mensalidade',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: context.onBackground,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Lembretes para pagamento e controle de mensalidade',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: context.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: membership.enabled,
+                              onChanged: (val) {
+                                notifier.updateSettings(enabled: val);
+                              },
+                              activeColor: AppColors.primaryLight,
+                            ),
+                          ],
+                        ),
+                        if (membership.enabled) ...[
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Valor',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: context.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextFormField(
+                                      initialValue: membership.value > 0 ? membership.value.toStringAsFixed(2) : '',
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      decoration: InputDecoration(
+                                        prefixText: 'R\$ ',
+                                        hintText: '0.00',
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(color: context.divider),
+                                        ),
+                                      ),
+                                      onChanged: (val) {
+                                        final cleanVal = val.replaceAll(',', '.');
+                                        final doubleVal = double.tryParse(cleanVal) ?? 0.0;
+                                        notifier.updateSettings(value: doubleVal);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 6,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Período',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: context.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    DropdownButtonFormField<int>(
+                                      value: membership.months == 1 || membership.months == 12 ? membership.months : 0,
+                                      dropdownColor: context.cardColor,
+                                      decoration: InputDecoration(
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(color: context.divider),
+                                        ),
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem(value: 1, child: Text('Mensal')),
+                                        DropdownMenuItem(value: 12, child: Text('Anual')),
+                                        DropdownMenuItem(value: 0, child: Text('Personalizado')),
+                                      ],
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          if (val > 0) {
+                                            notifier.updateSettings(months: val);
+                                          } else {
+                                            notifier.updateSettings(months: 3);
+                                          }
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (membership.months != 1 && membership.months != 12) ...[
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Duração em Meses:',
+                                  style: TextStyle(fontSize: 13, color: context.onBackground),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: membership.months > 1
+                                          ? () => notifier.updateSettings(months: membership.months - 1)
+                                          : null,
+                                      icon: const Icon(Icons.remove_circle_outline_rounded),
+                                    ),
+                                    Text(
+                                      '${membership.months}',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => notifier.updateSettings(months: membership.months + 1),
+                                      icon: const Icon(Icons.add_circle_outline_rounded),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: membership.nextDueDate,
+                                firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                                lastDate: DateTime.now().add(const Duration(days: 3650)),
+                              );
+                              if (picked != null) {
+                                notifier.updateSettings(nextDueDate: picked);
+                              }
+                            },
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: 'Próximo Vencimento',
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: context.divider),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    dateFormatter.format(membership.nextDueDate),
+                                    style: TextStyle(fontSize: 14, color: context.onBackground),
+                                  ),
+                                  const Icon(Icons.calendar_month_rounded, size: 20),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Quando receber alertas?',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: context.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          CheckboxListTile(
+                            title: const Text('No dia do vencimento (09:00)', style: TextStyle(fontSize: 13)),
+                            value: membership.alertOnDay,
+                            onChanged: (val) {
+                              if (val != null) {
+                                notifier.updateSettings(alertOnDay: val);
+                              }
+                            },
+                            activeColor: AppColors.primaryLight,
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            dense: true,
+                          ),
+                          CheckboxListTile(
+                            title: const Text('3 dias antes (09:00)', style: TextStyle(fontSize: 13)),
+                            value: membership.alert3Days,
+                            onChanged: (val) {
+                              if (val != null) {
+                                notifier.updateSettings(alert3Days: val);
+                              }
+                            },
+                            activeColor: AppColors.primaryLight,
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            dense: true,
+                          ),
+                          CheckboxListTile(
+                            title: const Text('1 semana antes (09:00)', style: TextStyle(fontSize: 13)),
+                            value: membership.alert1Week,
+                            onChanged: (val) {
+                              if (val != null) {
+                                notifier.updateSettings(alert1Week: val);
+                              }
+                            },
+                            activeColor: AppColors.primaryLight,
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            dense: true,
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () async {
+                                await notifier.markAsPaid();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Mensalidade de R\$ ${membership.value.toStringAsFixed(2)} paga! Próximo vencimento: ${dateFormatter.format(ref.read(membershipSettingsProvider).nextDueDate)}'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.check_circle_rounded),
+                              label: const Text('Marcar como Pago'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // ── Lembrete de Treino ──────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Consumer(
+              builder: (context, ref, child) {
+                final reminder = ref.watch(workoutReminderSettingsProvider);
+                final notifier = ref.read(workoutReminderSettingsProvider.notifier);
+                final schedules = ref.watch(weeklyScheduleProvider).value ?? [];
+                final activeDays = schedules.where((s) => s.dayId != null).toList();
+
+                return Card(
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: context.divider),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.alarm_rounded,
+                                color: Colors.orange,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Lembretes de Treino',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: context.onBackground,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Receba avisos 30 minutos antes do horário do treino',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: context.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: reminder.enabled,
+                              onChanged: (val) {
+                                notifier.updateSettings(enabled: val);
+                              },
+                              activeColor: AppColors.primaryLight,
+                            ),
+                          ],
+                        ),
+                        if (reminder.enabled) ...[
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 16),
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Horário Padrão', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            subtitle: Text('Usado nos dias de treino sem horário específico: ${reminder.globalTime}', style: const TextStyle(fontSize: 12)),
+                            trailing: OutlinedButton(
+                              onPressed: () async {
+                                final parts = reminder.globalTime.split(':');
+                                final initHour = parts.length == 2 ? int.tryParse(parts[0]) ?? 8 : 8;
+                                final initMin = parts.length == 2 ? int.tryParse(parts[1]) ?? 0 : 0;
+                                final picked = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay(hour: initHour, minute: initMin),
+                                );
+                                if (picked != null) {
+                                  final timeStr = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                                  notifier.updateSettings(globalTime: timeStr);
+                                }
+                              },
+                              child: const Text('Alterar'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (activeDays.isEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Text(
+                                'Nenhum dia de treino agendado no seu planejamento semanal. Configure no seu treino.',
+                                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: context.onSurface),
+                              ),
+                            ),
+                          ] else ...[
+                            Text(
+                              'Horários por Dia da Semana',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: context.onSurface),
+                            ),
+                            const SizedBox(height: 8),
+                            ...activeDays.map((schedule) {
+                              final dia = schedule.diaSemana;
+                              final hasCustom = reminder.customTimes.containsKey(dia);
+                              final timeToShow = reminder.customTimes[dia] ?? reminder.globalTime;
+
+                              return Card(
+                                margin: const EdgeInsets.symmetric(vertical: 4),
+                                elevation: 0,
+                                color: context.onSurface.withValues(alpha: 0.03),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(color: context.divider.withValues(alpha: 0.5)),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              dia,
+                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                            ),
+                                            Text(
+                                              hasCustom ? 'Horário específico: $timeToShow' : 'Padrão: $timeToShow',
+                                              style: TextStyle(fontSize: 11, color: context.onSurface),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          if (hasCustom)
+                                            IconButton(
+                                              onPressed: () => notifier.removeDayTime(dia),
+                                              icon: const Icon(Icons.restart_alt_rounded, size: 20),
+                                              tooltip: 'Resetar para o padrão',
+                                            ),
+                                          TextButton(
+                                            onPressed: () async {
+                                              final parts = timeToShow.split(':');
+                                              final initHour = parts.length == 2 ? int.tryParse(parts[0]) ?? 8 : 8;
+                                              final initMin = parts.length == 2 ? int.tryParse(parts[1]) ?? 0 : 0;
+                                              final picked = await showTimePicker(
+                                                context: context,
+                                                initialTime: TimeOfDay(hour: initHour, minute: initMin),
+                                              );
+                                              if (picked != null) {
+                                                final timeStr = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                                                notifier.updateDayTime(dia, timeStr);
+                                              }
+                                            },
+                                            child: Text(hasCustom ? 'Alterar' : 'Definir Horário'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // ── Configurações de Áudio / Sons do App ────────────────────────────
+          const SliverToBoxAdapter(
+            child: _AudioSettingsCard(),
+          ),
+
           SliverToBoxAdapter(
             child: Card(
                 margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -1628,6 +2121,8 @@ class _AchievementCard extends StatelessWidget {
     final ach = status.achievement;
     final levelIdx = status.unlockedLevelIndex;
     final isDark = context.isDark;
+    final isLocked = levelIdx == -1;
+    final String levelName = isLocked ? 'Bloqueado' : ach.levels[levelIdx].name;
 
     showModalBottomSheet(
       context: context,
@@ -1656,7 +2151,19 @@ class _AchievementCard extends StatelessWidget {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    _buildEmblem(context, size: 56),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _showFullscreenBadge(context);
+                      },
+                      child: Tooltip(
+                        message: 'Toque para ampliar',
+                        child: Hero(
+                          tag: 'ach_badge_${ach.id}_$levelName',
+                          child: _buildEmblem(context, size: 56),
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -1828,6 +2335,206 @@ class _AchievementCard extends StatelessWidget {
       return '${val.toInt()} ${val.toInt() == 1 ? "série" : "séries"}';
     }
   }
+
+  void _showFullscreenBadge(BuildContext context) {
+    final ach = status.achievement;
+    final levelIdx = status.unlockedLevelIndex;
+    final isLocked = levelIdx == -1;
+    final levelName = isLocked ? 'Bloqueado' : ach.levels[levelIdx].name;
+    
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.9), // Fundo preto opaco elegante
+      builder: (ctx) {
+        return GestureDetector(
+          onTap: () => Navigator.pop(ctx), // Fecha ao tocar fora
+          child: Material(
+            color: Colors.transparent,
+            child: Stack(
+              children: [
+                // Glow de fundo animado (efeito premium pulsante)
+                Center(
+                  child: _AchievementGlowBackground(isLocked: isLocked, levelName: levelName),
+                ),
+                // Conteúdo principal
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Spacer(),
+                      // Título da Conquista
+                      Text(
+                        ach.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      // Categoria / Nível
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isLocked ? Colors.white24 : AppColors.primary.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isLocked ? Colors.white30 : AppColors.primaryLight,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(
+                          isLocked ? 'Bloqueado' : 'Nível: $levelName',
+                          style: TextStyle(
+                            color: isLocked ? Colors.white70 : AppColors.primaryLight,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      
+                      // O Emblema em tamanho grande e zoomável (InteractiveViewer)
+                      SizedBox(
+                        width: 280,
+                        height: 320,
+                        child: InteractiveViewer(
+                          clipBehavior: Clip.none,
+                          minScale: 0.5,
+                          maxScale: 4.0,
+                          child: Center(
+                            child: Hero(
+                              tag: 'ach_badge_${ach.id}_$levelName',
+                              child: _buildEmblem(context, size: 180),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      const Spacer(),
+                      // Descrição detalhada
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                        child: Text(
+                          ach.description,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Alvo/Progresso
+                      Text(
+                        isLocked
+                            ? 'Alvo: ${_formatValue(ach.levels[0].value, ach.type)}'
+                            : 'Progresso: ${_formatValue(status.currentValue, ach.type)}',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const Spacer(),
+                      
+                      // Instrução para sair / fechar
+                      const Text(
+                        'Toque em qualquer lugar para voltar',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+                // Botão de fechar
+                Positioned(
+                  top: 40,
+                  right: 20,
+                  child: IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 28),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AchievementGlowBackground extends StatefulWidget {
+  final bool isLocked;
+  final String levelName;
+  const _AchievementGlowBackground({required this.isLocked, required this.levelName});
+
+  @override
+  State<_AchievementGlowBackground> createState() => _AchievementGlowBackgroundState();
+}
+
+class _AchievementGlowBackgroundState extends State<_AchievementGlowBackground>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isLocked) return const SizedBox.shrink();
+
+    Color glowColor;
+    if (widget.levelName == 'Bronze') {
+      glowColor = const Color(0xFFCD7F32);
+    } else if (widget.levelName == 'Prata') {
+      glowColor = const Color(0xFFB0B8C0);
+    } else {
+      glowColor = const Color(0xFFFFD700);
+    }
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final scale = 1.0 + (_controller.value * 0.15);
+        final opacity = 0.15 + (_controller.value * 0.1);
+        
+        return Container(
+          width: 320 * scale,
+          height: 320 * scale,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                glowColor.withValues(alpha: opacity),
+                glowColor.withValues(alpha: 0.0),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class HexagonClipper extends CustomClipper<Path> {
@@ -1851,4 +2558,87 @@ class HexagonClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+class _AudioSettingsCard extends StatefulWidget {
+  const _AudioSettingsCard();
+
+  @override
+  State<_AudioSettingsCard> createState() => _AudioSettingsCardState();
+}
+
+class _AudioSettingsCardState extends State<_AudioSettingsCard> {
+  late bool _enabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _enabled = AudioService().clickSoundsEnabled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: context.divider.withValues(alpha: 0.3)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.volume_up_rounded, color: AppColors.primaryLight, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Efeitos Sonoros',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const Text(
+                        'Configurações de som e feedback tátil do aplicativo',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Som de Clique nos Botões', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              subtitle: const Text('Tocar feedback sonoro nativo ao pressionar botões principais', style: TextStyle(fontSize: 12)),
+              value: _enabled,
+              activeColor: AppColors.primaryLight,
+              onChanged: (val) async {
+                setState(() {
+                  _enabled = val;
+                });
+                await AudioService().setClickSoundsEnabled(val);
+                if (val) {
+                  await AudioService().playClick();
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

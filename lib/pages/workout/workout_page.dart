@@ -42,6 +42,7 @@ import 'widgets/plate_calculator_dialog.dart';
 import 'widgets/workout_music_panel.dart';
 import '../../core/services/health_connect_service.dart';
 import '../progress/workout_session_detail_page.dart';
+import '../progress/exercise_comparison_page.dart';
 //import '../setup/widgets/setup_page.dart';
 
 // Registro local de uma série (exibição imediata, sem roundtrip)
@@ -2491,6 +2492,23 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             color: Colors.amber,
                           ),
                         ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ExerciseComparisonPage(
+                                initialExerciseId: ex.id,
+                                initialExerciseName: ex.nome,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const _BadgeTag(
+                          label: 'Histórico & Evolução',
+                          icon: Icons.analytics_rounded,
+                        ),
+                      ),
                       if (ex.link != null && ex.link!.isNotEmpty)
                         GestureDetector(
                           onTap: () => _openLink(ex.link!),
