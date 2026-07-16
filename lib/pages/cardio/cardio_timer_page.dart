@@ -18,6 +18,7 @@ class CardioTimerPage extends ConsumerStatefulWidget {
 class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
   final Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
+  late final PageController _pageController;
   
   String _selectedType = 'Esteira';
   String _selectedIntensity = 'Moderada';
@@ -34,7 +35,14 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
   final List<String> _intensities = ['Leve', 'Moderada', 'Alta'];
 
   @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.5, initialPage: 0);
+  }
+
+  @override
   void dispose() {
+    _pageController.dispose();
     _timer?.cancel();
     super.dispose();
   }
@@ -224,42 +232,99 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
       body: SafeArea(
         child: Column(
           children: [
+            const SizedBox(height: 16),
             // Tipo de cárdio selector
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: SizedBox(
-                height: 48,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _cardioTypes.length,
-                  itemBuilder: (context, index) {
-                    final type = _cardioTypes[index];
-                    final isSelected = _selectedType == type['name'];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        avatar: Icon(
-                          type['icon'],
-                          color: isSelected ? Colors.white : context.onSurface,
-                          size: 18,
+            SizedBox(
+              height: 130,
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: _cardioTypes.length,
+                onPageChanged: (index) {
+                  AudioService().playClick();
+                  setState(() {
+                    _selectedType = _cardioTypes[index]['name'];
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final type = _cardioTypes[index];
+                  final isSelected = _selectedType == type['name'];
+
+                  return AnimatedBuilder(
+                    animation: _pageController,
+                    builder: (context, child) {
+                      double value = 1.0;
+                      if (_pageController.position.haveDimensions) {
+                        value = _pageController.page! - index;
+                        value = (1 - (value.abs() * 0.15)).clamp(0.85, 1.0);
+                      } else {
+                        value = index == 0 ? 1.0 : 0.85;
+                      }
+
+                      return Transform.scale(
+                        scale: value,
+                        child: child,
+                      );
+                    },
+                    child: GestureDetector(
+                      onTap: () {
+                        _pageController.animateToPage(
+                          index,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                        decoration: BoxDecoration(
+                          gradient: isSelected
+                              ? const LinearGradient(
+                                  colors: [AppColors.primary, AppColors.primaryLight],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : null,
+                          color: isSelected ? null : context.cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected ? Colors.transparent : context.divider,
+                            width: 1.5,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ]
+                              : null,
                         ),
-                        label: Text(type['name']),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) {
-                            AudioService().playClick();
-                            setState(() {
-                              _selectedType = type['name']!;
-                            });
-                          }
-                        },
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              type['icon'],
+                              size: 36,
+                              color: isSelected ? Colors.white : context.onSurface,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              type['name'],
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : context.onBackground,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
             ),
+            const SizedBox(height: 12),
 
             // Intensidade selector
             Padding(
