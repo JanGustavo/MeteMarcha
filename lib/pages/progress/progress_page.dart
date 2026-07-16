@@ -4699,122 +4699,273 @@ class _CardioTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cardiosAsync = ref.watch(cardiosProvider);
+    final weeklyGoal = ref.watch(weeklyCardioGoalProvider);
     final dateFormatter = DateFormat('dd/MM/yyyy HH:mm');
 
     return cardiosAsync.when(
       data: (cardios) {
-        if (cardios.isEmpty) {
-          return const Center(
-            child: Text('Nenhum treino de cárdio registrado ainda. 🏃'),
-          );
-        }
-        return ListView.builder(
+        // Calculate weekly goal progress
+        final now = DateTime.now();
+        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+        final monday = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day, 0, 0, 0);
+        
+        final thisWeekCardios = cardios.where((c) {
+          final date = DateTime.tryParse(c.data);
+          if (date == null) return false;
+          return date.isAfter(monday.subtract(const Duration(seconds: 1)));
+        }).toList();
+
+        final totalSecondsThisWeek = thisWeekCardios.fold<int>(0, (sum, c) => sum + c.duracaoSegundos);
+        final totalMinutesThisWeek = totalSecondsThisWeek ~/ 60;
+        final percent = weeklyGoal > 0 ? (totalMinutesThisWeek / weeklyGoal).clamp(0.0, 1.0) : 0.0;
+        final percentFormatted = (percent * 100).toStringAsFixed(0);
+
+        return ListView(
           padding: const EdgeInsets.all(16),
-          itemCount: cardios.length,
-          itemBuilder: (context, index) {
-            final c = cardios[index];
-            final date = DateTime.tryParse(c.data) ?? DateTime.now();
-            final minutes = c.duracaoSegundos ~/ 60;
-            final seconds = c.duracaoSegundos % 60;
-            final timeStr = minutes > 0 
-                ? '${minutes}m ${seconds}s' 
-                : '${seconds}s';
-
-            IconData typeIcon;
-            switch (c.tipo) {
-              case 'Esteira':
-              case 'Corrida de Rua':
-                typeIcon = Icons.directions_run_rounded;
-                break;
-              case 'Bicicleta':
-                typeIcon = Icons.pedal_bike_rounded;
-                break;
-              case 'Escada':
-                typeIcon = Icons.stairs_rounded;
-                break;
-              case 'Elíptico':
-                typeIcon = Icons.double_arrow_rounded;
-                break;
-              default:
-                typeIcon = Icons.sports_gymnastics_rounded;
-            }
-
-            Color intensityColor;
-            switch (c.intensidade) {
-              case 'Leve':
-                intensityColor = Colors.teal;
-                break;
-              case 'Alta':
-                intensityColor = Colors.red;
-                break;
-              default:
-                intensityColor = Colors.orange;
-            }
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
+          children: [
+            // Card de Meta Semanal
+            Card(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 side: BorderSide(color: context.divider),
               ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: AppColors.primaryLight.withValues(alpha: 0.1),
-                  foregroundColor: AppColors.primaryLight,
-                  child: Icon(typeIcon),
-                ),
-                title: Row(
-                  children: [
-                    Text(
-                      c.tipo,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: intensityColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        c.intensidade ?? 'Moderada',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: intensityColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                subtitle: Column(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 4),
-                    Text('Data: ${dateFormatter.format(date)}'),
-                    const SizedBox(height: 2),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Tempo: $timeStr'),
-                        if (c.distanciaKm != null) ...[
-                          const SizedBox(width: 12),
-                          Text('Distância: ${c.distanciaKm!.toStringAsFixed(2)} km'),
-                        ],
-                        if (c.calorias != null) ...[
-                          const SizedBox(width: 12),
-                          Text('Calorias: ${c.calorias} kcal'),
-                        ],
+                        Row(
+                          children: [
+                            const Icon(Icons.track_changes_rounded, color: AppColors.primaryLight, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'META DE CÁRDIO SEMANAL',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: context.onBackground,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '$totalMinutesThisWeek / $weeklyGoal min',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: percent,
+                        minHeight: 10,
+                        backgroundColor: context.divider.withValues(alpha: 0.1),
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryLight),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '$percentFormatted% concluído',
+                          style: TextStyle(fontSize: 11, color: context.onSurface),
+                        ),
+                        if (percent >= 1.0)
+                          const Row(
+                            children: [
+                              Icon(Icons.check_circle_rounded, color: Colors.green, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Meta Atingida! 🎉',
+                                style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ],
                 ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                  onPressed: () => _confirmDeleteCardio(context, ref, c.id),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Card de Evolução
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: context.divider),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.analytics_rounded, color: AppColors.primaryLight, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'EVOLUÇÃO NAS ÚLTIMAS SEMANAS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: context.onBackground,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _CardioProgressChart(cardios: cardios),
+                  ],
                 ),
               ),
-            );
-          },
+            ),
+            const SizedBox(height: 20),
+
+            // Histórico label
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                'HISTÓRICO DE SESSÕES',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: context.onSurface.withValues(alpha: 0.6),
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            if (cardios.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Text('Nenhum treino de cárdio registrado ainda. 🏃'),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: cardios.length,
+                itemBuilder: (context, index) {
+                  final c = cardios[index];
+                  final date = DateTime.tryParse(c.data) ?? DateTime.now();
+                  final minutes = c.duracaoSegundos ~/ 60;
+                  final seconds = c.duracaoSegundos % 60;
+                  final timeStr = minutes > 0 
+                      ? '${minutes}m ${seconds}s' 
+                      : '${seconds}s';
+
+                  IconData typeIcon;
+                  switch (c.tipo) {
+                    case 'Esteira':
+                    case 'Corrida de Rua':
+                      typeIcon = Icons.directions_run_rounded;
+                      break;
+                    case 'Bicicleta':
+                      typeIcon = Icons.pedal_bike_rounded;
+                      break;
+                    case 'Escada':
+                      typeIcon = Icons.stairs_rounded;
+                      break;
+                    case 'Elíptico':
+                      typeIcon = Icons.double_arrow_rounded;
+                      break;
+                    default:
+                      typeIcon = Icons.sports_gymnastics_rounded;
+                  }
+
+                  Color intensityColor;
+                  switch (c.intensidade) {
+                    case 'Leve':
+                      intensityColor = Colors.teal;
+                      break;
+                    case 'Alta':
+                      intensityColor = Colors.red;
+                      break;
+                    default:
+                      intensityColor = Colors.orange;
+                  }
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: context.divider),
+                    ),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AppColors.primaryLight.withValues(alpha: 0.1),
+                        foregroundColor: AppColors.primaryLight,
+                        child: Icon(typeIcon),
+                      ),
+                      title: Row(
+                        children: [
+                          Text(
+                            c.tipo,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: intensityColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              c.intensidade ?? 'Moderada',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: intensityColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text('Data: ${dateFormatter.format(date)}'),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text('Tempo: $timeStr'),
+                              if (c.distanciaKm != null) ...[
+                                const SizedBox(width: 12),
+                                Text('Distância: ${c.distanciaKm!.toStringAsFixed(2)} km'),
+                              ],
+                              if (c.calorias != null) ...[
+                                const SizedBox(width: 12),
+                                Text('Calorias: ${c.calorias} kcal'),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                        onPressed: () => _confirmDeleteCardio(context, ref, c.id),
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -4841,7 +4992,7 @@ class _CardioTab extends ConsumerWidget {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Registro de cárdio concluído.'),
+                    content: Text('Registro de cárdio excluído.'),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -4850,6 +5001,145 @@ class _CardioTab extends ConsumerWidget {
             child: const Text('Excluir', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CardioProgressChart extends StatelessWidget {
+  final List<Cardio> cardios;
+
+  const _CardioProgressChart({required this.cardios});
+
+  DateTime _startOfWeek(DateTime date) {
+    return DateTime(date.year, date.month, date.day).subtract(Duration(days: date.weekday - 1));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Map<DateTime, double> weeklyMinutes = {};
+    final now = DateTime.now();
+    final currentWeekStart = _startOfWeek(now);
+
+    for (int i = 3; i >= 0; i--) {
+      final weekStart = currentWeekStart.subtract(Duration(days: i * 7));
+      weeklyMinutes[weekStart] = 0.0;
+    }
+
+    for (final c in cardios) {
+      final logDate = DateTime.tryParse(c.data);
+      if (logDate == null) continue;
+      final weekStart = _startOfWeek(logDate);
+      if (weeklyMinutes.containsKey(weekStart)) {
+        final mins = c.duracaoSegundos / 60.0;
+        weeklyMinutes[weekStart] = (weeklyMinutes[weekStart] ?? 0.0) + mins;
+      }
+    }
+
+    final sortedWeeks = weeklyMinutes.keys.toList()..sort();
+    final spots = sortedWeeks.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), weeklyMinutes[e.value] ?? 0.0);
+    }).toList();
+
+    final maxVal = weeklyMinutes.values.isEmpty 
+        ? 60.0 
+        : weeklyMinutes.values.reduce((a, b) => a > b ? a : b);
+    final maxY = maxVal > 0 ? maxVal * 1.2 : 60.0;
+
+    if (weeklyMinutes.values.every((v) => v == 0.0)) {
+      return SizedBox(
+        height: 100,
+        child: Center(
+          child: Text(
+            'Nenhum minuto de cárdio registrado nas últimas semanas.',
+            style: TextStyle(color: context.onSurface, fontSize: 12),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 130,
+      child: LineChart(
+        LineChartData(
+          minY: 0,
+          maxY: maxY,
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (touchedSpot) => context.surfaceColor,
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((spot) {
+                  final idx = spot.x.toInt();
+                  if (idx < 0 || idx >= sortedWeeks.length) return null;
+                  final weekStart = sortedWeeks[idx];
+                  final mins = weeklyMinutes[weekStart] ?? 0.0;
+                  final text = 'Semana ${weekStart.day}/${weekStart.month}: ${mins.toStringAsFixed(0)} min';
+                  return LineTooltipItem(
+                    text,
+                    TextStyle(color: context.onBackground, fontWeight: FontWeight.bold, fontSize: 10),
+                  );
+                }).toList();
+              },
+            ),
+          ),
+          gridData: FlGridData(
+            drawHorizontalLine: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => FlLine(color: context.divider, strokeWidth: 1),
+          ),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                interval: 1.0,
+                getTitlesWidget: (v, _) {
+                  if (v != v.toInt().toDouble()) return const SizedBox();
+                  final idx = v.toInt();
+                  if (idx < 0 || idx >= sortedWeeks.length) return const SizedBox();
+                  final date = sortedWeeks[idx];
+                  final text = 'S-${3 - idx}';
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      idx == 3 ? 'Atual' : text,
+                      style: TextStyle(color: context.onSurface, fontSize: 8),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                getTitlesWidget: (value, _) {
+                  return Text(
+                    '${value.toInt()}m',
+                    style: TextStyle(color: context.onSurface, fontSize: 8),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: AppColors.primary,
+              barWidth: 3,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: true),
+              belowBarData: BarAreaData(
+                show: true,
+                color: AppColors.primary.withValues(alpha: 0.1),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -469,3 +469,28 @@ final rpeEnabledProvider = StateNotifierProvider<RpeEnabledNotifier, bool>((ref)
   return RpeEnabledNotifier();
 });
 
+class WeeklyCardioGoalNotifier extends StateNotifier<int> {
+  WeeklyCardioGoalNotifier() : super(150) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      state = prefs.getInt('weekly_cardio_goal') ?? 150;
+    } catch (_) {}
+  }
+
+  Future<void> updateGoal(int minutes) async {
+    state = minutes;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('weekly_cardio_goal', minutes);
+    } catch (_) {}
+  }
+}
+
+final weeklyCardioGoalProvider = StateNotifierProvider<WeeklyCardioGoalNotifier, int>((ref) {
+  return WeeklyCardioGoalNotifier();
+});
+

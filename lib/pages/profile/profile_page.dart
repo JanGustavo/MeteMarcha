@@ -1423,27 +1423,53 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                                   const Divider(height: 16),
                                   buildMetricRow(
                                     context, 
-                                    'Treinos Concluídos', 
-                                    '${metrics.workoutCount}',
+                                    'Treinos de Musculação', 
+                                    '${metrics.workoutCount} sessões',
                                   ),
                                   const Divider(height: 16),
                                   buildMetricRow(
                                     context, 
-                                    'Tempo Total na Academia', 
+                                    'Treinos de Cárdio', 
+                                    '${metrics.cardioCount} sessões',
+                                  ),
+                                  const Divider(height: 16),
+                                  buildMetricRow(
+                                    context, 
+                                    'Tempo Total Musculação', 
                                     formatDuration(metrics.totalDurationHours),
                                   ),
                                   const Divider(height: 16),
                                   buildMetricRow(
                                     context, 
-                                    'Custo por Treino', 
+                                    'Tempo Total Cárdio', 
+                                    formatDuration(metrics.totalCardioDurationHours),
+                                  ),
+                                  const Divider(height: 16),
+                                  buildMetricRow(
+                                    context, 
+                                    'Custo Médio por Treino', 
                                     'R\$ ${metrics.costPerWorkout.toStringAsFixed(2)}',
+                                    isBold: true,
+                                  ),
+                                  const Divider(height: 16),
+                                  buildMetricRow(
+                                    context, 
+                                    'Custo Médio por Cárdio', 
+                                    'R\$ ${metrics.costPerCardio.toStringAsFixed(2)}',
+                                    isBold: true,
+                                  ),
+                                  const Divider(height: 16),
+                                  buildMetricRow(
+                                    context, 
+                                    'Custo Médio por Ida (Geral)', 
+                                    'R\$ ${metrics.costPerVisit.toStringAsFixed(2)}',
                                     valueColor: AppColors.primaryLight,
                                     isBold: true,
                                   ),
                                   const Divider(height: 16),
                                   buildMetricRow(
                                     context, 
-                                    'Custo por Hora', 
+                                    'Custo por Hora (Total)', 
                                     'R\$ ${metrics.costPerHour.toStringAsFixed(2)}',
                                     valueColor: AppColors.primaryLight,
                                     isBold: true,
@@ -1664,6 +1690,115 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                             }),
                           ],
                         ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+          ),
+          ),
+
+          // ── Meta Semanal de Cárdio ──────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Consumer(
+              builder: (context, ref, child) {
+                final currentGoal = ref.watch(weeklyCardioGoalProvider);
+
+                return Card(
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: context.divider),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.directions_run_rounded,
+                                color: AppColors.primaryLight,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Meta de Cárdio Semanal',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: context.onBackground,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Meta sugerida pela OMS: mínimo de 150 min',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: context.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Meta semanal:',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: context.onBackground,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: currentGoal > 10
+                                      ? () => ref.read(weeklyCardioGoalProvider.notifier).updateGoal(currentGoal - 10)
+                                      : null,
+                                  icon: const Icon(Icons.remove_circle_outline_rounded),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: context.divider.withValues(alpha: 0.05),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '$currentGoal min',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => ref.read(weeklyCardioGoalProvider.notifier).updateGoal(currentGoal + 10),
+                                  icon: const Icon(Icons.add_circle_outline_rounded),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

@@ -168,15 +168,23 @@ class MembershipMetrics {
   final DateTime cycleEndDate;
   final int workoutCount;
   final double totalDurationHours;
+  final int cardioCount;
+  final double totalCardioDurationHours;
   final double costPerWorkout;
-  final double costPerHour;
+  final double costPerCardio;
+  final double costPerVisit; // Treino + Cárdio
+  final double costPerHour; // Horas combinadas
 
   MembershipMetrics({
     required this.cycleStartDate,
     required this.cycleEndDate,
     required this.workoutCount,
     required this.totalDurationHours,
+    required this.cardioCount,
+    required this.totalCardioDurationHours,
     required this.costPerWorkout,
+    required this.costPerCardio,
+    required this.costPerVisit,
     required this.costPerHour,
   });
 }
@@ -203,44 +211,67 @@ final membershipMetricsProvider = Provider<MembershipMetrics?>((ref) {
   if (!membership.enabled) return null;
 
   final sessionsAsync = ref.watch(completedSessionsProvider);
-  return sessionsAsync.when(
-    data: (sessions) {
-      final endDate = membership.nextDueDate;
-      final cycleEndDate = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
-      final cycleStartDate = calculateCycleStartDate(endDate, membership.months);
-      
-      final startLimit = cycleStartDate.subtract(const Duration(seconds: 1));
-      final endLimit = cycleEndDate;
+  final cardiosAsync = ref.watch(cardiosProvider);
 
-      final cycleSessions = sessions.where((s) {
-        final date = DateTime.tryParse(s.data);
-        if (date == null) return false;
-        return date.isAfter(startLimit) && date.isBefore(endLimit);
-      }).toList();
+  final sessions = sessionsAsync.value;
+  final cardios = cardiosAsync.value;
+  if (sessions == null || cardios == null) return null;
 
-      final count = cycleSessions.length;
-      
-      int totalSeconds = 0;
-      for (final s in cycleSessions) {
-        totalSeconds += s.duracaoSegundos ?? 0;
-      }
-      
-      final totalHours = totalSeconds / 3600.0;
-      
-      final costPerWorkout = count > 0 ? membership.value / count : membership.value;
-      final costPerHour = totalHours > 0 ? membership.value / totalHours : membership.value;
+  final endDate = membership.nextDueDate;
+  final cycleEndDate = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+  final cycleStartDate = calculateCycleStartDate(endDate, membership.months);
+  
+  final startLimit = cycleStartDate.subtract(const Duration(seconds: 1));
+  final endLimit = cycleEndDate;
 
-      return MembershipMetrics(
-        cycleStartDate: cycleStartDate,
-        cycleEndDate: endDate,
-        workoutCount: count,
-        totalDurationHours: totalHours,
-        costPerWorkout: costPerWorkout,
-        costPerHour: costPerHour,
-      );
-    },
-    loading: () => null,
-    error: (_, __) => null,
+  // Filtra treinos (musculação) no ciclo
+  final cycleSessions = sessions.where((s) {
+    final date = DateTime.tryParse(s.data);
+    if (date == null) return false;
+    return date.isAfter(startLimit) && date.isBefore(endLimit);
+  }).toList();
+
+  final workoutCount = cycleSessions.length;
+  int workoutSeconds = 0;
+  for (final s in cycleSessions) {
+    workoutSeconds += s.duracaoSegundos ?? 0;
+  }
+  final workoutHours = workoutSeconds / 3600.0;
+
+  // Filtra cárdios no ciclo
+  final cycleCardios = cardios.where((c) {
+    final date = DateTime.tryParse(c.data);
+    if (date == null) return false;
+    return date.isAfter(startLimit) && date.isBefore(endLimit);
+  }).toList();
+
+  final cardioCount = cycleCardios.length;
+  int cardioSeconds = 0;
+  for (final c in cycleCardios) {
+    cardioSeconds += c.duracaoSegundos;
+  }
+  final cardioHours = cardioSeconds / 3600.0;
+
+  // Cálculos combinados
+  final combinedCount = workoutCount + cardioCount;
+  final combinedHours = workoutHours + cardioHours;
+
+  final costPerWorkout = workoutCount > 0 ? membership.value / workoutCount : membership.value;
+  final costPerCardio = cardioCount > 0 ? membership.value / cardioCount : membership.value;
+  final costPerVisit = combinedCount > 0 ? membership.value / combinedCount : membership.value;
+  final costPerHour = combinedHours > 0 ? membership.value / combinedHours : membership.value;
+
+  return MembershipMetrics(
+    cycleStartDate: cycleStartDate,
+    cycleEndDate: endDate,
+    workoutCount: workoutCount,
+    totalDurationHours: workoutHours,
+    cardioCount: cardioCount,
+    totalCardioDurationHours: cardioHours,
+    costPerWorkout: costPerWorkout,
+    costPerCardio: costPerCardio,
+    costPerVisit: costPerVisit,
+    costPerHour: costPerHour,
   );
 });
 

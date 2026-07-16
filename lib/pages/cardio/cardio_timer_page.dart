@@ -8,6 +8,8 @@ import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/audio_service.dart';
 
+import 'package:share_plus/share_plus.dart';
+
 class CardioTimerPage extends ConsumerStatefulWidget {
   const CardioTimerPage({super.key});
 
@@ -263,6 +265,7 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
                     Row(
                       children: [
                         Expanded(
+                          flex: 3,
                           child: OutlinedButton(
                             onPressed: () {
                               Navigator.pop(ctx);
@@ -279,11 +282,36 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text('VOLTAR'),
+                            child: const Text('VOLTAR', style: TextStyle(fontSize: 11)),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          onPressed: () {
+                            final durationStr = timeStr;
+                            final distanceStr = distanceController.text.isNotEmpty ? '${distanceController.text} km' : 'Não informada';
+                            final calStr = caloriesController.text.isNotEmpty ? '${caloriesController.text} kcal' : 'Não informada';
+                            final shareText = '🔥 METE MARCHA FIT — CÁRDIO CONCLUÍDO! 🔥\n'
+                                'Acabei de completar uma sessão de cárdio!\n\n'
+                                '🏃 Atividade: $_selectedType\n'
+                                '⚡ Intensidade: $_selectedIntensity\n'
+                                '⏱️ Duração: $durationStr\n'
+                                '🏁 Distância: $distanceStr\n'
+                                '🔥 Calorias: $calStr\n\n'
+                                '#MeteMarchaFit #Foco #Constancia #GymLife';
+                            Share.share(shareText);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Icon(Icons.share_rounded, size: 20),
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
+                          flex: 4,
                           child: FilledButton(
                             onPressed: () async {
                               final distance = double.tryParse(distanceController.text.replaceAll(',', '.'));
