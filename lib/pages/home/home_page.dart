@@ -610,121 +610,125 @@ class _TreinoTab extends ConsumerWidget {
             const ConsistencyCalendar(),
 
             // ── Área de Cárdio ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: context.divider),
+            Card(
+              margin: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              elevation: 0,
+              color: context.cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: context.divider.withValues(alpha: 0.8),
+                  width: 1.5,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryLight.withValues(alpha: 0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.directions_run_rounded,
-                              color: AppColors.primaryLight,
-                              size: 24,
-                            ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Área de Cárdio',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: context.onBackground,
-                                  ),
+                          child: const Icon(
+                            Icons.directions_run_rounded,
+                            color: AppColors.primaryLight,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'ÁREA DE CÁRDIO',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: context.onSurface.withValues(alpha: 0.6),
+                                  letterSpacing: 1.2,
                                 ),
-                                const SizedBox(height: 4),
-                                cardiosAsync.when(
-                                  data: (cardios) {
-                                    if (cardios.isEmpty) {
-                                      return Text(
-                                        'Nenhum cárdio registrado recentemente.',
-                                        style: TextStyle(fontSize: 12, color: context.onSurface),
-                                      );
-                                    }
-                                    final last = cardios.first;
-                                    final dt = DateTime.tryParse(last.data) ?? DateTime.now();
-                                    final formattedDate = DateFormat('dd/MM').format(dt);
-                                    final mins = last.duracaoSegundos ~/ 60;
+                              ),
+                              const SizedBox(height: 2),
+                              cardiosAsync.when(
+                                data: (cardios) {
+                                  if (cardios.isEmpty) {
                                     return Text(
-                                      'Último: ${last.tipo} (${mins}min) em $formattedDate',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.primaryLight,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      'Nenhum cárdio registrado recentemente.',
+                                      style: TextStyle(fontSize: 12, color: context.onSurface),
                                     );
-                                  },
-                                  loading: () => const SizedBox.shrink(),
-                                  error: (_, __) => const SizedBox.shrink(),
+                                  }
+                                  final last = cardios.first;
+                                  final dt = DateTime.tryParse(last.data) ?? DateTime.now();
+                                  final formattedDate = DateFormat('dd/MM').format(dt);
+                                  final mins = last.duracaoSegundos ~/ 60;
+                                  return Text(
+                                    'Último: ${last.tipo} (${mins}min) em $formattedDate',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.primaryLight,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  );
+                                },
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, __) => const SizedBox.shrink(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              AudioService().playClick();
+                              Navigator.of(context).push(
+                                PremiumPageRoute(
+                                  page: const CardioGuidePage(),
+                                  transitionType: TransitionType.slideRight,
                                 ),
-                              ],
+                              );
+                            },
+                            icon: const Icon(Icons.menu_book_rounded, size: 18),
+                            label: const Text('GUIA DE CÁRDIO'),
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                AudioService().playClick();
-                                Navigator.of(context).push(
-                                  PremiumPageRoute(
-                                    page: const CardioGuidePage(),
-                                    transitionType: TransitionType.slideRight,
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.menu_book_rounded, size: 18),
-                              label: const Text('GUIA DE CÁRDIO'),
-                              style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              AudioService().playClick();
+                              Navigator.of(context).push(
+                                PremiumPageRoute(
+                                  page: const CardioTimerPage(),
+                                  transitionType: TransitionType.slideUp,
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.timer_outlined, size: 18),
+                            label: const Text('INICIAR'),
+                            style: FilledButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: () {
-                                AudioService().playClick();
-                                Navigator.of(context).push(
-                                  PremiumPageRoute(
-                                    page: const CardioTimerPage(),
-                                    transitionType: TransitionType.slideUp,
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.timer_outlined, size: 18),
-                              label: const Text('INICIAR'),
-                              style: FilledButton.styleFrom(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
