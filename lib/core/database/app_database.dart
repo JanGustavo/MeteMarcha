@@ -1233,6 +1233,14 @@ class AppDatabase extends _$AppDatabase {
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON;');
 
+          // Garantir que a tabela cardios exista (evita erros de migração no IndexedDB/WASM)
+          try {
+            await customStatement('SELECT 1 FROM cardios LIMIT 1;');
+          } catch (_) {
+            final migrator = Migrator(this);
+            await migrator.createTable(cardios);
+          }
+
           final allExs = await select(exercises).get();
           if (allExs.isEmpty) {
             await _seedDatabase(this);
