@@ -163,6 +163,87 @@ final membershipSettingsProvider =
   return MembershipNotifier(ref);
 });
 
+class MembershipMetrics {
+  final DateTime cycleStartDate;
+  final DateTime cycleEndDate;
+  final int workoutCount;
+  final double totalDurationHours;
+  final double costPerWorkout;
+  final double costPerHour;
+
+  MembershipMetrics({
+    required this.cycleStartDate,
+    required this.cycleEndDate,
+    required this.workoutCount,
+    required this.totalDurationHours,
+    required this.costPerWorkout,
+    required this.costPerHour,
+  });
+}
+
+DateTime calculateCycleStartDate(DateTime nextDueDate, int months) {
+  int newYear = nextDueDate.year;
+  int newMonth = nextDueDate.month - months;
+  while (newMonth < 1) {
+    newMonth += 12;
+    newYear -= 1;
+  }
+  
+  int newDay = nextDueDate.day;
+  final lastDayOfPrevMonth = DateTime(newYear, newMonth + 1, 0).day;
+  if (newDay > lastDayOfPrevMonth) {
+    newDay = lastDayOfPrevMonth;
+  }
+  
+  return DateTime(newYear, newMonth, newDay, 0, 0, 0);
+}
+
+final membershipMetricsProvider = Provider<MembershipMetrics?>((ref) {
+  final membership = ref.watch(membershipSettingsProvider);
+  if (!membership.enabled) return null;
+
+  final sessionsAsync = ref.watch(completedSessionsProvider);
+  return sessionsAsync.when(
+    data: (sessions) {
+      final endDate = membership.nextDueDate;
+      final cycleEndDate = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+      final cycleStartDate = calculateCycleStartDate(endDate, membership.months);
+      
+      final startLimit = cycleStartDate.subtract(const Duration(seconds: 1));
+      final endLimit = cycleEndDate;
+
+      final cycleSessions = sessions.where((s) {
+        final date = DateTime.tryParse(s.data);
+        if (date == null) return false;
+        return date.isAfter(startLimit) && date.isBefore(endLimit);
+      }).toList();
+
+      final count = cycleSessions.length;
+      
+      int totalSeconds = 0;
+      for (final s in cycleSessions) {
+        totalSeconds += s.duracaoSegundos ?? 0;
+      }
+      
+      final totalHours = totalSeconds / 3600.0;
+      
+      final costPerWorkout = count > 0 ? membership.value / count : membership.value;
+      final costPerHour = totalHours > 0 ? membership.value / totalHours : membership.value;
+
+      return MembershipMetrics(
+        cycleStartDate: cycleStartDate,
+        cycleEndDate: endDate,
+        workoutCount: count,
+        totalDurationHours: totalHours,
+        costPerWorkout: costPerWorkout,
+        costPerHour: costPerHour,
+      );
+    },
+    loading: () => null,
+    error: (_, __) => null,
+  );
+});
+
 // ── Workout Reminder ──────────────────────────────────────────────────────────
 
 class WorkoutReminderState {

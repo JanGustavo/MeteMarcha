@@ -1089,6 +1089,46 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                 final membership = ref.watch(membershipSettingsProvider);
                 final notifier = ref.read(membershipSettingsProvider.notifier);
                 final dateFormatter = DateFormat('dd/MM/yyyy');
+                final metrics = ref.watch(membershipMetricsProvider);
+
+                String formatDuration(double hours) {
+                  final totalMinutes = (hours * 60).round();
+                  final h = totalMinutes ~/ 60;
+                  final m = totalMinutes % 60;
+                  if (h > 0) {
+                    return '${h}h ${m}m';
+                  }
+                  return '${m}m';
+                }
+
+                Widget buildMetricRow(
+                  BuildContext context, 
+                  String label, 
+                  String value, {
+                  Color? valueColor,
+                  bool isBold = false,
+                }) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.onSurface,
+                        ),
+                      ),
+                      Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                          color: valueColor ?? context.onBackground,
+                        ),
+                      ),
+                    ],
+                  );
+                }
                 
                 return Card(
                   margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -1347,6 +1387,71 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                             controlAffinity: ListTileControlAffinity.leading,
                             dense: true,
                           ),
+                          if (metrics != null) ...[
+                            const SizedBox(height: 16),
+                            const Divider(),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                const Icon(Icons.analytics_rounded, color: AppColors.primaryLight, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Métricas do Ciclo Atual',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: context.onBackground,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: context.divider.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: context.divider.withValues(alpha: 0.1)),
+                              ),
+                              child: Column(
+                                children: [
+                                  buildMetricRow(
+                                    context, 
+                                    'Período', 
+                                    '${dateFormatter.format(metrics.cycleStartDate)} - ${dateFormatter.format(metrics.cycleEndDate)}',
+                                  ),
+                                  const Divider(height: 16),
+                                  buildMetricRow(
+                                    context, 
+                                    'Treinos Concluídos', 
+                                    '${metrics.workoutCount}',
+                                  ),
+                                  const Divider(height: 16),
+                                  buildMetricRow(
+                                    context, 
+                                    'Tempo Total na Academia', 
+                                    formatDuration(metrics.totalDurationHours),
+                                  ),
+                                  const Divider(height: 16),
+                                  buildMetricRow(
+                                    context, 
+                                    'Custo por Treino', 
+                                    'R\$ ${metrics.costPerWorkout.toStringAsFixed(2)}',
+                                    valueColor: AppColors.primaryLight,
+                                    isBold: true,
+                                  ),
+                                  const Divider(height: 16),
+                                  buildMetricRow(
+                                    context, 
+                                    'Custo por Hora', 
+                                    'R\$ ${metrics.costPerHour.toStringAsFixed(2)}',
+                                    valueColor: AppColors.primaryLight,
+                                    isBold: true,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
