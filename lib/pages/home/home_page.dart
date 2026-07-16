@@ -29,7 +29,7 @@ import '../setup/split_selection_page.dart';
 import '../workout/workout_page.dart';
 import '../../core/services/ota_update_service.dart';
 
-final membershipToastTriggeredProvider = StateProvider<bool>((ref) => false);
+
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -355,7 +355,8 @@ class _TreinoTab extends ConsumerWidget {
 
     final membership = ref.watch(membershipSettingsProvider);
     final triggered = ref.read(membershipToastTriggeredProvider);
-    if (membership.enabled && !triggered) {
+    final warningSnoozed = ref.watch(membershipWarningSnoozedProvider);
+    if (membership.enabled && !triggered && !warningSnoozed) {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final due = DateTime(membership.nextDueDate.year, membership.nextDueDate.month, membership.nextDueDate.day);
@@ -385,6 +386,13 @@ class _TreinoTab extends ConsumerWidget {
                 textColor: Colors.white,
                 onPressed: () {
                   ref.read(membershipSettingsProvider.notifier).markAsPaid();
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Mensalidade registrada como paga!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
                 },
               ),
             ),
@@ -449,113 +457,129 @@ class _TreinoTab extends ConsumerWidget {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            // ── Alerta de Mensalidade (Vencimento) ──────────────────────
-            if (membership.enabled) (() {
-              final now = DateTime.now();
-              final today = DateTime(now.year, now.month, now.day);
-              final due = DateTime(membership.nextDueDate.year, membership.nextDueDate.month, membership.nextDueDate.day);
-              final difference = due.difference(today).inDays;
-              
-              if (difference > 3) return const SizedBox.shrink();
-              
-              final formattedValue = membership.value.toStringAsFixed(2);
-              final isOverdue = difference < 0;
-              final isToday = difference == 0;
-              
-              final String text;
-              if (isOverdue) {
-                text = 'Sua mensalidade de R\$ $formattedValue está atrasada há ${-difference} ${-difference == 1 ? "dia" : "dias"}!';
-              } else if (isToday) {
-                text = 'Sua mensalidade de R\$ $formattedValue vence hoje!';
-              } else {
-                text = 'Sua mensalidade de R\$ $formattedValue vence em $difference ${difference == 1 ? "dia" : "dias"}.';
-              }
-              
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.amber, Colors.orangeAccent],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.amber.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isOverdue ? 'MENSALIDADE ATRASADA ⚠️' : 'ALERTA DE VENCIMENTO 💳',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                text,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton(
-                          onPressed: () {
-                            AudioService().playClick();
-                            ref.read(membershipSettingsProvider.notifier).markAsPaid();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Mensalidade registrada como paga!'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          },
-                          style: TextButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.orange.shade900,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          ),
-                          child: const Text(
-                            'PAGO',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }()) else const SizedBox.shrink(),
+             // ── Alerta de Mensalidade (Vencimento) ──────────────────────
+             if (membership.enabled && !ref.watch(membershipWarningSnoozedProvider)) (() {
+               final now = DateTime.now();
+               final today = DateTime(now.year, now.month, now.day);
+               final due = DateTime(membership.nextDueDate.year, membership.nextDueDate.month, membership.nextDueDate.day);
+               final difference = due.difference(today).inDays;
+               
+               if (difference > 3) return const SizedBox.shrink();
+               
+               final formattedValue = membership.value.toStringAsFixed(2);
+               final isOverdue = difference < 0;
+               final isToday = difference == 0;
+               
+               final String text;
+               if (isOverdue) {
+                 text = 'Sua mensalidade de R\$ $formattedValue está atrasada há ${-difference} ${-difference == 1 ? "dia" : "dias"}!';
+               } else if (isToday) {
+                 text = 'Sua mensalidade de R\$ $formattedValue vence hoje!';
+               } else {
+                 text = 'Sua mensalidade de R\$ $formattedValue vence em $difference ${difference == 1 ? "dia" : "dias"}.';
+               }
+               
+               return Padding(
+                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                 child: Container(
+                   decoration: BoxDecoration(
+                     gradient: const LinearGradient(
+                       colors: [Colors.amber, Colors.orangeAccent],
+                       begin: Alignment.topLeft,
+                       end: Alignment.bottomRight,
+                     ),
+                     borderRadius: BorderRadius.circular(16),
+                     boxShadow: [
+                       BoxShadow(
+                         color: Colors.amber.withValues(alpha: 0.3),
+                         blurRadius: 8,
+                         offset: const Offset(0, 4),
+                       ),
+                     ],
+                   ),
+                   child: Padding(
+                     padding: const EdgeInsets.all(16.0),
+                     child: Row(
+                       children: [
+                         const Icon(
+                           Icons.warning_amber_rounded,
+                           color: Colors.white,
+                           size: 28,
+                         ),
+                         const SizedBox(width: 12),
+                         Expanded(
+                           child: Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             children: [
+                               Text(
+                                 isOverdue ? 'MENSALIDADE ATRASADA ⚠️' : 'ALERTA DE VENCIMENTO 💳',
+                                 style: const TextStyle(
+                                   color: Colors.white,
+                                   fontSize: 10,
+                                   fontWeight: FontWeight.w900,
+                                   letterSpacing: 1.2,
+                                 ),
+                               ),
+                               const SizedBox(height: 4),
+                               Text(
+                                 text,
+                                 style: const TextStyle(
+                                   color: Colors.white,
+                                   fontSize: 13,
+                                   fontWeight: FontWeight.bold,
+                                   height: 1.3,
+                                 ),
+                               ),
+                             ],
+                           ),
+                         ),
+                         const SizedBox(width: 8),
+                         TextButton(
+                           onPressed: () {
+                             AudioService().playClick();
+                             ref.read(membershipSettingsProvider.notifier).markAsPaid();
+                             ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               const SnackBar(
+                                 content: Text('Mensalidade registrada como paga!'),
+                                 backgroundColor: Colors.green,
+                               ),
+                             );
+                           },
+                           style: TextButton.styleFrom(
+                             backgroundColor: Colors.white,
+                             foregroundColor: Colors.orange.shade900,
+                             shape: RoundedRectangleBorder(
+                               borderRadius: BorderRadius.circular(12),
+                             ),
+                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                           ),
+                           child: const Text(
+                             'PAGO',
+                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                           ),
+                         ),
+                         const SizedBox(width: 4),
+                         IconButton(
+                           icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                           onPressed: () {
+                             AudioService().playClick();
+                             ref.read(membershipWarningSnoozedProvider.notifier).state = true;
+                             ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               const SnackBar(
+                                 content: Text('Aviso ocultado temporariamente.'),
+                                 duration: Duration(seconds: 3),
+                               ),
+                             );
+                           },
+                         ),
+                       ],
+                     ),
+                   ),
+                 ),
+               );
+             }()) else const SizedBox.shrink(),
 
             // ── Planejamento Semanal (Notificações) ────────────────────
             const WeeklyScheduleBanner(),

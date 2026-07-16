@@ -47,8 +47,13 @@ class MembershipState {
   }
 }
 
+final membershipToastTriggeredProvider = StateProvider<bool>((ref) => false);
+final membershipWarningSnoozedProvider = StateProvider<bool>((ref) => false);
+
 class MembershipNotifier extends StateNotifier<MembershipState> {
-  MembershipNotifier()
+  final Ref _ref;
+
+  MembershipNotifier(this._ref)
       : super(MembershipState(
           enabled: false,
           value: 0.0,
@@ -94,6 +99,10 @@ class MembershipNotifier extends StateNotifier<MembershipState> {
     bool? alert3Days,
     bool? alert1Week,
   }) async {
+    // Reset transient UI warning states upon settings changes
+    _ref.read(membershipToastTriggeredProvider.notifier).state = false;
+    _ref.read(membershipWarningSnoozedProvider.notifier).state = false;
+
     final newState = state.copyWith(
       enabled: enabled,
       value: value,
@@ -151,7 +160,7 @@ class MembershipNotifier extends StateNotifier<MembershipState> {
 
 final membershipSettingsProvider =
     StateNotifierProvider<MembershipNotifier, MembershipState>((ref) {
-  return MembershipNotifier();
+  return MembershipNotifier(ref);
 });
 
 // ── Workout Reminder ──────────────────────────────────────────────────────────
