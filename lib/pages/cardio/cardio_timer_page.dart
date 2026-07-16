@@ -104,108 +104,285 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: context.cardColor,
-        title: Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: AppColors.primaryLight, size: 24),
-            const SizedBox(width: 8),
-            const Text('Concluir Cárdio! 🎉'),
-          ],
-        ),
-        content: SingleChildScrollView(
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: context.cardColor,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: context.divider.withValues(alpha: 0.8), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 16,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Excelente esforço! Você correu/pedalou por:',
-                style: TextStyle(color: context.onSurface, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  timeStr,
-                  style: TextStyle(
-                    color: context.onBackground,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+              // Header com gradiente premium
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(22),
+                    topRight: Radius.circular(22),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: distanceController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Distância (Km) - Opcional',
-                  hintText: 'ex: 3.5',
-                  prefixIcon: Icon(Icons.edit_road_rounded),
+                child: Column(
+                  children: [
+                    const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 44),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'CÁRDIO CONCLUÍDO!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Excelente esforço, continue superando seus limites!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: caloriesController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Calorias (kcal) - Opcional',
-                  hintText: 'ex: 280',
-                  prefixIcon: Icon(Icons.local_fire_department_rounded),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Cards de métricas resumidas
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSummaryMetric(
+                            context,
+                            title: 'TEMPO',
+                            value: timeStr,
+                            icon: Icons.timer_outlined,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSummaryMetric(
+                            context,
+                            title: 'TIPO',
+                            value: _selectedType,
+                            icon: Icons.directions_run_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSummaryMetric(
+                            context,
+                            title: 'INTENSIDADE',
+                            value: _selectedIntensity,
+                            icon: Icons.flash_on_rounded,
+                            valueColor: _selectedIntensity == 'Leve'
+                                ? Colors.teal
+                                : (_selectedIntensity == 'Alta' ? Colors.red : Colors.orange),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    Text(
+                      'REGISTRE OS DADOS DE HOJE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: context.onSurface.withValues(alpha: 0.6),
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: distanceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Distância (Km) - Opcional',
+                        hintText: 'ex: 5.20',
+                        prefixIcon: const Icon(Icons.edit_road_rounded),
+                        filled: true,
+                        fillColor: context.divider.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: context.divider),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: caloriesController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Calorias (kcal) - Opcional',
+                        hintText: 'ex: 350',
+                        prefixIcon: const Icon(Icons.local_fire_department_rounded),
+                        filled: true,
+                        fillColor: context.divider.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: context.divider),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Ações
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              setState(() {
+                                _stopwatch.start();
+                                _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+                                  setState(() {});
+                                });
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text('VOLTAR'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () async {
+                              final distance = double.tryParse(distanceController.text.replaceAll(',', '.'));
+                              final calories = int.tryParse(caloriesController.text);
+                              
+                              final entry = CardiosCompanion.insert(
+                                data: DateTime.now().toIso8601String(),
+                                tipo: _selectedType,
+                                duracaoSegundos: elapsedSeconds,
+                                distanciaKm: Value(distance),
+                                calorias: Value(calories),
+                                intensidade: Value(_selectedIntensity),
+                              );
+
+                              await ref.read(cardioDaoProvider).insertCardio(entry);
+                              
+                              // Toca som de treino concluído
+                              try {
+                                AudioService().workoutDone();
+                              } catch (_) {}
+
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx); // fecha dialog
+                                Navigator.pop(context); // volta para home
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Sessão de cárdio salva com sucesso! 🏃'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            },
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text('SALVAR'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() {
-                _stopwatch.start();
-                _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-                  setState(() {});
-                });
-              });
-            },
-            child: const Text('Voltar ao Cárdio'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final distance = double.tryParse(distanceController.text.replaceAll(',', '.'));
-              final calories = int.tryParse(caloriesController.text);
-              
-              final entry = CardiosCompanion.insert(
-                data: DateTime.now().toIso8601String(),
-                tipo: _selectedType,
-                duracaoSegundos: elapsedSeconds,
-                distanciaKm: Value(distance),
-                calorias: Value(calories),
-                intensidade: Value(_selectedIntensity),
-              );
+      ),
+    );
+  }
 
-              await ref.read(cardioDaoProvider).insertCardio(entry);
-              
-              // Toca som de treino concluído
-              try {
-                AudioService().workoutDone();
-              } catch (_) {}
-
-              if (ctx.mounted) {
-                Navigator.pop(ctx); // fecha dialog
-                Navigator.pop(context); // volta para home
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Sessão de cárdio salva com sucesso! 🏃'),
-                    backgroundColor: Colors.green,
+  Widget _buildSummaryMetric(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required IconData icon,
+    Color? valueColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.divider.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.divider.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primaryLight, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: context.onSurface.withValues(alpha: 0.5),
+                    letterSpacing: 1.0,
                   ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: valueColor ?? context.onBackground,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            child: const Text('Salvar'),
           ),
         ],
       ),
