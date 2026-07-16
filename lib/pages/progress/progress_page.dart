@@ -36,7 +36,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
     final profileAsync = ref.watch(profileProvider);
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Progresso 📈'),
@@ -48,6 +48,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               Tab(text: 'CARGAS & RECS'),
               Tab(text: 'METAS & VOL'),
               Tab(text: 'MEDIDAS'),
+              Tab(text: 'CÁRDIO'),
             ],
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primaryLight,
@@ -260,6 +261,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
             
             // Tab 4: Medidas Corporais
             const _BodyMeasurementsTab(),
+            const _CardioTab(),
           ],
         ),
       ),
@@ -4686,6 +4688,168 @@ class _PlateauWarningWidget extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CardioTab extends ConsumerWidget {
+  const _CardioTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cardiosAsync = ref.watch(cardiosProvider);
+    final dateFormatter = DateFormat('dd/MM/yyyy HH:mm');
+
+    return cardiosAsync.when(
+      data: (cardios) {
+        if (cardios.isEmpty) {
+          return const Center(
+            child: Text('Nenhum treino de cárdio registrado ainda. 🏃'),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: cardios.length,
+          itemBuilder: (context, index) {
+            final c = cardios[index];
+            final date = DateTime.tryParse(c.data) ?? DateTime.now();
+            final minutes = c.duracaoSegundos ~/ 60;
+            final seconds = c.duracaoSegundos % 60;
+            final timeStr = minutes > 0 
+                ? '${minutes}m ${seconds}s' 
+                : '${seconds}s';
+
+            IconData typeIcon;
+            switch (c.tipo) {
+              case 'Esteira':
+              case 'Corrida de Rua':
+                typeIcon = Icons.directions_run_rounded;
+                break;
+              case 'Bicicleta':
+                typeIcon = Icons.pedal_bike_rounded;
+                break;
+              case 'Escada':
+                typeIcon = Icons.stairs_rounded;
+                break;
+              case 'Elíptico':
+                typeIcon = Icons.double_arrow_rounded;
+                break;
+              default:
+                typeIcon = Icons.sports_gymnastics_rounded;
+            }
+
+            Color intensityColor;
+            switch (c.intensidade) {
+              case 'Leve':
+                intensityColor = Colors.teal;
+                break;
+              case 'Alta':
+                intensityColor = Colors.red;
+                break;
+              default:
+                intensityColor = Colors.orange;
+            }
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: context.divider),
+              ),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primaryLight.withValues(alpha: 0.1),
+                  foregroundColor: AppColors.primaryLight,
+                  child: Icon(typeIcon),
+                ),
+                title: Row(
+                  children: [
+                    Text(
+                      c.tipo,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: intensityColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        c.intensidade ?? 'Moderada',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: intensityColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text('Data: ${dateFormatter.format(date)}'),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text('Tempo: $timeStr'),
+                        if (c.distanciaKm != null) ...[
+                          const SizedBox(width: 12),
+                          Text('Distância: ${c.distanciaKm!.toStringAsFixed(2)} km'),
+                        ],
+                        if (c.calorias != null) ...[
+                          const SizedBox(width: 12),
+                          Text('Calorias: ${c.calorias} kcal'),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                  onPressed: () => _confirmDeleteCardio(context, ref, c.id),
+                ),
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('Erro ao carregar cardios: $err')),
+    );
+  }
+
+  void _confirmDeleteCardio(BuildContext context, WidgetRef ref, int id) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.cardColor,
+        title: const Text('Excluir registro'),
+        content: const Text('Deseja realmente excluir este treino de cárdio?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await ref.read(cardioDaoProvider).deleteCardio(id);
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Registro de cárdio concluído.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Excluir', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }

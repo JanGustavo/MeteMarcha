@@ -35,6 +35,14 @@ final profileDaoProvider = Provider<ProfileDao>(
   (ref) => ref.watch(databaseProvider).profileDao,
 );
 
+final cardioDaoProvider = Provider<CardioDao>(
+  (ref) => ref.watch(databaseProvider).cardioDao,
+);
+
+final cardiosProvider = StreamProvider<List<Cardio>>(
+  (ref) => ref.watch(cardioDaoProvider).watchAllCardios(),
+);
+
 // ── Stream providers ──────────────────────────────────────────────────────────
 
 /// Todos os splits cadastrados

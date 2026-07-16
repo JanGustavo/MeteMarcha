@@ -234,6 +234,18 @@ class BodyMeasurements extends Table {
   TextColumn get fotoPath => text().nullable()();
 }
 
+/// Registro de sessões de cárdio (esteira, elíptico, escada, bicicleta, etc.)
+@DataClassName('Cardio')
+class Cardios extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get data => text()(); // ISO 8601 ex: "2026-06-12T14:00:00"
+  TextColumn get tipo => text()(); // Esteira, Bicicleta, Escada, Elíptico, Corrida de Rua, Outro
+  IntColumn get duracaoSegundos => integer()();
+  RealColumn get distanciaKm => real().nullable()();
+  IntColumn get calorias => integer().nullable()();
+  TextColumn get intensidade => text().nullable()(); // Leve, Moderada, Alta
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // DAOs
 // ═══════════════════════════════════════════════════════════════════
@@ -1053,6 +1065,24 @@ class ProfileDao {
       (db.delete(db.bodyMeasurements)..where((m) => m.id.equals(id))).go();
 }
 
+@DriftAccessor(tables: [Cardios])
+class CardioDao extends DatabaseAccessor<AppDatabase> with _$CardioDaoMixin {
+  CardioDao(super.db);
+
+  Stream<List<Cardio>> watchAllCardios() =>
+      (select(cardios)..orderBy([(c) => OrderingTerm.desc(c.data)])).watch();
+
+  Future<List<Cardio>> getAllCardios() =>
+      (select(cardios)..orderBy([(c) => OrderingTerm.desc(c.data)])).get();
+
+  Future<int> insertCardio(CardiosCompanion entry) => into(cardios).insert(entry);
+
+  Future<void> updateCardio(Cardio entry) => update(cardios).replace(entry);
+
+  Future<int> deleteCardio(int id) =>
+      (db.delete(cardios)..where((c) => c.id.equals(id))).go();
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // DATABASE
 // ═══════════════════════════════════════════════════════════════════
@@ -1070,17 +1100,19 @@ class ProfileDao {
     WeeklySchedules,
     Goals,
     BodyMeasurements,
+    Cardios,
   ],
-  daos: [ExerciseDao, WorkoutDao, LogDao],
+  daos: [ExerciseDao, WorkoutDao, LogDao, CardioDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.e);
 
   late final ProfileDao profileDao = ProfileDao(this);
+  late final CardioDao cardioDao = CardioDao(this);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1192,6 +1224,9 @@ class AppDatabase extends _$AppDatabase {
             if (from < 13) {
               await m.addColumn(exerciseLogs, exerciseLogs.rpe);
               await m.addColumn(exerciseLogs, exerciseLogs.rir);
+            }
+            if (from < 14) {
+              await m.createTable(cardios);
             }
           }
         },

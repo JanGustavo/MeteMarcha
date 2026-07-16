@@ -85,6 +85,18 @@ class LogDaoManager {
       $$ExerciseLogsTableTableManager(_db.attachedDatabase, _db.exerciseLogs);
 }
 
+mixin _$CardioDaoMixin on DatabaseAccessor<AppDatabase> {
+  $CardiosTable get cardios => attachedDatabase.cardios;
+  CardioDaoManager get managers => CardioDaoManager(this);
+}
+
+class CardioDaoManager {
+  final _$CardioDaoMixin _db;
+  CardioDaoManager(this._db);
+  $$CardiosTableTableManager get cardios =>
+      $$CardiosTableTableManager(_db.attachedDatabase, _db.cardios);
+}
+
 class $ExercisesTable extends Exercises
     with TableInfo<$ExercisesTable, Exercise> {
   @override
@@ -4293,6 +4305,390 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
   }
 }
 
+class $CardiosTable extends Cardios with TableInfo<$CardiosTable, Cardio> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CardiosTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+      'data', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _tipoMeta = const VerificationMeta('tipo');
+  @override
+  late final GeneratedColumn<String> tipo = GeneratedColumn<String>(
+      'tipo', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _duracaoSegundosMeta =
+      const VerificationMeta('duracaoSegundos');
+  @override
+  late final GeneratedColumn<int> duracaoSegundos = GeneratedColumn<int>(
+      'duracao_segundos', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _distanciaKmMeta =
+      const VerificationMeta('distanciaKm');
+  @override
+  late final GeneratedColumn<double> distanciaKm = GeneratedColumn<double>(
+      'distancia_km', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _caloriasMeta =
+      const VerificationMeta('calorias');
+  @override
+  late final GeneratedColumn<int> calorias = GeneratedColumn<int>(
+      'calorias', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _intensidadeMeta =
+      const VerificationMeta('intensidade');
+  @override
+  late final GeneratedColumn<String> intensidade = GeneratedColumn<String>(
+      'intensidade', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, data, tipo, duracaoSegundos, distanciaKm, calorias, intensidade];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cardios';
+  @override
+  VerificationContext validateIntegrity(Insertable<Cardio> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+          _dataMeta, this.data.isAcceptableOrUnknown(data['data']!, _dataMeta));
+    } else if (isInserting) {
+      context.missing(_dataMeta);
+    }
+    if (data.containsKey('tipo')) {
+      context.handle(
+          _tipoMeta, tipo.isAcceptableOrUnknown(data['tipo']!, _tipoMeta));
+    } else if (isInserting) {
+      context.missing(_tipoMeta);
+    }
+    if (data.containsKey('duracao_segundos')) {
+      context.handle(
+          _duracaoSegundosMeta,
+          duracaoSegundos.isAcceptableOrUnknown(
+              data['duracao_segundos']!, _duracaoSegundosMeta));
+    } else if (isInserting) {
+      context.missing(_duracaoSegundosMeta);
+    }
+    if (data.containsKey('distancia_km')) {
+      context.handle(
+          _distanciaKmMeta,
+          distanciaKm.isAcceptableOrUnknown(
+              data['distancia_km']!, _distanciaKmMeta));
+    }
+    if (data.containsKey('calorias')) {
+      context.handle(_caloriasMeta,
+          calorias.isAcceptableOrUnknown(data['calorias']!, _caloriasMeta));
+    }
+    if (data.containsKey('intensidade')) {
+      context.handle(
+          _intensidadeMeta,
+          intensidade.isAcceptableOrUnknown(
+              data['intensidade']!, _intensidadeMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Cardio map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Cardio(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      data: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}data'])!,
+      tipo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tipo'])!,
+      duracaoSegundos: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}duracao_segundos'])!,
+      distanciaKm: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}distancia_km']),
+      calorias: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}calorias']),
+      intensidade: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}intensidade']),
+    );
+  }
+
+  @override
+  $CardiosTable createAlias(String alias) {
+    return $CardiosTable(attachedDatabase, alias);
+  }
+}
+
+class Cardio extends DataClass implements Insertable<Cardio> {
+  final int id;
+  final String data;
+  final String tipo;
+  final int duracaoSegundos;
+  final double? distanciaKm;
+  final int? calorias;
+  final String? intensidade;
+  const Cardio(
+      {required this.id,
+      required this.data,
+      required this.tipo,
+      required this.duracaoSegundos,
+      this.distanciaKm,
+      this.calorias,
+      this.intensidade});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['data'] = Variable<String>(data);
+    map['tipo'] = Variable<String>(tipo);
+    map['duracao_segundos'] = Variable<int>(duracaoSegundos);
+    if (!nullToAbsent || distanciaKm != null) {
+      map['distancia_km'] = Variable<double>(distanciaKm);
+    }
+    if (!nullToAbsent || calorias != null) {
+      map['calorias'] = Variable<int>(calorias);
+    }
+    if (!nullToAbsent || intensidade != null) {
+      map['intensidade'] = Variable<String>(intensidade);
+    }
+    return map;
+  }
+
+  CardiosCompanion toCompanion(bool nullToAbsent) {
+    return CardiosCompanion(
+      id: Value(id),
+      data: Value(data),
+      tipo: Value(tipo),
+      duracaoSegundos: Value(duracaoSegundos),
+      distanciaKm: distanciaKm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(distanciaKm),
+      calorias: calorias == null && nullToAbsent
+          ? const Value.absent()
+          : Value(calorias),
+      intensidade: intensidade == null && nullToAbsent
+          ? const Value.absent()
+          : Value(intensidade),
+    );
+  }
+
+  factory Cardio.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Cardio(
+      id: serializer.fromJson<int>(json['id']),
+      data: serializer.fromJson<String>(json['data']),
+      tipo: serializer.fromJson<String>(json['tipo']),
+      duracaoSegundos: serializer.fromJson<int>(json['duracaoSegundos']),
+      distanciaKm: serializer.fromJson<double?>(json['distanciaKm']),
+      calorias: serializer.fromJson<int?>(json['calorias']),
+      intensidade: serializer.fromJson<String?>(json['intensidade']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'data': serializer.toJson<String>(data),
+      'tipo': serializer.toJson<String>(tipo),
+      'duracaoSegundos': serializer.toJson<int>(duracaoSegundos),
+      'distanciaKm': serializer.toJson<double?>(distanciaKm),
+      'calorias': serializer.toJson<int?>(calorias),
+      'intensidade': serializer.toJson<String?>(intensidade),
+    };
+  }
+
+  Cardio copyWith(
+          {int? id,
+          String? data,
+          String? tipo,
+          int? duracaoSegundos,
+          Value<double?> distanciaKm = const Value.absent(),
+          Value<int?> calorias = const Value.absent(),
+          Value<String?> intensidade = const Value.absent()}) =>
+      Cardio(
+        id: id ?? this.id,
+        data: data ?? this.data,
+        tipo: tipo ?? this.tipo,
+        duracaoSegundos: duracaoSegundos ?? this.duracaoSegundos,
+        distanciaKm: distanciaKm.present ? distanciaKm.value : this.distanciaKm,
+        calorias: calorias.present ? calorias.value : this.calorias,
+        intensidade: intensidade.present ? intensidade.value : this.intensidade,
+      );
+  Cardio copyWithCompanion(CardiosCompanion data) {
+    return Cardio(
+      id: data.id.present ? data.id.value : this.id,
+      data: data.data.present ? data.data.value : this.data,
+      tipo: data.tipo.present ? data.tipo.value : this.tipo,
+      duracaoSegundos: data.duracaoSegundos.present
+          ? data.duracaoSegundos.value
+          : this.duracaoSegundos,
+      distanciaKm:
+          data.distanciaKm.present ? data.distanciaKm.value : this.distanciaKm,
+      calorias: data.calorias.present ? data.calorias.value : this.calorias,
+      intensidade:
+          data.intensidade.present ? data.intensidade.value : this.intensidade,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Cardio(')
+          ..write('id: $id, ')
+          ..write('data: $data, ')
+          ..write('tipo: $tipo, ')
+          ..write('duracaoSegundos: $duracaoSegundos, ')
+          ..write('distanciaKm: $distanciaKm, ')
+          ..write('calorias: $calorias, ')
+          ..write('intensidade: $intensidade')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, data, tipo, duracaoSegundos, distanciaKm, calorias, intensidade);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Cardio &&
+          other.id == this.id &&
+          other.data == this.data &&
+          other.tipo == this.tipo &&
+          other.duracaoSegundos == this.duracaoSegundos &&
+          other.distanciaKm == this.distanciaKm &&
+          other.calorias == this.calorias &&
+          other.intensidade == this.intensidade);
+}
+
+class CardiosCompanion extends UpdateCompanion<Cardio> {
+  final Value<int> id;
+  final Value<String> data;
+  final Value<String> tipo;
+  final Value<int> duracaoSegundos;
+  final Value<double?> distanciaKm;
+  final Value<int?> calorias;
+  final Value<String?> intensidade;
+  const CardiosCompanion({
+    this.id = const Value.absent(),
+    this.data = const Value.absent(),
+    this.tipo = const Value.absent(),
+    this.duracaoSegundos = const Value.absent(),
+    this.distanciaKm = const Value.absent(),
+    this.calorias = const Value.absent(),
+    this.intensidade = const Value.absent(),
+  });
+  CardiosCompanion.insert({
+    this.id = const Value.absent(),
+    required String data,
+    required String tipo,
+    required int duracaoSegundos,
+    this.distanciaKm = const Value.absent(),
+    this.calorias = const Value.absent(),
+    this.intensidade = const Value.absent(),
+  })  : data = Value(data),
+        tipo = Value(tipo),
+        duracaoSegundos = Value(duracaoSegundos);
+  static Insertable<Cardio> custom({
+    Expression<int>? id,
+    Expression<String>? data,
+    Expression<String>? tipo,
+    Expression<int>? duracaoSegundos,
+    Expression<double>? distanciaKm,
+    Expression<int>? calorias,
+    Expression<String>? intensidade,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (data != null) 'data': data,
+      if (tipo != null) 'tipo': tipo,
+      if (duracaoSegundos != null) 'duracao_segundos': duracaoSegundos,
+      if (distanciaKm != null) 'distancia_km': distanciaKm,
+      if (calorias != null) 'calorias': calorias,
+      if (intensidade != null) 'intensidade': intensidade,
+    });
+  }
+
+  CardiosCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? data,
+      Value<String>? tipo,
+      Value<int>? duracaoSegundos,
+      Value<double?>? distanciaKm,
+      Value<int?>? calorias,
+      Value<String?>? intensidade}) {
+    return CardiosCompanion(
+      id: id ?? this.id,
+      data: data ?? this.data,
+      tipo: tipo ?? this.tipo,
+      duracaoSegundos: duracaoSegundos ?? this.duracaoSegundos,
+      distanciaKm: distanciaKm ?? this.distanciaKm,
+      calorias: calorias ?? this.calorias,
+      intensidade: intensidade ?? this.intensidade,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (tipo.present) {
+      map['tipo'] = Variable<String>(tipo.value);
+    }
+    if (duracaoSegundos.present) {
+      map['duracao_segundos'] = Variable<int>(duracaoSegundos.value);
+    }
+    if (distanciaKm.present) {
+      map['distancia_km'] = Variable<double>(distanciaKm.value);
+    }
+    if (calorias.present) {
+      map['calorias'] = Variable<int>(calorias.value);
+    }
+    if (intensidade.present) {
+      map['intensidade'] = Variable<String>(intensidade.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CardiosCompanion(')
+          ..write('id: $id, ')
+          ..write('data: $data, ')
+          ..write('tipo: $tipo, ')
+          ..write('duracaoSegundos: $duracaoSegundos, ')
+          ..write('distanciaKm: $distanciaKm, ')
+          ..write('calorias: $calorias, ')
+          ..write('intensidade: $intensidade')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4311,9 +4707,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $GoalsTable goals = $GoalsTable(this);
   late final $BodyMeasurementsTable bodyMeasurements =
       $BodyMeasurementsTable(this);
+  late final $CardiosTable cardios = $CardiosTable(this);
   late final ExerciseDao exerciseDao = ExerciseDao(this as AppDatabase);
   late final WorkoutDao workoutDao = WorkoutDao(this as AppDatabase);
   late final LogDao logDao = LogDao(this as AppDatabase);
+  late final CardioDao cardioDao = CardioDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4329,7 +4727,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         weeklyWeights,
         weeklySchedules,
         goals,
-        bodyMeasurements
+        bodyMeasurements,
+        cardios
       ];
 }
 
@@ -7870,6 +8269,197 @@ typedef $$BodyMeasurementsTableProcessedTableManager = ProcessedTableManager<
     ),
     BodyMeasurement,
     PrefetchHooks Function()>;
+typedef $$CardiosTableCreateCompanionBuilder = CardiosCompanion Function({
+  Value<int> id,
+  required String data,
+  required String tipo,
+  required int duracaoSegundos,
+  Value<double?> distanciaKm,
+  Value<int?> calorias,
+  Value<String?> intensidade,
+});
+typedef $$CardiosTableUpdateCompanionBuilder = CardiosCompanion Function({
+  Value<int> id,
+  Value<String> data,
+  Value<String> tipo,
+  Value<int> duracaoSegundos,
+  Value<double?> distanciaKm,
+  Value<int?> calorias,
+  Value<String?> intensidade,
+});
+
+class $$CardiosTableFilterComposer
+    extends Composer<_$AppDatabase, $CardiosTable> {
+  $$CardiosTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get data => $composableBuilder(
+      column: $table.data, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get tipo => $composableBuilder(
+      column: $table.tipo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get duracaoSegundos => $composableBuilder(
+      column: $table.duracaoSegundos,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get distanciaKm => $composableBuilder(
+      column: $table.distanciaKm, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get calorias => $composableBuilder(
+      column: $table.calorias, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get intensidade => $composableBuilder(
+      column: $table.intensidade, builder: (column) => ColumnFilters(column));
+}
+
+class $$CardiosTableOrderingComposer
+    extends Composer<_$AppDatabase, $CardiosTable> {
+  $$CardiosTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get data => $composableBuilder(
+      column: $table.data, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get tipo => $composableBuilder(
+      column: $table.tipo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get duracaoSegundos => $composableBuilder(
+      column: $table.duracaoSegundos,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get distanciaKm => $composableBuilder(
+      column: $table.distanciaKm, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get calorias => $composableBuilder(
+      column: $table.calorias, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get intensidade => $composableBuilder(
+      column: $table.intensidade, builder: (column) => ColumnOrderings(column));
+}
+
+class $$CardiosTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CardiosTable> {
+  $$CardiosTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<String> get tipo =>
+      $composableBuilder(column: $table.tipo, builder: (column) => column);
+
+  GeneratedColumn<int> get duracaoSegundos => $composableBuilder(
+      column: $table.duracaoSegundos, builder: (column) => column);
+
+  GeneratedColumn<double> get distanciaKm => $composableBuilder(
+      column: $table.distanciaKm, builder: (column) => column);
+
+  GeneratedColumn<int> get calorias =>
+      $composableBuilder(column: $table.calorias, builder: (column) => column);
+
+  GeneratedColumn<String> get intensidade => $composableBuilder(
+      column: $table.intensidade, builder: (column) => column);
+}
+
+class $$CardiosTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CardiosTable,
+    Cardio,
+    $$CardiosTableFilterComposer,
+    $$CardiosTableOrderingComposer,
+    $$CardiosTableAnnotationComposer,
+    $$CardiosTableCreateCompanionBuilder,
+    $$CardiosTableUpdateCompanionBuilder,
+    (Cardio, BaseReferences<_$AppDatabase, $CardiosTable, Cardio>),
+    Cardio,
+    PrefetchHooks Function()> {
+  $$CardiosTableTableManager(_$AppDatabase db, $CardiosTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CardiosTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CardiosTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CardiosTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> data = const Value.absent(),
+            Value<String> tipo = const Value.absent(),
+            Value<int> duracaoSegundos = const Value.absent(),
+            Value<double?> distanciaKm = const Value.absent(),
+            Value<int?> calorias = const Value.absent(),
+            Value<String?> intensidade = const Value.absent(),
+          }) =>
+              CardiosCompanion(
+            id: id,
+            data: data,
+            tipo: tipo,
+            duracaoSegundos: duracaoSegundos,
+            distanciaKm: distanciaKm,
+            calorias: calorias,
+            intensidade: intensidade,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String data,
+            required String tipo,
+            required int duracaoSegundos,
+            Value<double?> distanciaKm = const Value.absent(),
+            Value<int?> calorias = const Value.absent(),
+            Value<String?> intensidade = const Value.absent(),
+          }) =>
+              CardiosCompanion.insert(
+            id: id,
+            data: data,
+            tipo: tipo,
+            duracaoSegundos: duracaoSegundos,
+            distanciaKm: distanciaKm,
+            calorias: calorias,
+            intensidade: intensidade,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$CardiosTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $CardiosTable,
+    Cardio,
+    $$CardiosTableFilterComposer,
+    $$CardiosTableOrderingComposer,
+    $$CardiosTableAnnotationComposer,
+    $$CardiosTableCreateCompanionBuilder,
+    $$CardiosTableUpdateCompanionBuilder,
+    (Cardio, BaseReferences<_$AppDatabase, $CardiosTable, Cardio>),
+    Cardio,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7896,4 +8486,6 @@ class $AppDatabaseManager {
       $$GoalsTableTableManager(_db, _db.goals);
   $$BodyMeasurementsTableTableManager get bodyMeasurements =>
       $$BodyMeasurementsTableTableManager(_db, _db.bodyMeasurements);
+  $$CardiosTableTableManager get cardios =>
+      $$CardiosTableTableManager(_db, _db.cardios);
 }
