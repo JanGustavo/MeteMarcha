@@ -326,20 +326,34 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
                                 intensidade: Value(_selectedIntensity),
                               );
 
-                              await ref.read(cardioDaoProvider).insertCardio(entry);
-                              
-                              // Toca som de treino concluído
-                              try {
-                                AudioService().workoutDone();
-                              } catch (_) {}
+                              final nav = Navigator.of(context);
+                              final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-                              if (ctx.mounted) {
-                                Navigator.pop(ctx); // fecha dialog
-                                Navigator.pop(context); // volta para home
-                                ScaffoldMessenger.of(context).showSnackBar(
+                              try {
+                                await ref.read(cardioDaoProvider).insertCardio(entry);
+                                
+                                // Toca som de treino concluído
+                                try {
+                                  AudioService().workoutDone();
+                                } catch (_) {}
+
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx); // fecha dialog
+                                }
+                                nav.pop(); // volta para home
+
+                                scaffoldMessenger.showSnackBar(
                                   const SnackBar(
                                     content: Text('Sessão de cárdio salva com sucesso! 🏃'),
                                     backgroundColor: Colors.green,
+                                  ),
+                                );
+                              } catch (e) {
+                                debugPrint('Erro ao salvar cárdio no banco: $e');
+                                scaffoldMessenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('Erro ao salvar: $e'),
+                                    backgroundColor: Colors.red,
                                   ),
                                 );
                               }
