@@ -97,7 +97,43 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
 
   void _showSaveDialog(int elapsedSeconds) {
     final distanceController = TextEditingController();
-    final caloriesController = TextEditingController();
+    
+    final userProfile = ref.read(profileProvider).value;
+    final peso = userProfile?.pesoAtual ?? 70.0;
+    final hours = elapsedSeconds / 3600.0;
+    
+    double getMetValue(String type, String intensity) {
+      switch (type) {
+        case 'Esteira':
+        case 'Corrida de Rua':
+          if (intensity == 'Leve') return 6.0;
+          if (intensity == 'Alta') return 10.0;
+          return 8.3; // Moderada
+        case 'Bicicleta':
+          if (intensity == 'Leve') return 4.0;
+          if (intensity == 'Alta') return 10.0;
+          return 6.8; // Moderada
+        case 'Escada':
+          if (intensity == 'Leve') return 4.0;
+          if (intensity == 'Alta') return 9.0;
+          return 7.5; // Moderada
+        case 'Elíptico':
+          if (intensity == 'Leve') return 4.5;
+          if (intensity == 'Alta') return 8.0;
+          return 6.0; // Moderada
+        case 'Outro':
+        default:
+          if (intensity == 'Leve') return 3.0;
+          if (intensity == 'Alta') return 7.0;
+          return 5.0; // Moderada
+      }
+    }
+    
+    final met = getMetValue(_selectedType, _selectedIntensity);
+    final estimatedCalories = (met * peso * hours).round();
+    final caloriesController = TextEditingController(
+      text: estimatedCalories > 0 ? estimatedCalories.toString() : '',
+    );
     
     final minutes = elapsedSeconds ~/ 60;
     final seconds = elapsedSeconds % 60;
@@ -246,6 +282,7 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
                       decoration: InputDecoration(
                         labelText: 'Calorias (kcal) - Opcional',
                         hintText: 'ex: 350',
+                        helperText: 'Estimativa sugerida: $estimatedCalories kcal',
                         prefixIcon: const Icon(Icons.local_fire_department_rounded),
                         filled: true,
                         fillColor: context.divider.withValues(alpha: 0.05),

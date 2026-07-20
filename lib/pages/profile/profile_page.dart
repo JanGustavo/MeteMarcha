@@ -327,6 +327,72 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
     }
   }
 
+  Future<void> _exportCardioCSV(BuildContext context) async {
+    try {
+      final db = ref.read(databaseProvider);
+      final cardios = await db.cardioDao.getAllCardios();
+
+      if (cardios.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nenhum dado de cárdio para exportar!')),
+          );
+        }
+        return;
+      }
+
+      final buffer = StringBuffer();
+      // CSV Header
+      buffer.writeln('ID,Data,Tipo,Duração (segundos),Duração (minutos),Distância (km),Calorias (kcal),Intensidade');
+      for (final c in cardios) {
+        final durationMin = (c.duracaoSegundos / 60).toStringAsFixed(1);
+        final dist = c.distanciaKm != null ? c.distanciaKm!.toStringAsFixed(2) : '';
+        final cal = c.calorias != null ? c.calorias.toString() : '';
+        final intensity = c.intensidade ?? '';
+        buffer.writeln('${c.id},${c.data},"${c.tipo}",${c.duracaoSegundos},$durationMin,$dist,$cal,"$intensity"');
+      }
+
+      final csvContent = buffer.toString();
+      final now = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final filename = 'metemacha_cardio_$dateStr.csv';
+
+      if (kIsWeb) {
+        await downloadCSVWeb(csvContent, filename);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('CSV de Cárdio baixado com sucesso!')),
+          );
+        }
+      } else {
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/$filename');
+        await file.writeAsString(csvContent);
+
+        final result = await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path)],
+            text: 'Exportação de Cárdio do MeteMacha Fit - $dateStr',
+          ),
+        );
+
+        if (result.status == ShareResultStatus.success) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('CSV de Cárdio compartilhado com sucesso!')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao exportar CSV de Cárdio: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
   Future<void> _importBackup(BuildContext context) async {
     try {
       final result = await FilePicker.pickFiles(
@@ -1888,6 +1954,24 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                               onPressed: () => _importBackup(context),
                               icon: const Icon(Icons.upload_rounded, size: 18),
                               label: const Text('Importar', style: TextStyle(fontSize: 13)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _exportCardioCSV(context),
+                              icon: const Icon(Icons.table_chart_rounded, size: 18),
+                              label: const Text('Exportar Cárdio (CSV)', style: TextStyle(fontSize: 13)),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(

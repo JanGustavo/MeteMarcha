@@ -4693,11 +4693,51 @@ class _PlateauWarningWidget extends StatelessWidget {
   }
 }
 
-class _CardioTab extends ConsumerWidget {
+class _CardioTab extends ConsumerStatefulWidget {
   const _CardioTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CardioTab> createState() => _CardioTabState();
+}
+
+class _CardioTabState extends ConsumerState<_CardioTab> {
+  String _selectedTypeFilter = 'Todos';
+  String _selectedSortOption = 'Data (Mais recente)';
+
+  void _confirmDeleteCardio(BuildContext context, int id) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.cardColor,
+        title: const Text('Excluir registro'),
+        content: const Text('Deseja realmente excluir este treino de cárdio?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await ref.read(cardioDaoProvider).deleteCardio(id);
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Registro de cárdio excluído.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Excluir', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final cardiosAsync = ref.watch(cardiosProvider);
     final weeklyGoal = ref.watch(weeklyCardioGoalProvider);
     final dateFormatter = DateFormat('dd/MM/yyyy HH:mm');
@@ -4719,6 +4759,42 @@ class _CardioTab extends ConsumerWidget {
         final totalMinutesThisWeek = totalSecondsThisWeek ~/ 60;
         final percent = weeklyGoal > 0 ? (totalMinutesThisWeek / weeklyGoal).clamp(0.0, 1.0) : 0.0;
         final percentFormatted = (percent * 100).toStringAsFixed(0);
+
+        // Apply filters and sorting to historical list
+        List<Cardio> filteredAndSorted = List.from(cardios);
+
+        if (_selectedTypeFilter != 'Todos') {
+          filteredAndSorted = filteredAndSorted.where((c) => c.tipo == _selectedTypeFilter).toList();
+        }
+
+        switch (_selectedSortOption) {
+          case 'Data (Mais recente)':
+            filteredAndSorted.sort((a, b) => b.data.compareTo(a.data));
+            break;
+          case 'Data (Mais antiga)':
+            filteredAndSorted.sort((a, b) => a.data.compareTo(b.data));
+            break;
+          case 'Duração (Maior)':
+            filteredAndSorted.sort((a, b) => b.duracaoSegundos.compareTo(a.duracaoSegundos));
+            break;
+          case 'Duração (Menor)':
+            filteredAndSorted.sort((a, b) => a.duracaoSegundos.compareTo(b.duracaoSegundos));
+            break;
+          case 'Distância (Maior)':
+            filteredAndSorted.sort((a, b) {
+              final distA = a.distanciaKm ?? 0.0;
+              final distB = b.distanciaKm ?? 0.0;
+              return distB.compareTo(distA);
+            });
+            break;
+          case 'Calorias (Maior)':
+            filteredAndSorted.sort((a, b) {
+              final calA = a.calorias ?? 0;
+              final calB = b.calorias ?? 0;
+              return calB.compareTo(calA);
+            });
+            break;
+        }
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -4848,20 +4924,93 @@ class _CardioTab extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
 
-            if (cardios.isEmpty)
-              const Center(
+            // Filter & Sort UI Dropdowns
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: context.divider.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: context.divider.withValues(alpha: 0.1)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedTypeFilter,
+                        isExpanded: true,
+                        style: TextStyle(fontSize: 12, color: context.onBackground),
+                        icon: const Icon(Icons.filter_alt_rounded, size: 16),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _selectedTypeFilter = val;
+                            });
+                          }
+                        },
+                        items: ['Todos', 'Esteira', 'Bicicleta', 'Escada', 'Elíptico', 'Corrida de Rua', 'Outro']
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: context.divider.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: context.divider.withValues(alpha: 0.1)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedSortOption,
+                        isExpanded: true,
+                        style: TextStyle(fontSize: 12, color: context.onBackground),
+                        icon: const Icon(Icons.sort_rounded, size: 16),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _selectedSortOption = val;
+                            });
+                          }
+                        },
+                        items: [
+                          'Data (Mais recente)',
+                          'Data (Mais antiga)',
+                          'Duração (Maior)',
+                          'Duração (Menor)',
+                          'Distância (Maior)',
+                          'Calorias (Maior)'
+                        ].map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            if (filteredAndSorted.isEmpty)
+              Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Text('Nenhum treino de cárdio registrado ainda. 🏃'),
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Text(
+                    _selectedTypeFilter == 'Todos'
+                        ? 'Nenhum treino de cárdio registrado ainda. 🏃'
+                        : 'Nenhum treino de $_selectedTypeFilter registrado. 🏃',
+                  ),
                 ),
               )
             else
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: cardios.length,
+                itemCount: filteredAndSorted.length,
                 itemBuilder: (context, index) {
-                  final c = cardios[index];
+                  final c = filteredAndSorted[index];
                   final date = DateTime.tryParse(c.data) ?? DateTime.now();
                   final minutes = c.duracaoSegundos ~/ 60;
                   final seconds = c.duracaoSegundos % 60;
@@ -4959,7 +5108,7 @@ class _CardioTab extends ConsumerWidget {
                       ),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                        onPressed: () => _confirmDeleteCardio(context, ref, c.id),
+                        onPressed: () => _confirmDeleteCardio(context, c.id),
                       ),
                     ),
                   );
@@ -4972,44 +5121,22 @@ class _CardioTab extends ConsumerWidget {
       error: (err, _) => Center(child: Text('Erro ao carregar cardios: $err')),
     );
   }
-
-  void _confirmDeleteCardio(BuildContext context, WidgetRef ref, int id) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: context.cardColor,
-        title: const Text('Excluir registro'),
-        content: const Text('Deseja realmente excluir este treino de cárdio?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await ref.read(cardioDaoProvider).deleteCardio(id);
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Registro de cárdio excluído.'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: const Text('Excluir', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-class _CardioProgressChart extends StatelessWidget {
+
+enum CardioChartMetric { duration, distance, calories }
+
+class _CardioProgressChart extends StatefulWidget {
   final List<Cardio> cardios;
 
   const _CardioProgressChart({required this.cardios});
+
+  @override
+  State<_CardioProgressChart> createState() => _CardioProgressChartState();
+}
+
+class _CardioProgressChartState extends State<_CardioProgressChart> {
+  CardioChartMetric _selectedMetric = CardioChartMetric.duration;
 
   DateTime _startOfWeek(DateTime date) {
     return DateTime(date.year, date.month, date.day).subtract(Duration(days: date.weekday - 1));
@@ -5017,130 +5144,276 @@ class _CardioProgressChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Map<DateTime, double> weeklyMinutes = {};
+    final Map<DateTime, double> weeklyValues = {};
     final now = DateTime.now();
     final currentWeekStart = _startOfWeek(now);
 
     for (int i = 3; i >= 0; i--) {
       final weekStart = currentWeekStart.subtract(Duration(days: i * 7));
-      weeklyMinutes[weekStart] = 0.0;
+      weeklyValues[weekStart] = 0.0;
     }
 
-    for (final c in cardios) {
+    for (final c in widget.cardios) {
       final logDate = DateTime.tryParse(c.data);
       if (logDate == null) continue;
       final weekStart = _startOfWeek(logDate);
-      if (weeklyMinutes.containsKey(weekStart)) {
-        final mins = c.duracaoSegundos / 60.0;
-        weeklyMinutes[weekStart] = (weeklyMinutes[weekStart] ?? 0.0) + mins;
+      if (weeklyValues.containsKey(weekStart)) {
+        double val = 0.0;
+        switch (_selectedMetric) {
+          case CardioChartMetric.duration:
+            val = c.duracaoSegundos / 60.0;
+            break;
+          case CardioChartMetric.distance:
+            val = c.distanciaKm ?? 0.0;
+            break;
+          case CardioChartMetric.calories:
+            val = (c.calorias ?? 0).toDouble();
+            break;
+        }
+        weeklyValues[weekStart] = (weeklyValues[weekStart] ?? 0.0) + val;
       }
     }
 
-    final sortedWeeks = weeklyMinutes.keys.toList()..sort();
+    final sortedWeeks = weeklyValues.keys.toList()..sort();
     final spots = sortedWeeks.asMap().entries.map((e) {
-      return FlSpot(e.key.toDouble(), weeklyMinutes[e.value] ?? 0.0);
+      return FlSpot(e.key.toDouble(), weeklyValues[e.value] ?? 0.0);
     }).toList();
 
-    final maxVal = weeklyMinutes.values.isEmpty 
+    final maxVal = weeklyValues.values.isEmpty 
         ? 60.0 
-        : weeklyMinutes.values.reduce((a, b) => a > b ? a : b);
+        : weeklyValues.values.reduce((a, b) => a > b ? a : b);
     final maxY = maxVal > 0 ? maxVal * 1.2 : 60.0;
 
-    if (weeklyMinutes.values.every((v) => v == 0.0)) {
-      return SizedBox(
-        height: 100,
-        child: Center(
-          child: Text(
-            'Nenhum minuto de cárdio registrado nas últimas semanas.',
-            style: TextStyle(color: context.onSurface, fontSize: 12),
-          ),
-        ),
-      );
-    }
+    final hasData = weeklyValues.values.any((v) => v > 0.0);
 
-    return SizedBox(
-      height: 130,
-      child: LineChart(
-        LineChartData(
-          minY: 0,
-          maxY: maxY,
-          lineTouchData: LineTouchData(
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (touchedSpot) => context.surfaceColor,
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((spot) {
-                  final idx = spot.x.toInt();
-                  if (idx < 0 || idx >= sortedWeeks.length) return null;
-                  final weekStart = sortedWeeks[idx];
-                  final mins = weeklyMinutes[weekStart] ?? 0.0;
-                  final text = 'Semana ${weekStart.day}/${weekStart.month}: ${mins.toStringAsFixed(0)} min';
-                  return LineTooltipItem(
-                    text,
-                    TextStyle(color: context.onBackground, fontWeight: FontWeight.bold, fontSize: 10),
-                  );
-                }).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ChoiceChip(
+              label: const Text('Tempo', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+              selected: _selectedMetric == CardioChartMetric.duration,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() {
+                    _selectedMetric = CardioChartMetric.duration;
+                  });
+                }
               },
             ),
-          ),
-          gridData: FlGridData(
-            drawHorizontalLine: true,
-            drawVerticalLine: false,
-            getDrawingHorizontalLine: (_) => FlLine(color: context.divider, strokeWidth: 1),
-          ),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 22,
-                interval: 1.0,
-                getTitlesWidget: (v, _) {
-                  if (v != v.toInt().toDouble()) return const SizedBox();
-                  final idx = v.toInt();
-                  if (idx < 0 || idx >= sortedWeeks.length) return const SizedBox();
-                  final date = sortedWeeks[idx];
-                  final text = 'S-${3 - idx}';
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      idx == 3 ? 'Atual' : text,
-                      style: TextStyle(color: context.onSurface, fontSize: 8),
-                    ),
-                  );
-                },
-              ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: const Text('Distância', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+              selected: _selectedMetric == CardioChartMetric.distance,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() {
+                    _selectedMetric = CardioChartMetric.distance;
+                  });
+                }
+              },
             ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 28,
-                getTitlesWidget: (value, _) {
-                  return Text(
-                    '${value.toInt()}m',
-                    style: TextStyle(color: context.onSurface, fontSize: 8),
-                  );
-                },
-              ),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              color: AppColors.primary,
-              barWidth: 3,
-              isStrokeCapRound: true,
-              dotData: const FlDotData(show: true),
-              belowBarData: BarAreaData(
-                show: true,
-                color: AppColors.primary.withValues(alpha: 0.1),
-              ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: const Text('Calorias', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+              selected: _selectedMetric == CardioChartMetric.calories,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() {
+                    _selectedMetric = CardioChartMetric.calories;
+                  });
+                }
+              },
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 16),
+        if (!hasData)
+          SizedBox(
+            height: 120,
+            child: Center(
+              child: Text(
+                _selectedMetric == CardioChartMetric.duration
+                    ? 'Nenhum minuto de cárdio registrado nas últimas semanas.'
+                    : (_selectedMetric == CardioChartMetric.distance
+                        ? 'Nenhuma distância de cárdio registrada nas últimas semanas.'
+                        : 'Nenhuma caloria de cárdio registrada nas últimas semanas.'),
+                style: TextStyle(color: context.onSurface, fontSize: 11),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+        else
+          SizedBox(
+            height: 130,
+            child: _selectedMetric == CardioChartMetric.calories
+                ? LineChart(
+                    LineChartData(
+                      minY: 0,
+                      maxY: maxY,
+                      lineTouchData: LineTouchData(
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (touchedSpot) => context.surfaceColor,
+                          getTooltipItems: (touchedSpots) {
+                            return touchedSpots.map((spot) {
+                              final idx = spot.x.toInt();
+                              if (idx < 0 || idx >= sortedWeeks.length) return null;
+                              final weekStart = sortedWeeks[idx];
+                              final val = weeklyValues[weekStart] ?? 0.0;
+                              final text = 'Semana ${weekStart.day}/${weekStart.month}: ${val.toStringAsFixed(0)} kcal';
+                              return LineTooltipItem(
+                                text,
+                                TextStyle(color: context.onBackground, fontWeight: FontWeight.bold, fontSize: 10),
+                              );
+                            }).toList();
+                          },
+                        ),
+                      ),
+                      gridData: FlGridData(
+                        drawHorizontalLine: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (_) => FlLine(color: context.divider, strokeWidth: 1),
+                      ),
+                      titlesData: FlTitlesData(
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 22,
+                            interval: 1.0,
+                            getTitlesWidget: (v, _) {
+                              if (v != v.toInt().toDouble()) return const SizedBox();
+                              final idx = v.toInt();
+                              if (idx < 0 || idx >= sortedWeeks.length) return const SizedBox();
+                              final text = 'S-${3 - idx}';
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  idx == 3 ? 'Atual' : text,
+                                  style: TextStyle(color: context.onSurface, fontSize: 8),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 35,
+                            getTitlesWidget: (value, _) {
+                              return Text(
+                                '${value.toInt()}',
+                                style: TextStyle(color: context.onSurface, fontSize: 8),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: spots,
+                          isCurved: true,
+                          color: AppColors.primary,
+                          barWidth: 3,
+                          isStrokeCapRound: true,
+                          dotData: const FlDotData(show: true),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: maxY,
+                      barTouchData: BarTouchData(
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipColor: (group) => context.surfaceColor,
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            final weekStart = sortedWeeks[groupIndex];
+                            final val = rod.toY;
+                            String tooltipText = '';
+                            if (_selectedMetric == CardioChartMetric.duration) {
+                              tooltipText = 'Semana ${weekStart.day}/${weekStart.month}: ${val.toStringAsFixed(0)} min';
+                            } else {
+                              tooltipText = 'Semana ${weekStart.day}/${weekStart.month}: ${val.toStringAsFixed(1)} km';
+                            }
+                            return BarTooltipItem(
+                              tooltipText,
+                              TextStyle(color: context.onBackground, fontWeight: FontWeight.bold, fontSize: 10),
+                            );
+                          },
+                        ),
+                      ),
+                      titlesData: FlTitlesData(
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 22,
+                            getTitlesWidget: (v, _) {
+                              final idx = v.toInt();
+                              if (idx < 0 || idx >= sortedWeeks.length) return const SizedBox();
+                              final text = 'S-${3 - idx}';
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  idx == 3 ? 'Atual' : text,
+                                  style: TextStyle(color: context.onSurface, fontSize: 8),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 35,
+                            getTitlesWidget: (value, _) {
+                              final suffix = _selectedMetric == CardioChartMetric.duration ? 'm' : 'k';
+                              return Text(
+                                '${value.toStringAsFixed(value % 1 == 0 ? 0 : 1)}$suffix',
+                                style: TextStyle(color: context.onSurface, fontSize: 8),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      gridData: FlGridData(
+                        drawHorizontalLine: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (_) => FlLine(color: context.divider, strokeWidth: 1),
+                      ),
+                      barGroups: spots.asMap().entries.map((e) {
+                        return BarChartGroupData(
+                          x: e.key,
+                          barRods: [
+                            BarChartRodData(
+                              toY: e.value.y,
+                              color: AppColors.primary,
+                              width: 16,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(4),
+                                topRight: Radius.circular(4),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+          ),
+      ],
     );
   }
 }
+

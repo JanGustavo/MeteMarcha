@@ -16,3 +16,7 @@ Uint8List? getBackupBytesFromLocalStorage() {
 void reloadWebPage() {
   // No-op nas plataformas nativas
 }
+
+Future<void> downloadCSVWeb(String csvContent, String filename) async {
+  // No-op nas plataformas nativas
+}

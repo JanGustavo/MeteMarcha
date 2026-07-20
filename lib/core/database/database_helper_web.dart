@@ -60,3 +60,19 @@ void reloadWebPage() {
     web.window.location.reload();
   } catch (_) {}
 }
+
+Future<void> downloadCSVWeb(String csvContent, String filename) async {
+  try {
+    final bytes = utf8.encode(csvContent);
+    final base64Bytes = base64Encode(bytes);
+    final url = 'data:text/csv;charset=utf-8;base64,$base64Bytes';
+    final anchor = web.HTMLAnchorElement()
+      ..href = url
+      ..download = filename;
+    anchor.click();
+  } catch (e) {
+    // ignore: avoid_print
+    print('Erro ao baixar CSV no web: ${e.toString()}');
+  }
+}
+
