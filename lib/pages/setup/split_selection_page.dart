@@ -947,33 +947,50 @@ class SplitSelectionPage extends ConsumerWidget {
                                         ),
                                       );
                                     } catch (e) {
-                                      String errorMsg =
-                                          'Ocorreu um erro ao formatar com IA. Verifique o texto e tente novamente.';
-                                      final errStr = e.toString();
-                                      if (errStr.contains('SocketException') ||
-                                          errStr.contains('Failed host lookup') ||
-                                          errStr.contains('Network') ||
-                                          errStr.contains('errno = 7')) {
-                                        errorMsg = 'Sem conexão com a internet. Verifique sua rede e tente novamente.';
-                                      } else if (errStr.contains('rate_limit') ||
-                                          errStr.contains('rate limit') ||
-                                          errStr.contains('Rate limit') ||
-                                          errStr.contains('429') ||
-                                          errStr.contains('413') ||
-                                          errStr.contains('Limit 6000') ||
-                                          errStr.contains('limit_exceeded')) {
-                                        errorMsg =
-                                            'O limite temporário de requisições da IA foi atingido. Por favor, aguarde 1 minuto e tente novamente.';
-                                      } else if (errStr.contains('invalid_api_key') ||
-                                          errStr.contains('401') ||
-                                          errStr.contains('Unauthorized')) {
-                                        errorMsg =
-                                            'A chave de API da IA está inválida ou expirada. Verifique as configurações.';
+                                      try {
+                                        final fallbackResult = _localParseWorkoutFallback(rawText);
+                                        textCtrl.text = fallbackResult;
+                                        setState(() {
+                                          isLoading = false;
+                                          isAiView = false;
+                                          errorMessage = '';
+                                        });
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('IA indisponível. Treino importado localmente via Heurística! ⚡'),
+                                            ),
+                                          );
+                                        }
+                                      } catch (_) {
+                                        String errorMsg =
+                                            'Ocorreu um erro ao formatar com IA e Heurística. Verifique o texto e tente novamente.';
+                                        final errStr = e.toString();
+                                        if (errStr.contains('SocketException') ||
+                                            errStr.contains('Failed host lookup') ||
+                                            errStr.contains('Network') ||
+                                            errStr.contains('errno = 7')) {
+                                          errorMsg = 'Sem conexão com a internet. Verifique sua rede e tente novamente.';
+                                        } else if (errStr.contains('rate_limit') ||
+                                            errStr.contains('rate limit') ||
+                                            errStr.contains('Rate limit') ||
+                                            errStr.contains('429') ||
+                                            errStr.contains('413') ||
+                                            errStr.contains('Limit 6000') ||
+                                            errStr.contains('limit_exceeded')) {
+                                          errorMsg =
+                                              'O limite temporário de requisições da IA foi atingido. Por favor, aguarde 1 minuto e tente novamente.';
+                                        } else if (errStr.contains('invalid_api_key') ||
+                                            errStr.contains('401') ||
+                                            errStr.contains('Unauthorized')) {
+                                          errorMsg =
+                                              'A chave de API da IA está inválida ou expirada. Verifique as configurações.';
+                                        }
+                                        setState(() {
+                                          isLoading = false;
+                                          errorMessage = errorMsg;
+                                        });
                                       }
-                                      setState(() {
-                                        isLoading = false;
-                                        errorMessage = errorMsg;
-                                      });
                                     }
                                   },
                             style: ElevatedButton.styleFrom(
@@ -1251,5 +1268,158 @@ Regras:
     } else {
       throw Exception('Groq API Error (${response.statusCode}): ${response.body}');
     }
+  }
+
+  String _localParseWorkoutFallback(String rawText) {
+    final lines = rawText.split('\n');
+    String workoutName = 'Treino Importado';
+    
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isNotEmpty) {
+        if (!trimmed.toLowerCase().startsWith('dia') && !trimmed.toLowerCase().startsWith('treino ')) {
+          workoutName = trimmed;
+          break;
+        }
+      }
+    }
+
+    final List<Map<String, dynamic>> dias = [];
+    Map<String, dynamic>? currentDay;
+    int dayCount = 0;
+    
+    final dayRegExp = RegExp(
+      r'^(?:dia|treino|rotina|grupo)\s+([a-eA-E])\b|^\b([a-eA-E])\s*[:-]',
+      caseSensitive: false,
+    );
+
+    final volumeRegExp = RegExp(
+      r'(\d+)\s*(?:x|de|\s+s[eé]ries\s*(?:de)?)\s*(\d+)',
+      caseSensitive: false,
+    );
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      final match = dayRegExp.firstMatch(trimmed);
+      if (match != null) {
+        final letter = (match.group(1) ?? match.group(2) ?? '').toUpperCase();
+        dayCount++;
+        final dayLetter = letter.isNotEmpty ? letter : String.fromCharCode(64 + dayCount);
+        
+        String dayName = trimmed
+            .replaceAll(RegExp(r'^(?:dia|treino|rotina|grupo)\s+[a-zA-Z]\s*[:-]?\s*', caseSensitive: false), '')
+            .replaceAll(RegExp(r'^[a-zA-Z]\s*[:-]\s*'), '')
+            .trim();
+        if (dayName.isEmpty) {
+          dayName = 'Dia $dayLetter';
+        }
+
+        currentDay = {
+          'letra': dayLetter,
+          'nome': dayName,
+          'exercicios': <Map<String, dynamic>>[],
+        };
+        dias.add(currentDay);
+        continue;
+      }
+
+      if (currentDay == null) {
+        dayCount = 1;
+        currentDay = {
+          'letra': 'A',
+          'nome': 'Dia A',
+          'exercicios': <Map<String, dynamic>>[],
+        };
+        dias.add(currentDay);
+      }
+
+      final volMatch = volumeRegExp.firstMatch(trimmed);
+      String volume = '3x10';
+      String exerciseName = trimmed;
+
+      if (volMatch != null) {
+        final sets = volMatch.group(1);
+        final reps = volMatch.group(2);
+        volume = '${sets}x$reps';
+        
+        exerciseName = trimmed
+            .replaceFirst(volumeRegExp, '')
+            .replaceAll(RegExp(r'^[:-]\s*|\s*[:-]$'), '')
+            .trim();
+      }
+
+      if (exerciseName.isEmpty) continue;
+
+      final nameLower = exerciseName.toLowerCase();
+
+      String grupoMuscular = 'Peito';
+      if (nameLower.contains('peito') || nameLower.contains('supino') || nameLower.contains('crucifixo') || nameLower.contains('fly') || nameLower.contains('flexao') || nameLower.contains('peitoral') || nameLower.contains('pull over')) {
+        grupoMuscular = 'Peito';
+      } else if (nameLower.contains('costas') || nameLower.contains('puxada') || nameLower.contains('remada') || nameLower.contains('pull') || nameLower.contains('barra fixa') || nameLower.contains('levantamento terra') || nameLower.contains('terra') || nameLower.contains('dorsal')) {
+        grupoMuscular = 'Costas';
+      } else if (nameLower.contains('ombro') || nameLower.contains('desenvolvimento') || nameLower.contains('elevacao lateral') || nameLower.contains('lateral') || nameLower.contains('deltoide') || nameLower.contains('manguito') || nameLower.contains('crucifixo invertido')) {
+        grupoMuscular = 'Ombro';
+      } else if (nameLower.contains('triceps') || nameLower.contains('tríceps') || nameLower.contains('testa') || nameLower.contains('frances') || nameLower.contains('coice') || nameLower.contains('paralelas')) {
+        grupoMuscular = 'Tríceps';
+      } else if (nameLower.contains('biceps') || nameLower.contains('bíceps') || nameLower.contains('rosca') || nameLower.contains('scott') || nameLower.contains('martelo') || nameLower.contains('concentrada')) {
+        grupoMuscular = 'Bíceps';
+      } else if (nameLower.contains('agachamento') || nameLower.contains('leg press') || nameLower.contains('leg') || nameLower.contains('extensora') || nameLower.contains('quadriceps') || nameLower.contains('hack') || nameLower.contains('afundo') || nameLower.contains('passada')) {
+        grupoMuscular = 'Quadríceps';
+      } else if (nameLower.contains('flexora') || nameLower.contains('stiff') || nameLower.contains('posterior') || nameLower.contains('hamstring')) {
+        grupoMuscular = 'Posterior';
+      } else if (nameLower.contains('panturrilha') || nameLower.contains('gemeos') || nameLower.contains('gêmeos') || nameLower.contains('soleo')) {
+        grupoMuscular = 'Panturrilha';
+      } else if (nameLower.contains('abdominal') || nameLower.contains('abs') || nameLower.contains('infra') || nameLower.contains('supra') || nameLower.contains('prancha') || nameLower.contains('core') || nameLower.contains('obliquo')) {
+        grupoMuscular = 'Core';
+      } else if (nameLower.contains('elevacao pelvica') || nameLower.contains('gluteo') || nameLower.contains('glúteo') || nameLower.contains('abducao')) {
+        grupoMuscular = 'Glúteo';
+      }
+
+      String equipamento = 'Livre';
+      if (nameLower.contains('cabo') || nameLower.contains('polia') || nameLower.contains('crossover') || nameLower.contains('pulley')) {
+        equipamento = 'Cabo';
+      } else if (nameLower.contains('haltere') || nameLower.contains('halteres') || nameLower.contains('dumbell')) {
+        equipamento = 'Haltere';
+      } else if (nameLower.contains('barra') || nameLower.contains('barbell')) {
+        equipamento = 'Barra';
+      } else if (nameLower.contains('smith')) {
+        equipamento = 'Smith';
+      } else if (nameLower.contains('maquina') || nameLower.contains('máquina') || nameLower.contains('extensora') || nameLower.contains('flexora') || nameLower.contains('hack') || nameLower.contains('peck')) {
+        equipamento = 'Máquina';
+      } else if (nameLower.contains('flexao') || nameLower.contains('barra fixa') || nameLower.contains('abdominal') || nameLower.contains('prancha') || nameLower.contains('paralelas') || nameLower.contains('peso corporal')) {
+        equipamento = 'Peso Corporal';
+      }
+
+      final isUnilateral = nameLower.contains('unilateral') || nameLower.contains('alternado');
+
+      (currentDay['exercicios'] as List).add({
+        'nome': exerciseName,
+        'grupoMuscular': grupoMuscular,
+        'equipamento': equipamento,
+        'isUnilateral': isUnilateral,
+        'tempoDescansoSegundos': 90,
+        'volume': volume,
+        'observacoes': null,
+      });
+    }
+
+    String tipo = 'CUSTOM';
+    if (dias.length == 3) {
+      tipo = 'ABC';
+    } else if (dias.length == 4) {
+      tipo = 'ABCD';
+    } else if (dias.length == 5) {
+      tipo = 'ABCDE';
+    }
+
+    final Map<String, dynamic> result = {
+      'nome': workoutName,
+      'tipo': tipo,
+      'dias': dias,
+    };
+
+    return const JsonEncoder.withIndent('  ').convert(result);
   }
 }

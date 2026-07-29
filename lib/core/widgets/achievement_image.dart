@@ -31,6 +31,15 @@ const Set<String> _supported3dAssets = {
   'total_volume_bronze',
   'total_volume_prata',
   'total_volume_ouro',
+  'cardio_distance_bronze',
+  'cardio_distance_prata',
+  'cardio_distance_ouro',
+  'cardio_duration_bronze',
+  'cardio_duration_prata',
+  'cardio_duration_ouro',
+  'cardio_sessions_bronze',
+  'cardio_sessions_prata',
+  'cardio_sessions_ouro',
   // 'locked', // Descomente quando locked.png estiver disponível
 };
 

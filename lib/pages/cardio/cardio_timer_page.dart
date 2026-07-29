@@ -7,6 +7,9 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/audio_service.dart';
+import '../../core/services/health_connect_service.dart';
+import '../../core/services/foreground_service.dart';
+import 'package:health/health.dart';
 
 import 'package:share_plus/share_plus.dart';
 
@@ -46,6 +49,7 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
   void dispose() {
     _pageController.dispose();
     _timer?.cancel();
+    ForegroundTaskService.stop();
     super.dispose();
   }
 
@@ -55,8 +59,20 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
       _stopwatch.start();
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         setState(() {});
+        final elapsed = _stopwatch.elapsed;
+        final minutes = elapsed.inMinutes;
+        final seconds = elapsed.inSeconds % 60;
+        final timeStr = '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+        ForegroundTaskService.update(
+          '🏃 Cárdio Ativo: $_selectedType',
+          'Tempo decorrido: $timeStr',
+        );
       });
     });
+    ForegroundTaskService.start(
+      '🏃 Cárdio Ativo: $_selectedType',
+      'Tempo decorrido: 00:00',
+    );
   }
 
   void _pauseStopwatch() {
@@ -65,6 +81,10 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
       _stopwatch.stop();
       _timer?.cancel();
     });
+    ForegroundTaskService.update(
+      '🏃 Cárdio Pausado',
+      'Atividade: $_selectedType',
+    );
   }
 
   void _stopAndSave() {
@@ -336,7 +356,7 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
                                 '🏁 Distância: $distanceStr\n'
                                 '🔥 Calorias: $calStr\n\n'
                                 '#MeteMarchaFit #Foco #Constancia #GymLife';
-                            Share.share(shareText);
+                            SharePlus.instance.share(ShareParams(text: shareText));
                           },
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -369,6 +389,42 @@ class _CardioTimerPageState extends ConsumerState<CardioTimerPage> {
                               try {
                                 await ref.read(cardioDaoProvider).insertCardio(entry);
                                 
+                                // Sincroniza cardio finalizado com o Health Connect
+                                try {
+                                  final now = DateTime.now();
+                                  final start = now.subtract(Duration(seconds: elapsedSeconds));
+                                  
+                                  HealthWorkoutActivityType activityType;
+                                  switch (_selectedType) {
+                                    case 'Esteira':
+                                    case 'Corrida de Rua':
+                                      activityType = HealthWorkoutActivityType.RUNNING;
+                                      break;
+                                    case 'Bicicleta':
+                                      activityType = HealthWorkoutActivityType.BIKING;
+                                      break;
+                                    case 'Escada':
+                                      activityType = HealthWorkoutActivityType.STAIR_CLIMBING;
+                                      break;
+                                    case 'Elíptico':
+                                      activityType = HealthWorkoutActivityType.ELLIPTICAL;
+                                      break;
+                                    default:
+                                      activityType = HealthWorkoutActivityType.OTHER;
+                                  }
+
+                                  final calVal = calories ?? estimatedCalories;
+                                  await HealthConnectService.instance.syncWorkout(
+                                    title: 'Cárdio - $_selectedType',
+                                    start: start,
+                                    end: now,
+                                    estimatedCaloriesBurned: calVal.toDouble(),
+                                    activityType: activityType,
+                                  );
+                                } catch (e) {
+                                  debugPrint('Erro ao sincronizar cardio com Health Connect: $e');
+                                }
+
                                 // Toca som de treino concluído
                                 try {
                                   AudioService().workoutDone();

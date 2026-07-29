@@ -1,7 +1,7 @@
+// ignore_for_file: avoid_print, depend_on_referenced_packages, unused_local_variable
 // test/generate_mock_db.dart
 import 'dart:ffi';
 import 'dart:io';
-import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:sqlite3/open.dart';
 import 'package:gym_tracker/core/database/app_database.dart';
@@ -268,11 +268,38 @@ void main() {
       }
     }
   }
+    // 5. Gera dados de cárdio para testes de conquistas e metas de cárdio
+    print('Gerando 15 sessões de cárdio...');
+    int cardiosInserted = 0;
+    final cardioTypes = ['Esteira', 'Bicicleta', 'Corrida de Rua', 'Elíptico'];
+    final intensities = ['Leve', 'Moderada', 'Alta'];
+    for (int i = 0; i < 15; i++) {
+      final now = DateTime.now();
+      final date = now.subtract(Duration(days: i * 2));
+      final type = cardioTypes[i % cardioTypes.length];
+      final duration = 1800 + (i * 120); // 30min a 58min
+      final distance = type == 'Bicicleta' ? 10.0 + i : 3.0 + (i * 0.4); // km
+      final calories = 250 + (i * 30);
+      final intensity = intensities[i % intensities.length];
 
-  print('Treinos gerados: $sessionsInserted');
-  print('Séries de abdômen geradas: $absSetsLogged');
+      await db.into(db.cardios).insert(
+        CardiosCompanion.insert(
+          data: date.toIso8601String(),
+          tipo: type,
+          duracaoSegundos: duration,
+          distanciaKm: Value(distance),
+          calorias: Value(calories),
+          intensidade: Value(intensity),
+        ),
+      );
+      cardiosInserted++;
+    }
+    print('Cárdios gerados: $cardiosInserted');
 
-  await db.close();
+    print('Treinos gerados: $sessionsInserted');
+    print('Séries de abdômen geradas: $absSetsLogged');
+
+    await db.close();
   print('Geração concluída! Banco de dados salvo em: ${dbFile.path}');
   expect(await dbFile.exists(), isTrue);
   });

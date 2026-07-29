@@ -30,7 +30,7 @@ class PremiumPageRoute<T> extends PageRouteBuilder<T> {
                 );
               case TransitionType.slideUp:
                 // Deslocamento de 8% da altura para uma sensação de profundidade e leveza
-                final begin = const Offset(0.0, 0.08);
+                const begin = Offset(0.0, 0.08);
                 const end = Offset.zero;
                 final curve = CurvedAnimation(
                   parent: animation,
@@ -47,7 +47,7 @@ class PremiumPageRoute<T> extends PageRouteBuilder<T> {
                 );
               case TransitionType.slideRight:
                 // Deslocamento de 8% da largura para uma transição fluida horizontal
-                final begin = const Offset(0.08, 0.0);
+                const begin = Offset(0.08, 0.0);
                 const end = Offset.zero;
                 final curve = CurvedAnimation(
                   parent: animation,

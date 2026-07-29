@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/utils/file_saver.dart';
+import '../../core/services/auto_backup_service.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
@@ -47,6 +48,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       OtaUpdateService().checkForUpdates(context);
+      AutoBackupService.checkAndRun();
     });
   }
 
@@ -669,7 +671,7 @@ class _TreinoTab extends ConsumerWidget {
                                   final mins = last.duracaoSegundos ~/ 60;
                                   return Text(
                                     'Último: ${last.tipo} (${mins}min) em $formattedDate',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 12,
                                       color: AppColors.primaryLight,
                                       fontWeight: FontWeight.w600,

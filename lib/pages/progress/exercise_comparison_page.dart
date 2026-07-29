@@ -554,6 +554,8 @@ class _ExerciseComparisonPageState extends ConsumerState<ExerciseComparisonPage>
           child: DataTable(
             horizontalMargin: 12,
             columnSpacing: 20,
+            dataRowMinHeight: 44,
+            dataRowMaxHeight: 60,
             headingRowColor: WidgetStateProperty.all(
               context.isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
             ),
@@ -625,15 +627,33 @@ class _ExerciseComparisonPageState extends ConsumerState<ExerciseComparisonPage>
                       final log = group.logs[setIdx];
                       final isMax = log.peso == maxWeight && log.peso > 0;
                       return DataCell(
-                        Text(
-                          log.peso > 0
-                              ? '${log.peso.toStringAsFixed(1)} x ${log.repeticoes}'
-                              : 'PC x ${log.repeticoes}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isMax ? AppColors.primaryLight : context.onBackground,
-                            fontWeight: isMax ? FontWeight.bold : FontWeight.normal,
-                          ),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              log.peso > 0
+                                  ? '${log.peso.toStringAsFixed(1).replaceAll('.0', '')} x ${log.repeticoes}'
+                                  : 'PC x ${log.repeticoes}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isMax ? AppColors.primaryLight : context.onBackground,
+                                fontWeight: isMax ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            if (log.rpe != null || log.rir != null)
+                              Text(
+                                [
+                                  if (log.rpe != null) '@${log.rpe!.toStringAsFixed(1).replaceAll('.0', '')}',
+                                  if (log.rir != null) 'RIR ${log.rir}'
+                                ].join(' '),
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: context.onSurface.withValues(alpha: 0.6),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                          ],
                         ),
                       );
                     }

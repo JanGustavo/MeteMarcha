@@ -92,7 +92,7 @@ class CardioGuidePage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline_rounded, color: AppColors.primaryLight, size: 20),
+                    const Icon(Icons.info_outline_rounded, color: AppColors.primaryLight, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       'Como calcular sua FCM?',

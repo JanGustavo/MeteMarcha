@@ -42,7 +42,6 @@ dependencies:
   home_widget: ^0.9.3
   health: ^13.3.1
   flutter_foreground_task: ^9.2.2
-  workmanager: ^0.9.0+3
   web: ^1.1.0
   flutter_overlay_window: ^0.5.0
 

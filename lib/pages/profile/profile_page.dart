@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/services/health_connect_service.dart';
 import '../../core/services/audio_service.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'package:drift/drift.dart' as drift;
 
 import '../../core/database/database_helper.dart'
     if (dart.library.js_interop) '../../core/database/database_helper_web.dart';
@@ -28,6 +29,7 @@ import '../../core/utils/string_input_formatter.dart';
 import '../../core/widgets/streak_badge.dart';
 import '../../core/widgets/achievement_image.dart';
 import '../../core/services/ota_update_service.dart';
+import '../../core/services/auto_backup_service.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -45,6 +47,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
   bool _populated = false;
   bool _healthConnectEnabled = false;
   bool _overlayPermissionGranted = false;
+  String? _lastAutoBackupDate;
 
   @override
   void initState() {
@@ -56,10 +59,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
 
   void _loadHealthConnectStatus() async {
     final enabled = await HealthConnectService.instance.isEnabled();
+    final lastBackup = await AutoBackupService.getLastBackupDateString();
     if (mounted) {
       setState(() {
         _healthConnectEnabled = enabled;
+        _lastAutoBackupDate = lastBackup;
       });
+    }
+    if (enabled) {
+      final dao = ref.read(profileDaoProvider);
+      await HealthConnectService.instance.syncBidirectionalMeasurements(dao);
     }
   }
 
@@ -287,6 +296,30 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
 
   Future<void> _exportBackup(BuildContext context) async {
     try {
+      final now = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final fileName = 'metemacha_backup_$dateStr.sqlite';
+
+      if (kIsWeb) {
+        final bytes = await exportWebDatabase('gym_tracker');
+        if (bytes == null || bytes.isEmpty) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Nenhum dado encontrado para exportar!')),
+            );
+          }
+          return;
+        }
+
+        downloadFileWeb(bytes, fileName, 'application/x-sqlite3');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Backup baixado com sucesso!')),
+          );
+        }
+        return;
+      }
+
       final dbFolder = await getApplicationDocumentsDirectory();
       final dbFile = File('${dbFolder.path}/gym_tracker.sqlite');
 
@@ -299,10 +332,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
         return;
       }
 
-      final now = DateTime.now();
-      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       final tempDir = await getTemporaryDirectory();
-      final backupFile = await dbFile.copy('${tempDir.path}/metemacha_backup_$dateStr.sqlite');
+      final backupFile = await dbFile.copy('${tempDir.path}/$fileName');
 
       final result = await SharePlus.instance.share(
         ShareParams(
@@ -388,6 +419,102 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro ao exportar CSV de Cárdio: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportWorkoutCSV(BuildContext context) async {
+    try {
+      final db = ref.read(databaseProvider);
+      
+      final query = db.select(db.exerciseLogs).join([
+        drift.innerJoin(db.workoutSessions, db.workoutSessions.id.equalsExp(db.exerciseLogs.sessionId)),
+        drift.leftOuterJoin(db.workoutDays, db.workoutDays.id.equalsExp(db.workoutSessions.dayId)),
+        drift.innerJoin(db.exercises, db.exercises.id.equalsExp(db.exerciseLogs.exerciseId)),
+      ])
+      ..where(db.exerciseLogs.concluido.equals(true) & db.workoutSessions.status.equals('concluido'))
+      ..orderBy([drift.OrderingTerm.asc(db.exerciseLogs.data), drift.OrderingTerm.asc(db.exerciseLogs.id)]);
+
+      final rows = await query.get();
+
+      if (rows.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nenhum dado de musculação para exportar!')),
+          );
+        }
+        return;
+      }
+
+      final buffer = StringBuffer();
+      buffer.writeln('ID,Data,Treino (Sessão),Exercício,Grupo Muscular,Série,Peso (kg),Repetições,RPE,RIR,Lado,Equipamento,Observações');
+      
+      for (final row in rows) {
+        final log = row.readTable(db.exerciseLogs);
+        final day = row.readTableOrNull(db.workoutDays);
+        final exercise = row.readTable(db.exercises);
+        
+        final rpeStr = log.rpe != null ? log.rpe.toString() : '';
+        final rirStr = log.rir != null ? log.rir.toString() : '';
+        final ladoStr = log.lado;
+        final equipStr = log.equipamento ?? exercise.equipamento;
+        final obsStr = log.observacoes ?? '';
+        final workoutName = day != null ? 'Treino ${day.letra} - ${day.nome}' : 'Treino Avulso';
+        
+        buffer.writeln(
+          '${log.id},'
+          '${log.data},'
+          '"${workoutName.replaceAll('"', '""')}",'
+          '"${exercise.nome.replaceAll('"', '""')}",'
+          '"${exercise.grupoMuscular.replaceAll('"', '""')}",'
+          '${log.serie},'
+          '${log.peso},'
+          '${log.repeticoes},'
+          '$rpeStr,'
+          '$rirStr,'
+          '"$ladoStr",'
+          '"${equipStr.replaceAll('"', '""')}",'
+          '"${obsStr.replaceAll('"', '""')}"'
+        );
+      }
+
+      final csvContent = buffer.toString();
+      final now = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final filename = 'metemacha_musculacao_$dateStr.csv';
+
+      if (kIsWeb) {
+        await downloadCSVWeb(csvContent, filename);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('CSV de Musculação baixado com sucesso!')),
+          );
+        }
+      } else {
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/$filename');
+        await file.writeAsString(csvContent);
+
+        final result = await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path)],
+            text: 'Exportação de Musculação do MeteMacha Fit - $dateStr',
+          ),
+        );
+
+        if (result.status == ShareResultStatus.success) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('CSV de Musculação compartilhado com sucesso!')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao exportar CSV de Musculação: ${e.toString()}')),
         );
       }
     }
@@ -1058,7 +1185,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                       onChanged: (val) {
                         ref.read(rpeEnabledProvider.notifier).toggle(val);
                       },
-                      activeColor: AppColors.primaryLight,
+                      activeThumbColor: AppColors.primaryLight,
                     ),
                   ],
                 ),
@@ -1140,7 +1267,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                             }
                           }
                         },
-                        activeColor: AppColors.primaryLight,
+                        activeThumbColor: AppColors.primaryLight,
                       ),
                     ],
                   ),
@@ -1250,7 +1377,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                               onChanged: (val) {
                                 notifier.updateSettings(enabled: val);
                               },
-                              activeColor: AppColors.primaryLight,
+                              activeThumbColor: AppColors.primaryLight,
                             ),
                           ],
                         ),
@@ -1311,7 +1438,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                                     ),
                                     const SizedBox(height: 8),
                                     DropdownButtonFormField<int>(
-                                      value: membership.months == 1 || membership.months == 12 ? membership.months : 0,
+                                      initialValue: membership.months == 1 || membership.months == 12 ? membership.months : 0,
                                       dropdownColor: context.cardColor,
                                       decoration: InputDecoration(
                                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1643,7 +1770,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                               onChanged: (val) {
                                 notifier.updateSettings(enabled: val);
                               },
-                              activeColor: AppColors.primaryLight,
+                              activeThumbColor: AppColors.primaryLight,
                             ),
                           ],
                         ),
@@ -1925,6 +2052,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                                     color: context.onSurface,
                                   ),
                                 ),
+                                if (_lastAutoBackupDate != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Último backup automático: $_lastAutoBackupDate',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.success,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -1933,22 +2071,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          if (!kIsWeb) ...[
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _exportBackup(context),
-                                icon: const Icon(Icons.download_rounded, size: 18),
-                                label: const Text('Exportar', style: TextStyle(fontSize: 13)),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _exportBackup(context),
+                              icon: const Icon(Icons.download_rounded, size: 18),
+                              label: const Text('Exportar', style: TextStyle(fontSize: 13)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                          ],
+                          ),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => _importBackup(context),
@@ -1970,8 +2106,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => _exportCardioCSV(context),
-                              icon: const Icon(Icons.table_chart_rounded, size: 18),
-                              label: const Text('Exportar Cárdio (CSV)', style: TextStyle(fontSize: 13)),
+                              icon: const Icon(Icons.directions_run_rounded, size: 18),
+                              label: const Text('Cárdio (CSV)', style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _exportWorkoutCSV(context),
+                              icon: const Icon(Icons.fitness_center_rounded, size: 18),
+                              label: const Text('Musculação (CSV)', style: TextStyle(fontSize: 12)),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
@@ -2046,6 +2196,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                                 final permitted = await HealthConnectService.instance.requestPermissions();
                                 if (permitted) {
                                   await HealthConnectService.instance.setEnabled(true);
+                                  final dao = ref.read(profileDaoProvider);
+                                  await HealthConnectService.instance.syncBidirectionalMeasurements(dao);
                                   if (context.mounted) {
                                     setState(() {
                                       _healthConnectEnabled = true;
@@ -2778,6 +2930,23 @@ class _AchievementCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                 // Botão de compartilhar
+                Positioned(
+                  top: 40,
+                  left: 20,
+                  child: IconButton(
+                    icon: const Icon(Icons.share_rounded, color: Colors.white70, size: 28),
+                    onPressed: () {
+                      final shareText = '🏆 Conquista no MeteMarcha Fit! 🏆\n\n'
+                          '💪 Conquista: "${ach.title}"\n'
+                          '🎯 Categoria: ${ach.description}\n'
+                          '⭐ Nível: $levelName\n'
+                          '📈 Meu Progresso: ${_formatValue(status.currentValue, ach.type)}\n\n'
+                          '#MeteMarchaFit #Foco #FreadoPorNada #FOSS';
+                      SharePlus.instance.share(ShareParams(text: shareText));
+                    },
+                  ),
+                ),
                 // Botão de fechar
                 Positioned(
                   top: 40,
@@ -2949,7 +3118,7 @@ class _AudioSettingsCardState extends State<_AudioSettingsCard> {
               title: const Text('Som de Clique nos Botões', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               subtitle: const Text('Tocar feedback sonoro nativo ao pressionar botões principais', style: TextStyle(fontSize: 12)),
               value: _enabled,
-              activeColor: AppColors.primaryLight,
+              activeThumbColor: AppColors.primaryLight,
               onChanged: (val) async {
                 setState(() {
                   _enabled = val;

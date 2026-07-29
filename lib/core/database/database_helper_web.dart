@@ -76,3 +76,36 @@ Future<void> downloadCSVWeb(String csvContent, String filename) async {
   }
 }
 
+Future<Uint8List?> exportWebDatabase(String name) async {
+  try {
+    final probe = await WasmDatabase.probe(
+      sqlite3Uri: Uri.parse('sqlite3.wasm'),
+      driftWorkerUri: Uri.parse('drift_worker.js'),
+    );
+    for (final existing in probe.existingDatabases) {
+      final dbName = existing.$2;
+      if (dbName == name || dbName.contains(name)) {
+        return await probe.exportDatabase(existing);
+      }
+    }
+  } catch (e) {
+    // ignore: avoid_print
+    print('Erro ao exportar banco via probe: ${e.toString()}');
+  }
+  return null;
+}
+
+void downloadFileWeb(Uint8List bytes, String filename, String mimeType) {
+  try {
+    final base64Bytes = base64Encode(bytes);
+    final url = 'data:$mimeType;base64,$base64Bytes';
+    final anchor = web.HTMLAnchorElement()
+      ..href = url
+      ..download = filename;
+    anchor.click();
+  } catch (e) {
+    // ignore: avoid_print
+    print('Erro ao baixar arquivo no web: ${e.toString()}');
+  }
+}
+

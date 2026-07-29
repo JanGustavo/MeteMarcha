@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/notification_service.dart';
 import 'providers.dart';
+import 'progress_extended_provider.dart';
 
 // ── Membership Alert ──────────────────────────────────────────────────────────
 
@@ -408,4 +409,145 @@ final workoutReminderSettingsProvider =
   });
 
   return notifier;
+});
+
+// ── Fatigue Insights ──────────────────────────────────────────────────────────
+
+class FatigueInsight {
+  final double averageRpe;
+  final int totalSetsWithRpe;
+  final double failureRatio;
+  final String status; // 'Crítico', 'Atenção', 'Ideal', 'Estímulo Leve', 'Sem Dados'
+  final String message;
+  final List<String> warnings;
+
+  FatigueInsight({
+    required this.averageRpe,
+    required this.totalSetsWithRpe,
+    required this.failureRatio,
+    required this.status,
+    required this.message,
+    required this.warnings,
+  });
+}
+
+final fatigueInsightProvider = Provider<FatigueInsight>((ref) {
+  final logsAsync = ref.watch(allCompletedLogsProvider);
+  final logs = logsAsync.value ?? [];
+
+  final now = DateTime.now();
+  final limitDate = now.subtract(const Duration(days: 14));
+  final recentLogs = logs.where((log) {
+    final date = DateTime.tryParse(log.data);
+    if (date == null) return false;
+    return date.isAfter(limitDate);
+  }).toList();
+
+  final logsWithRpe = recentLogs.where((l) => l.rpe != null || l.rir != null).toList();
+
+  if (logsWithRpe.length < 5) {
+    return FatigueInsight(
+      averageRpe: 0.0,
+      totalSetsWithRpe: logsWithRpe.length,
+      failureRatio: 0.0,
+      status: 'Sem Dados',
+      message: 'Registre RPE (esforço) ou RIR (repetições de reserva) nas séries dos seus treinos para que a fadiga acumulada seja analisada.',
+      warnings: [],
+    );
+  }
+
+  double totalRpe = 0.0;
+  int rpeCount = 0;
+  int failureSets = 0;
+
+  for (final log in logsWithRpe) {
+    final val = log.rpe ?? (log.rir != null ? (10.0 - log.rir!.toDouble()) : null);
+    if (val != null) {
+      totalRpe += val;
+      rpeCount++;
+      if (val >= 9.5) {
+        failureSets++;
+      }
+    }
+  }
+
+  final avgRpe = rpeCount > 0 ? totalRpe / rpeCount : 0.0;
+  final failureRatio = rpeCount > 0 ? failureSets / rpeCount : 0.0;
+
+  final List<String> warnings = [];
+
+  // Alerta 1: Progressão rápida de volume
+  final week1Limit = now.subtract(const Duration(days: 7));
+  double volWeek1 = 0;
+  double volWeek2 = 0;
+  for (final log in recentLogs) {
+    final date = DateTime.tryParse(log.data);
+    if (date == null) continue;
+    final vol = log.peso * log.repeticoes;
+    if (date.isAfter(week1Limit)) {
+      volWeek1 += vol;
+    } else {
+      volWeek2 += vol;
+    }
+  }
+  if (volWeek2 > 0) {
+    final ratio = volWeek1 / volWeek2;
+    if (ratio > 1.25) {
+      final percent = ((ratio - 1) * 100).round();
+      warnings.add('Aumento rápido de volume (+ $percent% nesta semana).');
+    }
+  }
+
+  // Alerta 2: Proporção excessiva de falhas
+  if (failureRatio >= 0.45) {
+    warnings.add('Muitas séries levadas até a falha (${(failureRatio * 100).round()}%).');
+  }
+
+  // Alerta 3: Sessões de treino com esforço extremo
+  final Map<int, List<double>> rpesPerSession = {};
+  for (final log in logsWithRpe) {
+    final val = log.rpe ?? (log.rir != null ? (10.0 - log.rir!.toDouble()) : null);
+    if (val != null) {
+      rpesPerSession.putIfAbsent(log.sessionId, () => []).add(val);
+    }
+  }
+  bool hadExtremeSession = false;
+  for (final sessionRpes in rpesPerSession.values) {
+    if (sessionRpes.length >= 4) {
+      final sessionAvg = sessionRpes.reduce((a, b) => a + b) / sessionRpes.length;
+      if (sessionAvg >= 9.5) {
+        hadExtremeSession = true;
+        break;
+      }
+    }
+  }
+  if (hadExtremeSession) {
+    warnings.add('Pelo menos uma sessão de treino recente teve esforço extremo.');
+  }
+
+  String status;
+  String message;
+
+  if (avgRpe >= 9.2 || (avgRpe >= 8.8 && failureRatio >= 0.5)) {
+    status = 'Crítico';
+    message = 'Fadiga Crítica! Seu esforço médio (RPE) está extremamente elevado. O corpo pode estar com dificuldades de recuperação. Sugerimos realizar uma Semana de Deload (reduzir volume e peso pela metade) para evitar overreaching crônico ou lesões.';
+  } else if (avgRpe >= 8.2) {
+    status = 'Atenção';
+    message = 'Fadiga Acumulada Elevada. Seus treinos estão em alta intensidade. Monitore dores nas articulações, qualidade do sono e cansaço diário. Planeje uma semana mais leve em breve.';
+  } else if (avgRpe >= 7.0) {
+    status = 'Ideal';
+    message = 'Intensidade Excelente. Você está treinando na faixa ideal de estímulo hipertrófico (RPE 7-8) com margem segura de segurança. Continue com a sobrecarga progressiva estruturada.';
+  } else {
+    status = 'Estímulo Leve';
+    message = 'Intensidade Baixa. Seus treinos estão com bastante sobra de esforço. Para melhores resultados em força e hipertrofia, tente aumentar ligeiramente a carga ou repetições para chegar mais próximo da falha (RIR 1-3).';
+  }
+
+  return FatigueInsight(
+    averageRpe: avgRpe,
+    totalSetsWithRpe: logsWithRpe.length,
+    failureRatio: failureRatio,
+    status: status,
+    message: message,
+    warnings: warnings,
+  );
 });

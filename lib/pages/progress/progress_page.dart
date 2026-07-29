@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/progress_extended_provider.dart';
+import '../../core/providers/alerts_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/decimal_input_formatter.dart';
 import 'workout_session_detail_page.dart';
@@ -27,6 +28,20 @@ class ProgressPage extends ConsumerStatefulWidget {
 
 class _ProgressPageState extends ConsumerState<ProgressPage> {
   int? _selectedExerciseIdForEvolution;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncHealthConnectBodyData();
+  }
+
+  void _syncHealthConnectBodyData() async {
+    final enabled = await HealthConnectService.instance.isEnabled();
+    if (enabled) {
+      final dao = ref.read(profileDaoProvider);
+      await HealthConnectService.instance.syncBidirectionalMeasurements(dao);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +77,9 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               slivers: [
                 const SliverToBoxAdapter(
                   child: _WorkoutInsightsWidget(),
+                ),
+                const SliverToBoxAdapter(
+                  child: _FatigueInsightsWidget(),
                 ),
                 SliverToBoxAdapter(
                   child: Card(
@@ -274,7 +292,44 @@ class _WorkoutInsightsWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final insights = ref.watch(automaticInsightsProvider);
+    final rawInsights = ref.watch(automaticInsightsProvider);
+    final fatigue = ref.watch(fatigueInsightProvider);
+    
+    final List<WorkoutInsight> insights = List<WorkoutInsight>.from(rawInsights);
+    
+    if (fatigue.status != 'Sem Dados') {
+      IconData icon;
+      Color color;
+      String type;
+      if (fatigue.status == 'Crítico') {
+        icon = Icons.warning_amber_rounded;
+        color = Colors.redAccent;
+        type = 'warning';
+      } else if (fatigue.status == 'Atenção') {
+        icon = Icons.info_outline;
+        color = Colors.orangeAccent;
+        type = 'warning';
+      } else if (fatigue.status == 'Ideal') {
+        icon = Icons.check_circle_outline;
+        color = Colors.greenAccent;
+        type = 'positive';
+      } else {
+        icon = Icons.trending_up_rounded;
+        color = Colors.blueAccent;
+        type = 'neutral';
+      }
+
+      insights.insert(
+        0,
+        WorkoutInsight(
+          text: 'Fadiga: ${fatigue.status}. Esforço médio (RPE) em ${fatigue.averageRpe.toStringAsFixed(1)}. ${fatigue.warnings.isNotEmpty ? "Alertas: ${fatigue.warnings.join(", ")}" : fatigue.message}',
+          icon: icon,
+          color: color,
+          type: type,
+        ),
+      );
+    }
+    
     if (insights.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -341,6 +396,238 @@ class _WorkoutInsightsWidget extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Painel de Fadiga e Recuperação ──────────────────────────────────────────
+
+class _FatigueInsightsWidget extends ConsumerWidget {
+  const _FatigueInsightsWidget();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fatigue = ref.watch(fatigueInsightProvider);
+
+    Color statusColor;
+    IconData statusIcon;
+    switch (fatigue.status) {
+      case 'Crítico':
+        statusColor = Colors.redAccent;
+        statusIcon = Icons.warning_amber_rounded;
+        break;
+      case 'Atenção':
+        statusColor = Colors.orangeAccent;
+        statusIcon = Icons.info_outline;
+        break;
+      case 'Ideal':
+        statusColor = Colors.greenAccent;
+        statusIcon = Icons.check_circle_outline;
+        break;
+      case 'Estímulo Leve':
+        statusColor = Colors.blueAccent;
+        statusIcon = Icons.trending_up_rounded;
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusIcon = Icons.help_outline_rounded;
+    }
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const _SectionLabel('FADIGA & RECUPERAÇÃO'),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.4), width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 14, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        fatigue.status.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (fatigue.status == 'Sem Dados') ...[
+              Text(
+                fatigue.message,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: context.onSurface.withValues(alpha: 0.8),
+                  height: 1.4,
+                ),
+              ),
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 70,
+                        height: 70,
+                        child: CircularProgressIndicator(
+                          value: fatigue.averageRpe / 10.0,
+                          strokeWidth: 8,
+                          backgroundColor: context.divider,
+                          valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                        ),
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            fatigue.averageRpe.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: context.onBackground,
+                            ),
+                          ),
+                          Text(
+                            'RPE Médio',
+                            style: TextStyle(
+                              fontSize: 8,
+                              color: context.onSurface.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildMetricRow(
+                          context,
+                          'Séries Analisadas:',
+                          '${fatigue.totalSetsWithRpe}',
+                          Icons.fitness_center_rounded,
+                        ),
+                        const SizedBox(height: 6),
+                        _buildMetricRow(
+                          context,
+                          'Taxa de Falha:',
+                          '${(fatigue.failureRatio * 100).toStringAsFixed(0)}%',
+                          Icons.flash_on_rounded,
+                          valueColor: fatigue.failureRatio >= 0.45 ? Colors.redAccent : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Divider(color: context.divider, height: 1),
+              const SizedBox(height: 12),
+              Text(
+                fatigue.message,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: context.onBackground.withValues(alpha: 0.9),
+                  height: 1.4,
+                ),
+              ),
+              if (fatigue.warnings.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.15)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, size: 16, color: Colors.redAccent),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Alertas de Risco:',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.redAccent.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ...fatigue.warnings.map((warning) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4, left: 2),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('• ', style: TextStyle(color: Colors.redAccent.withValues(alpha: 0.9), fontSize: 13)),
+                                Expanded(
+                                  child: Text(
+                                    warning,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: context.onBackground.withValues(alpha: 0.85),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricRow(BuildContext context, String label, String value, IconData icon, {Color? valueColor}) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: context.onSurface.withValues(alpha: 0.7)),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: context.onSurface.withValues(alpha: 0.8)),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: valueColor ?? context.onBackground,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1725,12 +2012,26 @@ class _GoalsManager extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final goals = ref.watch(goalsProvider);
     final profile = ref.watch(profileProvider).value;
+    final cardiosAsync = ref.watch(cardiosProvider);
+    final cardios = cardiosAsync.value ?? [];
 
     final Map<int, double> maxLoads = {};
     for (final log in logs) {
       final currentMax = maxLoads[log.exerciseId];
       if (currentMax == null || log.peso > currentMax) {
         maxLoads[log.exerciseId] = log.peso;
+      }
+    }
+
+    double maxCardioDistance = 0.0;
+    double maxCardioDurationMin = 0.0;
+    for (final c in cardios) {
+      if (c.distanciaKm != null && c.distanciaKm! > maxCardioDistance) {
+        maxCardioDistance = c.distanciaKm!;
+      }
+      final durationMin = c.duracaoSegundos / 60.0;
+      if (durationMin > maxCardioDurationMin) {
+        maxCardioDurationMin = durationMin;
       }
     }
 
@@ -1750,7 +2051,7 @@ class _GoalsManager extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   backgroundColor: AppColors.primary,
                 ),
-                onPressed: () => _showAddGoalDialog(context, ref, profile?.pesoAtual ?? 0.0, maxLoads),
+                onPressed: () => _showAddGoalDialog(context, ref, profile?.pesoAtual ?? 0.0, maxLoads, cardios),
               ),
             ],
           ),
@@ -1760,7 +2061,7 @@ class _GoalsManager extends ConsumerWidget {
             padding: const EdgeInsets.all(24.0),
             child: Center(
               child: Text(
-                'Nenhuma meta definida. Defina metas para peso corporal ou carga de exercício!',
+                'Nenhuma meta definida. Defina metas para peso corporal, carga ou cárdio!',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: context.onSurface, fontSize: 13),
               ),
@@ -1775,9 +2076,11 @@ class _GoalsManager extends ConsumerWidget {
               final goal = goals[index];
               double currentVal = 0.0;
               double progress = 0.0;
+              String unitLabel = 'kg';
 
               if (goal.tipo == 'peso') {
                 currentVal = profile?.pesoAtual ?? 0.0;
+                unitLabel = 'kg';
                 final initialVal = goal.valorInicial ?? currentVal;
                 if (initialVal == goal.valorAlvo) {
                   progress = 1.0;
@@ -1800,12 +2103,33 @@ class _GoalsManager extends ConsumerWidget {
                     progress = (currentVal - initialVal) / (goal.valorAlvo - initialVal);
                   }
                 }
-              } else {
+              } else if (goal.tipo == 'carga') {
                 currentVal = maxLoads[goal.exercicioId] ?? 0.0;
+                unitLabel = 'kg';
                 final initialVal = goal.valorInicial ?? 0.0;
-                if (currentVal >= goal.valorAlvo) {
+                if (currentVal >= goal.valorAlvo || initialVal >= goal.valorAlvo) {
                   progress = 1.0;
-                } else if (initialVal >= goal.valorAlvo) {
+                } else if (currentVal <= initialVal) {
+                  progress = 0.0;
+                } else {
+                  progress = (currentVal - initialVal) / (goal.valorAlvo - initialVal);
+                }
+              } else if (goal.tipo == 'cardio_distancia') {
+                currentVal = maxCardioDistance;
+                unitLabel = 'km';
+                final initialVal = goal.valorInicial ?? 0.0;
+                if (currentVal >= goal.valorAlvo || initialVal >= goal.valorAlvo) {
+                  progress = 1.0;
+                } else if (currentVal <= initialVal) {
+                  progress = 0.0;
+                } else {
+                  progress = (currentVal - initialVal) / (goal.valorAlvo - initialVal);
+                }
+              } else if (goal.tipo == 'cardio_tempo') {
+                currentVal = maxCardioDurationMin;
+                unitLabel = 'min';
+                final initialVal = goal.valorInicial ?? 0.0;
+                if (currentVal >= goal.valorAlvo || initialVal >= goal.valorAlvo) {
                   progress = 1.0;
                 } else if (currentVal <= initialVal) {
                   progress = 0.0;
@@ -1851,7 +2175,13 @@ class _GoalsManager extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  goal.tipo == 'peso' ? 'Meta de Peso Corporal' : 'Meta de Carga: ${goal.exercicioNome}',
+                                  goal.tipo == 'peso'
+                                      ? 'Meta de Peso Corporal'
+                                      : goal.tipo == 'carga'
+                                          ? 'Meta de Carga: ${goal.exercicioNome}'
+                                          : goal.tipo == 'cardio_distancia'
+                                              ? 'Meta de Distância Cárdio'
+                                              : 'Meta de Duração Cárdio',
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                 ),
                                 Text(
@@ -1872,11 +2202,11 @@ class _GoalsManager extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Atual: ${currentVal.toStringAsFixed(1)} kg',
+                            'Atual: ${currentVal.toStringAsFixed(1)} $unitLabel',
                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                           ),
                           Text(
-                            'Alvo: ${goal.valorAlvo.toStringAsFixed(1)} kg',
+                            'Alvo: ${goal.valorAlvo.toStringAsFixed(1)} $unitLabel',
                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryLight),
                           ),
                         ],
@@ -1915,10 +2245,22 @@ class _GoalsManager extends ConsumerWidget {
     );
   }
 
-  void _showAddGoalDialog(BuildContext context, WidgetRef ref, double currentWeight, Map<int, double> maxLoads) {
+  void _showAddGoalDialog(BuildContext context, WidgetRef ref, double currentWeight, Map<int, double> maxLoads, List<Cardio> cardios) {
     String selectedType = 'peso';
     Exercise? selectedExercise;
     final valueController = TextEditingController();
+
+    double maxCardioDistance = 0.0;
+    double maxCardioDurationMin = 0.0;
+    for (final c in cardios) {
+      if (c.distanciaKm != null && c.distanciaKm! > maxCardioDistance) {
+        maxCardioDistance = c.distanciaKm!;
+      }
+      final durationMin = c.duracaoSegundos / 60.0;
+      if (durationMin > maxCardioDurationMin) {
+        maxCardioDurationMin = durationMin;
+      }
+    }
 
     showDialog(
       context: context,
@@ -1969,6 +2311,8 @@ class _GoalsManager extends ConsumerWidget {
                 items: const [
                   DropdownMenuItem(value: 'peso', child: Text('Peso Corporal')),
                   DropdownMenuItem(value: 'carga', child: Text('Carga de Exercício')),
+                  DropdownMenuItem(value: 'cardio_distancia', child: Text('Distância de Cárdio (Sessão)')),
+                  DropdownMenuItem(value: 'cardio_tempo', child: Text('Duração de Cárdio (Sessão)')),
                 ],
                 onChanged: (val) {
                   if (val != null) {
@@ -2039,8 +2383,16 @@ class _GoalsManager extends ConsumerWidget {
                 decoration: InputDecoration(
                   labelText: 'Valor Alvo',
                   labelStyle: TextStyle(color: context.onSurface, fontSize: 13),
-                  hintText: '80.0',
-                  suffixText: 'kg',
+                  hintText: selectedType == 'cardio_distancia'
+                      ? '10.0'
+                      : selectedType == 'cardio_tempo'
+                          ? '45.0'
+                          : '80.0',
+                  suffixText: selectedType == 'cardio_distancia'
+                      ? 'km'
+                      : selectedType == 'cardio_tempo'
+                          ? 'min'
+                          : 'kg',
                   suffixStyle: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold),
                   filled: true,
                   fillColor: Colors.black.withValues(alpha: 0.2),
@@ -2073,7 +2425,11 @@ class _GoalsManager extends ConsumerWidget {
                 
                 final initialVal = selectedType == 'peso'
                     ? currentWeight
-                    : (maxLoads[selectedExercise!.id] ?? 0.0);
+                    : selectedType == 'carga'
+                        ? (maxLoads[selectedExercise!.id] ?? 0.0)
+                        : selectedType == 'cardio_distancia'
+                            ? maxCardioDistance
+                            : maxCardioDurationMin;
 
                 final newGoal = Goal(
                   id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -4860,7 +5216,7 @@ class _CardioTabState extends ConsumerState<_CardioTab> {
                           const Row(
                             children: [
                               Icon(Icons.check_circle_rounded, color: Colors.green, size: 14),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               Text(
                                 'Meta Atingida! 🎉',
                                 style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
@@ -5091,17 +5447,15 @@ class _CardioTabState extends ConsumerState<_CardioTab> {
                           const SizedBox(height: 4),
                           Text('Data: ${dateFormatter.format(date)}'),
                           const SizedBox(height: 2),
-                          Row(
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 4,
                             children: [
                               Text('Tempo: $timeStr'),
-                              if (c.distanciaKm != null) ...[
-                                const SizedBox(width: 12),
+                              if (c.distanciaKm != null)
                                 Text('Distância: ${c.distanciaKm!.toStringAsFixed(2)} km'),
-                              ],
-                              if (c.calorias != null) ...[
-                                const SizedBox(width: 12),
+                              if (c.calorias != null)
                                 Text('Calorias: ${c.calorias} kcal'),
-                              ],
                             ],
                           ),
                         ],

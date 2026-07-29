@@ -6,7 +6,6 @@
 // O arquivo app_database.g.dart é gerado automaticamente.
 
 
-import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'database_helper.dart'
@@ -1109,7 +1108,6 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   late final ProfileDao profileDao = ProfileDao(this);
-  late final CardioDao cardioDao = CardioDao(this);
 
   @override
   int get schemaVersion => 14;

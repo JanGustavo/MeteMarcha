@@ -295,7 +295,7 @@ class NotificationService {
       android: androidDetails,
     );
 
-    final title = 'Lembrete de Mensalidade 💳';
+    const title = 'Lembrete de Mensalidade 💳';
     final formattedValue = value.toStringAsFixed(2);
     final period = months == 1 ? 'mensal' : (months == 12 ? 'anual' : '$months meses');
     final baseMessage = 'Sua assinatura ($period) de R\$ $formattedValue vence ';

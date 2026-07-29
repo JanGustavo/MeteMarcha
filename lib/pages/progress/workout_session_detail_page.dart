@@ -481,25 +481,44 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                                   ),
                                   Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 8),
-                                    child: Row(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          '${log.peso.toStringAsFixed(1).replaceAll('.0', '')} kg',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: context.onBackground,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              '${log.peso.toStringAsFixed(1).replaceAll('.0', '')} kg',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color: context.onBackground,
+                                              ),
+                                            ),
+                                            Text(' × ', style: TextStyle(color: context.onSurface)),
+                                            Text(
+                                              '${log.repeticoes}',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.primaryLight,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        Text(' × ', style: TextStyle(color: context.onSurface)),
-                                        Text(
-                                          '${log.repeticoes}',
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primaryLight,
+                                        if (log.rpe != null || log.rir != null) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            [
+                                              if (log.rpe != null) 'RPE ${log.rpe!.toStringAsFixed(1).replaceAll('.0', '')}',
+                                              if (log.rir != null) 'RIR ${log.rir}'
+                                            ].join(' | '),
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: context.onSurface.withValues(alpha: 0.7),
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
-                                        ),
+                                        ]
                                       ],
                                     ),
                                   ),

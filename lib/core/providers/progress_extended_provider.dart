@@ -487,6 +487,7 @@ final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
   final exercises = ref.watch(allExercisesProvider).value ?? [];
   final logs = ref.watch(allCompletedLogsProvider).value ?? [];
   final completedSessions = ref.watch(completedSessionsProvider).value ?? [];
+  final cardios = ref.watch(cardiosProvider).value ?? [];
   final streak = ref.watch(streakProvider);
 
   // Mapear exercícios por ID
@@ -559,6 +560,26 @@ final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
       case AchievementType.totalVolumeTons:
         currentValue = totalVolumeTons;
         break;
+
+      case AchievementType.cardioSessionsCount:
+        currentValue = cardios.length.toDouble();
+        break;
+
+      case AchievementType.cardioMinutesCount:
+        double totalSeconds = 0;
+        for (final c in cardios) {
+          totalSeconds += c.duracaoSegundos;
+        }
+        currentValue = totalSeconds / 60.0;
+        break;
+
+      case AchievementType.cardioDistanceKm:
+        double totalKm = 0;
+        for (final c in cardios) {
+          totalKm += c.distanciaKm ?? 0.0;
+        }
+        currentValue = totalKm;
+        break;
     }
 
     // Calcular nível desbloqueado
@@ -585,9 +606,33 @@ final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
       progress = range > 0 ? (currentInRange / range).clamp(0.0, 1.0) : 0.0;
 
       final needed = nextLevel.value - currentValue;
-      final unit = (ach.type == AchievementType.exercise1rm || ach.type == AchievementType.totalVolumeTons)
-          ? (ach.type == AchievementType.totalVolumeTons ? 't' : ' kg')
-          : (ach.type == AchievementType.totalWorkouts ? ' treinos' : ach.type == AchievementType.weekStreak ? ' semanas' : ' séries');
+      
+      final String unit;
+      switch (ach.type) {
+        case AchievementType.exercise1rm:
+          unit = ' kg';
+          break;
+        case AchievementType.totalVolumeTons:
+          unit = 't';
+          break;
+        case AchievementType.totalWorkouts:
+          unit = ' treinos';
+          break;
+        case AchievementType.weekStreak:
+          unit = ' semanas';
+          break;
+        case AchievementType.cardioSessionsCount:
+          unit = ' sessões';
+          break;
+        case AchievementType.cardioMinutesCount:
+          unit = ' min';
+          break;
+        case AchievementType.cardioDistanceKm:
+          unit = ' km';
+          break;
+        default:
+          unit = ' séries';
+      }
 
       final neededStr = needed % 1 == 0 ? needed.toInt().toString() : needed.toStringAsFixed(1);
       nextTargetLabel = 'Faltam $neededStr$unit para ${nextLevel.name}';

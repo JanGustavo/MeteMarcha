@@ -18,6 +18,9 @@ enum AchievementType {
   totalWorkouts,
   weekStreak,
   totalVolumeTons,
+  cardioSessionsCount,
+  cardioMinutesCount,
+  cardioDistanceKm,
 }
 
 class Achievement {
@@ -178,6 +181,45 @@ const List<Achievement> achievements = [
       AchievementLevel(name: 'Bronze', value: 10.0, icon: '🥉'),
       AchievementLevel(name: 'Prata', value: 50.0, icon: '🥈'),
       AchievementLevel(name: 'Ouro', value: 200.0, icon: '🥇'),
+    ],
+  ),
+  Achievement(
+    id: 'cardio_distance',
+    title: 'Maratonista das Ruas',
+    shortTitle: 'Distância Cárdio',
+    description: 'Distância total acumulada de cárdio em Km',
+    type: AchievementType.cardioDistanceKm,
+    emoji: '🏃‍♂️',
+    levels: [
+      AchievementLevel(name: 'Bronze', value: 20.0, icon: '🥉'),
+      AchievementLevel(name: 'Prata', value: 100.0, icon: '🥈'),
+      AchievementLevel(name: 'Ouro', value: 500.0, icon: '🥇'),
+    ],
+  ),
+  Achievement(
+    id: 'cardio_duration',
+    title: 'Fôlego Infinito',
+    shortTitle: 'Tempo Cárdio',
+    description: 'Tempo total acumulado fazendo cárdio em minutos',
+    type: AchievementType.cardioMinutesCount,
+    emoji: '🫁',
+    levels: [
+      AchievementLevel(name: 'Bronze', value: 120.0, icon: '🥉'),
+      AchievementLevel(name: 'Prata', value: 600.0, icon: '🥈'),
+      AchievementLevel(name: 'Ouro', value: 2400.0, icon: '🥇'),
+    ],
+  ),
+  Achievement(
+    id: 'cardio_sessions',
+    title: 'Coração Blindado',
+    shortTitle: 'Sessões Cárdio',
+    description: 'Total de sessões de cárdio concluídas',
+    type: AchievementType.cardioSessionsCount,
+    emoji: '❤️',
+    levels: [
+      AchievementLevel(name: 'Bronze', value: 10.0, icon: '🥉'),
+      AchievementLevel(name: 'Prata', value: 50.0, icon: '🥈'),
+      AchievementLevel(name: 'Ouro', value: 150.0, icon: '🥇'),
     ],
   ),
 ];

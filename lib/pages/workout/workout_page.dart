@@ -112,11 +112,6 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   double? _currentRpe;
   int? _currentRir;
 
-  // ── Overtraining & Inactivity Alerts ─────────────────────────────
-  bool _warnedDesgaste = false;
-  bool _warnedOverwork = false;
-  bool _warnedInactivity = false;
-  DateTime _lastActivityTime = DateTime.now();
   int? _lastLoadedExerciseId;
 
   // ── Session timer ───────────────────────────────────────────────

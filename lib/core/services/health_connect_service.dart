@@ -1,6 +1,7 @@
 import 'package:health/health.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../database/app_database.dart';
 
 class HealthConnectService {
   static const String _prefsKeyEnabled = 'health_connect_enabled';
@@ -126,6 +127,7 @@ class HealthConnectService {
     required DateTime start,
     required DateTime end,
     required double estimatedCaloriesBurned,
+    HealthWorkoutActivityType activityType = HealthWorkoutActivityType.STRENGTH_TRAINING,
   }) async {
     if (!await isEnabled()) return false;
 
@@ -135,7 +137,7 @@ class HealthConnectService {
     try {
       // Write the workout session
       bool success = await _health.writeWorkoutData(
-        activityType: HealthWorkoutActivityType.STRENGTH_TRAINING,
+        activityType: activityType,
         start: start,
         end: end,
         totalEnergyBurned: estimatedCaloriesBurned.toInt(),
@@ -159,4 +161,148 @@ class HealthConnectService {
       return false;
     }
   }
+
+  /// Fetches weight and fat percentage points from Health Connect.
+  Future<List<HealthDataPoint>> fetchBodyMeasurements({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    if (!await isEnabled()) return [];
+    final permitted = await requestPermissions();
+    if (!permitted) return [];
+
+    try {
+      return await _health.getHealthDataFromTypes(
+        types: [HealthDataType.WEIGHT, HealthDataType.BODY_FAT_PERCENTAGE],
+        startTime: start,
+        endTime: end,
+      );
+    } catch (e) {
+      debugPrint('Error fetching body measurements from Health Connect: $e');
+      return [];
+    }
+  }
+
+  /// Sincronização bidirecional de peso e gordura corporal.
+  Future<void> syncBidirectionalMeasurements(ProfileDao profileDao) async {
+    if (!await isEnabled()) return;
+    if (!await hasPermissions()) return;
+
+    try {
+      final now = DateTime.now();
+      final oneYearAgo = now.subtract(const Duration(days: 365));
+
+      // 1. Buscar dados locais
+      final localMeasurements = await profileDao.getAllMeasurements();
+
+      // 2. Enviar medições locais que não estão no Health Connect
+      // (Para simplificar e garantir consistência, o Health SDK lida com deduplicação de gravações duplicadas no mesmo timestamp)
+      for (final m in localMeasurements) {
+        final parsedDate = DateTime.tryParse(m.data);
+        if (parsedDate != null && parsedDate.isAfter(oneYearAgo) && m.peso != null) {
+          await syncBodyMeasurement(
+            weightKg: m.peso!,
+            bodyFatPercent: m.gorduraPercentual,
+            bmi: m.imc,
+            dateTime: parsedDate,
+          );
+        }
+      }
+
+      // 3. Buscar dados do Health Connect
+      final cloudPoints = await fetchBodyMeasurements(start: oneYearAgo, end: now);
+      if (cloudPoints.isEmpty) return;
+
+      // Agrupar dados de peso e gordura por data (yyyy-MM-dd)
+      final Map<String, _BodySyncData> cloudDataByDate = {};
+      for (final pt in cloudPoints) {
+        final dateStr = '${pt.dateFrom.year}-${pt.dateFrom.month.toString().padLeft(2, '0')}-${pt.dateFrom.day.toString().padLeft(2, '0')}';
+        final valObj = pt.value;
+        if (valObj is NumericHealthValue) {
+          final val = valObj.numericValue.toDouble();
+          final data = cloudDataByDate.putIfAbsent(dateStr, () => _BodySyncData());
+          if (pt.type == HealthDataType.WEIGHT) {
+            data.weight = val;
+          } else if (pt.type == HealthDataType.BODY_FAT_PERCENTAGE) {
+            data.bodyFat = val;
+          }
+        }
+      }
+
+      // Obter o perfil para calcular IMC
+      final profile = await profileDao.getProfile();
+      final altura = profile?.altura ?? 0.0;
+
+      // 4. Consolidar na tabela local
+      for (final entry in cloudDataByDate.entries) {
+        final dateStr = entry.key;
+        final syncData = entry.value;
+
+        if (syncData.weight == null && syncData.bodyFat == null) continue;
+
+        // Verificar se já existe local
+        final existingLocal = localMeasurements.firstWhere(
+          (m) => m.data == dateStr,
+          orElse: () => const BodyMeasurement(
+            id: -1,
+            data: '',
+          ),
+        );
+
+        if (existingLocal.id == -1) {
+          // Não existe localmente: Criar nova medição
+          double? imc;
+          if (syncData.weight != null && altura > 0) {
+            final altMetros = altura / 100.0;
+            imc = syncData.weight! / (altMetros * altMetros);
+          }
+
+          await profileDao.insertMeasurement(
+            BodyMeasurementsCompanion.insert(
+              data: dateStr,
+              peso: Value(syncData.weight),
+              gorduraPercentual: Value(syncData.bodyFat),
+              imc: Value(imc),
+            ),
+          );
+        } else {
+          // Existe localmente: Atualizar peso/gordura se forem nulos localmente
+          bool needsUpdate = false;
+          double? updatedPeso = existingLocal.peso;
+          double? updatedGordura = existingLocal.gorduraPercentual;
+          double? updatedImc = existingLocal.imc;
+
+          if (existingLocal.peso == null && syncData.weight != null) {
+            updatedPeso = syncData.weight;
+            needsUpdate = true;
+            if (altura > 0) {
+              final altMetros = altura / 100.0;
+              updatedImc = updatedPeso! / (altMetros * altMetros);
+            }
+          }
+          if (existingLocal.gorduraPercentual == null && syncData.bodyFat != null) {
+            updatedGordura = syncData.bodyFat;
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            await profileDao.updateMeasurement(
+              existingLocal.copyWith(
+                peso: Value(updatedPeso),
+                gorduraPercentual: Value(updatedGordura),
+                imc: Value(updatedImc),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error during bidirectional measurements sync: $e');
+    }
+  }
+}
+
+class _BodySyncData {
+  double? weight;
+  double? bodyFat;
 }
