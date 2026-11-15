@@ -1,0 +1,9 @@
+# Proxy HTTPS com Caddy (certificado Let's Encrypt automático).
+# Troque o domínio. O programa Go escuta só em 127.0.0.1:8080.
+api.seudominio.com.br {
+	# Limite do corpo: foto (8 MiB por padrão) + campos de texto.
+	request_body {
+		max_size 10MB
+	}
+	reverse_proxy 127.0.0.1:8080
+}
