@@ -1,0 +1,24 @@
+# /etc/systemd/system/metemarcha.service
+# Veja o passo a passo no README (seção "Configurar a VPS").
+[Unit]
+Description=MeteMarcha API
+After=network.target
+
+[Service]
+User=metemarcha
+Group=metemarcha
+WorkingDirectory=/var/lib/metemarcha
+EnvironmentFile=/etc/metemarcha/metemarcha.env
+ExecStart=/opt/metemarcha/api
+Restart=on-failure
+RestartSec=3
+
+# Endurecimento básico: o programa só escreve em /var/lib/metemarcha.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/metemarcha
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

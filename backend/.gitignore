@@ -1,0 +1,7 @@
+# Dados locais do piloto: banco, fotos e músicas nunca vão para o Git.
+/data/
+.env
+/bin/
+*.db
+*.db-wal
+*.db-shm
