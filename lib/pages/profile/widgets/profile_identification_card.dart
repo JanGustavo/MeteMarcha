@@ -93,9 +93,7 @@ class ProfileIdentificationCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 44,
-                    backgroundColor: AppColors.primary.withValues(
-                      alpha: 0.12,
-                    ),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
                     child: avatarChild,
                   ),
                   Positioned(
@@ -148,16 +146,13 @@ class ProfileIdentificationCard extends StatelessWidget {
                 Expanded(
                   child: TextField(
                     controller: weightController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [DecimalInputFormatter()],
                     decoration: const InputDecoration(
                       labelText: 'Peso (kg)',
-                      prefixIcon: Icon(
-                        Icons.monitor_weight_rounded,
-                      ),
+                      prefixIcon: Icon(Icons.monitor_weight_rounded),
                     ),
                   ),
                 ),
@@ -167,9 +162,7 @@ class ProfileIdentificationCard extends StatelessWidget {
 
             // IMC (calculado on-the-fly)
             ProfileBmiBanner(
-              peso: double.tryParse(
-                weightController.text.replaceAll(',', '.'),
-              ),
+              peso: double.tryParse(weightController.text.replaceAll(',', '.')),
               altura: double.tryParse(heightController.text),
             ),
             const SizedBox(height: 16),

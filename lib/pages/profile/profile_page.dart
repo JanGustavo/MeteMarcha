@@ -24,6 +24,7 @@ import 'package:gym_tracker/core/widgets/streak_badge.dart';
 import 'package:gym_tracker/core/services/ota_update_service.dart';
 import 'package:gym_tracker/core/services/auto_backup_service.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_identification_card.dart';
+import 'package:gym_tracker/pages/profile/widgets/profile_overlay_permission_card.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_weight_row.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_achievement_card.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_audio_settings_card.dart';
@@ -77,6 +78,33 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
       setState(() {
         _overlayPermissionGranted = granted;
       });
+    }
+  }
+
+  Future<void> _changeOverlayPermission(bool val) async {
+    if (val) {
+      await FlutterOverlayWindow.requestPermission();
+      final granted = await FlutterOverlayWindow.isPermissionGranted();
+      if (mounted) {
+        setState(() {
+          _overlayPermissionGranted = granted;
+        });
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Para desativar, remova a permissão "Sobrepor a outros apps" nas configurações.',
+          ),
+        ),
+      );
+      await FlutterOverlayWindow.requestPermission();
+      final granted = await FlutterOverlayWindow.isPermissionGranted();
+      if (mounted) {
+        setState(() {
+          _overlayPermissionGranted = granted;
+        });
+      }
     }
   }
 
@@ -1138,87 +1166,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
 
           if (!kIsWeb)
             SliverToBoxAdapter(
-              child: Card(
-                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: context.divider),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.picture_in_picture_alt_rounded,
-                          color: AppColors.primaryLight,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Painel Flutuante (Overlay)',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: context.onBackground,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Exibir controle flutuante sobre outros apps ao minimizar o treino',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: context.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Switch(
-                        value: _overlayPermissionGranted,
-                        onChanged: (val) async {
-                          if (val) {
-                            await FlutterOverlayWindow.requestPermission();
-                            final granted =
-                                await FlutterOverlayWindow.isPermissionGranted();
-                            if (mounted) {
-                              setState(() {
-                                _overlayPermissionGranted = granted;
-                              });
-                            }
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Para desativar, remova a permissão "Sobrepor a outros apps" nas configurações.',
-                                ),
-                              ),
-                            );
-                            await FlutterOverlayWindow.requestPermission();
-                            final granted =
-                                await FlutterOverlayWindow.isPermissionGranted();
-                            if (mounted) {
-                              setState(() {
-                                _overlayPermissionGranted = granted;
-                              });
-                            }
-                          }
-                        },
-                        activeThumbColor: AppColors.primaryLight,
-                      ),
-                    ],
-                  ),
-                ),
+              child: ProfileOverlayPermissionCard(
+                permissionGranted: _overlayPermissionGranted,
+                onChanged: _changeOverlayPermission,
               ),
             ),
 

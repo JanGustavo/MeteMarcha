@@ -90,15 +90,20 @@ ou validação em Android. Manter a entrega como rascunho até essas verificaç�
 Perfil e Treino ainda terão orquestradores grandes após a primeira extração.
 Continuar em entregas independentes:
 
-### Entrega em andamento — identificação do Perfil
+### Entrega em andamento — identificação e permissão de overlay do Perfil
 
 - Formulário de avatar, nome, altura, peso e IMC extraído para
   `ProfileIdentificationCard`.
 - `ProfilePage` mantém os controladores, a gravação e as ações de foto; o card
   recebe os dados e callbacks necessários.
-- Verificações locais: `git diff --check` e conferência de imports concluídas.
-  `flutter analyze`, `flutter test` e `dart format` dependem de instalar o SDK,
-  ausente neste ambiente.
+- O card de permissão do painel flutuante foi extraído para
+  `ProfileOverlayPermissionCard`. A página mantém o pedido de permissão e o
+  estado, passados ao card por valor e callback.
+- Com Flutter 3.50.0 e Dart 3.14.0, a análise não apontou erros nem avisos;
+  retornou 73 mensagens informativas de depreciação no projeto. Os 16 testes
+  existentes passaram. `dart format` foi executado nos componentes extraídos.
+  A resolução de dependências alterou arquivos de configuração e o lockfile;
+  essas alterações automáticas foram removidas da entrega.
 
 1. **Perfil:** extrair seções de identificação, permissões, lembretes,
    configurações e transferência de dados. Ações dependentes de estado devem ter
