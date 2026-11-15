@@ -90,6 +90,29 @@ ou validação em Android. Manter a entrega como rascunho até essas verificaç�
 Perfil e Treino ainda terão orquestradores grandes após a primeira extração.
 Continuar em entregas independentes:
 
+### Entrega em andamento — seções do Perfil
+
+- Formulário de avatar, nome, altura, peso e IMC extraído para
+  `ProfileIdentificationCard`.
+- `ProfilePage` mantém os controladores, a gravação e as ações de foto; o card
+  recebe os dados e callbacks necessários.
+- O card de permissão do painel flutuante foi extraído para
+  `ProfileOverlayPermissionCard`. A página mantém o pedido de permissão e o
+  estado, passados ao card por valor e callback.
+- O alerta de mensalidade e suas métricas foram extraídos para
+  `ProfileMembershipCard`, que continua consumindo os providers de mensalidade
+  diretamente.
+- O lembrete de treino foi extraído para `ProfileWorkoutReminderCard`, mantendo
+  a agenda e a configuração de avisos nos providers existentes.
+- A interface de dados e backup foi extraída para `ProfileDataBackupCard`.
+  `ProfilePage` mantém as quatro ações de exportação/importação e passa callbacks
+  para os botões; formatos de arquivo e persistência não foram alterados.
+- Com Flutter 3.50.0 e Dart 3.14.0, a análise não apontou erros nem avisos;
+  retornou 73 mensagens informativas de depreciação no projeto. Os 16 testes
+  existentes passaram. `dart format` foi executado nos componentes extraídos.
+  A resolução de dependências alterou arquivos de configuração e o lockfile;
+  essas alterações automáticas foram removidas da entrega.
+
 1. **Perfil:** extrair seções de identificação, permissões, lembretes,
    configurações e transferência de dados. Ações dependentes de estado devem ter
    callbacks explícitos; não mover todo o `State` para um mixin gigante.
