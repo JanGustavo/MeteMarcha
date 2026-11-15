@@ -1,73 +1,48 @@
-// lib/pages/workout/workout_page.dart
-//
-// Fluxo por exercício:
-//   1. Usuário vê o exercício atual, desempenho anterior e séries já salvas
-//   2. Preenche peso + reps (+ lado se unilateral)
-//   3. [Salvar Série] → salva no DB, incrementa série, inicia descanso
-//   4. [Próximo →]   → vai ao próximo exercício (sem exigir série)
-//   5. [Pular]       → pula sem registrar
-//   6. Na última: [Finalizar] → dialog de resumo → volta ao Home
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-
-import '../../core/database/app_database.dart';
-import '../../core/constants/equipment_options.dart';
-import '../../core/providers/providers.dart';
-import '../../core/providers/progress_extended_provider.dart';
-import '../../core/widgets/achievement_unlock_overlay.dart';
-import '../../core/providers/rest_timer_provider.dart';
-import '../../core/services/audio_service.dart';
-import '../../core/services/notification_service.dart';
-import '../../core/theme/app_theme.dart';
-import '../../core/utils/week_utils.dart';
-import '../../core/utils/decimal_input_formatter.dart';
-import 'widgets/plate_calculator_dialog.dart';
-import 'widgets/workout_music_panel.dart';
-import '../../core/services/health_connect_service.dart';
-import '../progress/workout_session_detail_page.dart';
-import '../progress/exercise_comparison_page.dart';
-//import '../setup/widgets/setup_page.dart';
-
-// Registro local de uma série (exibição imediata, sem roundtrip)
-class _SetEntry {
-  final int? id;
-  final int serie;
-  final double peso;
-  final int reps;
-  final String lado;
-  final String? equipamento;
-  final String? observacoes;
-  final double? rpe;
-  final int? rir;
-  _SetEntry({
-    this.id,
-    required this.serie,
-    required this.peso,
-    required this.reps,
-    required this.lado,
-    this.equipamento,
-    this.observacoes,
-    this.rpe,
-    this.rir,
-  });
-}
+import 'package:gym_tracker/core/database/app_database.dart';
+import 'package:gym_tracker/core/constants/equipment_options.dart';
+import 'package:gym_tracker/core/providers/providers.dart';
+import 'package:gym_tracker/core/providers/progress_extended_provider.dart';
+import 'package:gym_tracker/core/widgets/achievement_unlock_overlay.dart';
+import 'package:gym_tracker/core/providers/rest_timer_provider.dart';
+import 'package:gym_tracker/core/services/audio_service.dart';
+import 'package:gym_tracker/core/services/notification_service.dart';
+import 'package:gym_tracker/core/theme/app_theme.dart';
+import 'package:gym_tracker/core/utils/week_utils.dart';
+import 'package:gym_tracker/pages/workout/widgets/plate_calculator_dialog.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_music_panel.dart';
+import 'package:gym_tracker/core/services/health_connect_service.dart';
+import 'package:gym_tracker/pages/progress/workout_session_detail_page.dart';
+import 'package:gym_tracker/pages/progress/exercise_comparison_page.dart';
+import 'package:gym_tracker/pages/workout/models/workout_set_entry.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_rest_banner.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_previous_performance.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_set_edit_controllers.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_sets_list.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_set_input.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_number_field.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_action_bar.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_info_chip.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_badge_tag.dart';
+import 'package:gym_tracker/pages/workout/widgets/workout_reference_panel.dart';
 
 class WorkoutPage extends ConsumerStatefulWidget {
   final int dayId;
@@ -95,11 +70,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
   // ── Set tracking ────────────────────────────────────────────────
   int _currentSerie = 1;
-  final List<_SetEntry> _setsLogged = [];
+  final List<WorkoutSetEntry> _setsLogged = [];
   List<ExerciseLog> _prevLogs = []; // último treino deste exercício
   double _max1RM = 0.0; // recorde máximo 1RM histórico do exercício
   ExerciseLog?
-      _max1RMLog; // registro do recorde máximo 1RM histórico do exercício
+  _max1RMLog; // registro do recorde máximo 1RM histórico do exercício
 
   // ── Inputs ──────────────────────────────────────────────────────
   final _pesoCtrl = TextEditingController(text: '0');
@@ -147,11 +122,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       _workoutMainPort = ReceivePort();
       ui.IsolateNameServer.removePortNameMapping('workout_main_port');
       ui.IsolateNameServer.registerPortWithName(
-          _workoutMainPort!.sendPort, 'workout_main_port');
+        _workoutMainPort!.sendPort,
+        'workout_main_port',
+      );
       _workoutMainPort!.listen((event) async {
         if (event == null) return;
         debugPrint(
-            '[WorkoutPage] Recebeu evento do overlay via IsolatePort: $event');
+          '[WorkoutPage] Recebeu evento do overlay via IsolatePort: $event',
+        );
         try {
           final Map<String, dynamic> msg = event is Map
               ? Map<String, dynamic>.from(event)
@@ -159,20 +137,23 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
           await _processarMensagemOverlay(msg);
         } catch (e) {
           debugPrint(
-              '[WorkoutPage] Erro ao processar mensagem via IsolatePort: $e');
+            '[WorkoutPage] Erro ao processar mensagem via IsolatePort: $e',
+          );
         }
       });
 
       if (_globalOverlayStream == null) {
-        _globalOverlayStream =
-            FlutterOverlayWindow.overlayListener.asBroadcastStream();
+        _globalOverlayStream = FlutterOverlayWindow.overlayListener
+            .asBroadcastStream();
         _globalOverlayStream!.listen(
-            (_) {}); // Dummy listener to keep underlying subscription alive
+          (_) {},
+        ); // Dummy listener to keep underlying subscription alive
       }
       _overlaySubscription = _globalOverlayStream!.listen((event) async {
         if (event == null) return;
         debugPrint(
-            '[WorkoutPage] Recebeu evento do overlay via channel: $event');
+          '[WorkoutPage] Recebeu evento do overlay via channel: $event',
+        );
         try {
           final Map<String, dynamic> msg = event is Map
               ? Map<String, dynamic>.from(event)
@@ -180,7 +161,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
           await _processarMensagemOverlay(msg);
         } catch (e) {
           debugPrint(
-              '[WorkoutPage] Erro ao processar mensagem do overlay via channel: $e');
+            '[WorkoutPage] Erro ao processar mensagem do overlay via channel: $e',
+          );
         }
       });
     }
@@ -225,9 +207,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   Future<void> _initSessionDuration() async {
     try {
       final db = ref.read(databaseProvider);
-      final session = await (db.select(db.workoutSessions)
-            ..where((s) => s.id.equals(widget.sessionId)))
-          .getSingleOrNull();
+      final session = await (db.select(
+        db.workoutSessions,
+      )..where((s) => s.id.equals(widget.sessionId))).getSingleOrNull();
       if (session != null) {
         final startTime = DateTime.tryParse(session.data);
         if (startTime != null) {
@@ -319,13 +301,15 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       if (!isOverlayActive) return;
 
       final timerState = ref.read(restTimerProvider);
-      final completedLogs =
-          await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
+      final completedLogs = await ref
+          .read(logDaoProvider)
+          .getLogsForSession(widget.sessionId);
       final completedIds = completedLogs.map((l) => l.exerciseId).toSet();
 
       final exercisesList = _exercises.map((e) => e.nome).toList();
-      final exercisesCompleted =
-          _exercises.map((e) => completedIds.contains(e.id)).toList();
+      final exercisesCompleted = _exercises
+          .map((e) => completedIds.contains(e.id))
+          .toList();
 
       final data = {
         'type': 'state_update',
@@ -342,8 +326,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       };
 
       // Tenta enviar via IsolateNameServer
-      final sendPort =
-          ui.IsolateNameServer.lookupPortByName('workout_overlay_port');
+      final sendPort = ui.IsolateNameServer.lookupPortByName(
+        'workout_overlay_port',
+      );
       if (sendPort != null) {
         debugPrint('[WorkoutPage] Enviando estado via IsolatePort');
         sendPort.send(data);
@@ -370,14 +355,16 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   // ── Data loading ────────────────────────────────────────────────
 
   Future<void> _loadExercises() async {
-    final exs =
-        await ref.read(exerciseDaoProvider).getExercisesForDay(widget.dayId);
+    final exs = await ref
+        .read(exerciseDaoProvider)
+        .getExercisesForDay(widget.dayId);
     if (!mounted) return;
 
     int initialIndex = 0;
     try {
-      final currentLogs =
-          await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
+      final currentLogs = await ref
+          .read(logDaoProvider)
+          .getLogsForSession(widget.sessionId);
       if (!mounted) return;
       if (currentLogs.isNotEmpty) {
         final sortedLogs = List<ExerciseLog>.from(currentLogs)
@@ -401,11 +388,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
           .getPreviousCompletedSession(widget.dayId, widget.sessionId);
       if (!mounted) return;
       if (prevSession != null) {
-        final prevLogs =
-            await ref.read(logDaoProvider).getLogsForSession(prevSession.id);
+        final prevLogs = await ref
+            .read(logDaoProvider)
+            .getLogsForSession(prevSession.id);
         if (!mounted) return;
         prevVol = prevLogs.fold<double>(
-            0.0, (sum, log) => sum + (log.peso * log.repeticoes));
+          0.0,
+          (sum, log) => sum + (log.peso * log.repeticoes),
+        );
       }
     } catch (e) {
       debugPrint('Erro ao carregar volume do treino anterior: $e');
@@ -425,30 +415,35 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final ex = _current;
 
     // Busca desempenho do último treino para pré-preencher os campos (excluindo a sessão atual)
-    final prev = await ref.read(logDaoProvider).getLastLogsForExercise(
-          ex.id,
-          excludeSessionId: widget.sessionId,
-        );
+    final prev = await ref
+        .read(logDaoProvider)
+        .getLastLogsForExercise(ex.id, excludeSessionId: widget.sessionId);
     if (!mounted) return;
 
     // Busca recorde máximo 1RM histórico
-    final prevMax1RM =
-        await ref.read(logDaoProvider).getMax1RMForExercise(ex.id);
+    final prevMax1RM = await ref
+        .read(logDaoProvider)
+        .getMax1RMForExercise(ex.id);
     if (!mounted) return;
-    final prevMax1RMLog =
-        await ref.read(logDaoProvider).getMax1RMLogForExercise(ex.id);
+    final prevMax1RMLog = await ref
+        .read(logDaoProvider)
+        .getMax1RMLogForExercise(ex.id);
     if (!mounted) return;
 
     // Busca logs já realizados na sessão atual para este exercício
-    final currentLogs =
-        await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
+    final currentLogs = await ref
+        .read(logDaoProvider)
+        .getLogsForSession(widget.sessionId);
     if (!mounted) return;
-    final exerciseSessionLogs =
-        currentLogs.where((l) => l.exerciseId == ex.id).toList();
+    final exerciseSessionLogs = currentLogs
+        .where((l) => l.exerciseId == ex.id)
+        .toList();
 
     final completedIds = currentLogs.map((l) => l.exerciseId).toSet();
-    final hasOtherUncompleted = _exercises.asMap().entries.any((entry) =>
-        entry.key != _currentIndex && !completedIds.contains(entry.value.id));
+    final hasOtherUncompleted = _exercises.asMap().entries.any(
+      (entry) =>
+          entry.key != _currentIndex && !completedIds.contains(entry.value.id),
+    );
 
     final isBodyWeight = ex.equipamento.trim().toLowerCase() == 'peso corporal';
 
@@ -466,14 +461,20 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       _max1RMLog = prevMax1RMLog;
       _prevLogs = prev;
       _sessionVolume = currentLogs.fold<double>(
-          0.0, (sum, log) => sum + (log.peso * log.repeticoes));
-      final numUniqueSeries =
-          exerciseSessionLogs.map((l) => l.serie).toSet().length;
+        0.0,
+        (sum, log) => sum + (log.peso * log.repeticoes),
+      );
+      final numUniqueSeries = exerciseSessionLogs
+          .map((l) => l.serie)
+          .toSet()
+          .length;
       _currentSerie = numUniqueSeries + 1;
       _currentRpe = null;
       _currentRir = null;
       _setsLogged.clear();
-      _setsLogged.addAll(exerciseSessionLogs.map((l) => _SetEntry(
+      _setsLogged.addAll(
+        exerciseSessionLogs.map(
+          (l) => WorkoutSetEntry(
             id: l.id,
             serie: l.serie,
             peso: l.peso,
@@ -483,7 +484,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             observacoes: l.observacoes,
             rpe: l.rpe,
             rir: l.rir,
-          )));
+          ),
+        ),
+      );
       _lado = 'ambos';
       _executandoUnilateral = ex.isUnilateral;
       if (exerciseChanged) {
@@ -506,10 +509,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             : lastPeso.toString();
         _repsCtrl.text = exerciseSessionLogs.last.repeticoes.toString();
       } else if (prev.isNotEmpty) {
-        final totalPeso =
-            prev.map((l) => l.peso).fold<double>(0.0, (a, b) => a + b);
-        final totalReps =
-            prev.map((l) => l.repeticoes).fold<int>(0, (a, b) => a + b);
+        final totalPeso = prev
+            .map((l) => l.peso)
+            .fold<double>(0.0, (a, b) => a + b);
+        final totalReps = prev
+            .map((l) => l.repeticoes)
+            .fold<int>(0, (a, b) => a + b);
         double avgPeso = ((totalPeso / prev.length) * 2).round() / 2.0;
         final avgReps = (totalReps / prev.length).round();
 
@@ -642,7 +647,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   }
 
   void _startRestTimer(int seconds) {
-    ref.read(restTimerProvider.notifier).startRest(
+    ref
+        .read(restTimerProvider.notifier)
+        .startRest(
           seconds,
           dayId: widget.dayId,
           dayName: widget.dayName,
@@ -662,12 +669,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   double _getWeightStep() {
     if (_exercises.isEmpty) return 0.5;
     final ex = _current;
-    final equip =
-        (_equipamentoSelecionado ?? ex.equipamento).trim().toLowerCase();
+    final equip = (_equipamentoSelecionado ?? ex.equipamento)
+        .trim()
+        .toLowerCase();
     final muscle = ex.grupoMuscular.trim().toLowerCase();
     final isUnilateral = _executandoUnilateral;
 
-    final isLegs = muscle.contains('perna') ||
+    final isLegs =
+        muscle.contains('perna') ||
         muscle.contains('coxa') ||
         muscle.contains('gluteo') ||
         muscle.contains('quadriceps') ||
@@ -675,7 +684,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         muscle.contains('panturrilha') ||
         muscle.contains('leg');
 
-    final isLargeUpper = muscle.contains('costas') ||
+    final isLargeUpper =
+        muscle.contains('costas') ||
         muscle.contains('dorsal') ||
         muscle.contains('back') ||
         muscle.contains('peito') ||
@@ -716,7 +726,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   }
 
   void _showPrCelebration(
-      double peso, int reps, double new1RM, double prevMax1RM) {
+    double peso,
+    int reps,
+    double new1RM,
+    double prevMax1RM,
+  ) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -728,8 +742,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         margin: const EdgeInsets.all(16),
         content: Row(
           children: [
-            const Icon(Icons.emoji_events_rounded,
-                color: Colors.yellowAccent, size: 36),
+            const Icon(
+              Icons.emoji_events_rounded,
+              color: Colors.yellowAccent,
+              size: 36,
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -749,8 +766,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                   Text(
                     'Você superou seu recorde anterior neste exercício!',
                     style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.9)),
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -793,7 +811,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final peso = double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0;
     final reps = int.tryParse(_repsCtrl.text) ?? 0;
     debugPrint(
-        '[WorkoutPage] _salvarSerie -> peso parsed: $peso, reps parsed: $reps');
+      '[WorkoutPage] _salvarSerie -> peso parsed: $peso, reps parsed: $reps',
+    );
 
     if (reps <= 0) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -820,8 +839,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final obs = _obsCtrl.text.trim();
     final logDao = ref.read(logDaoProvider);
     final now = DateTime.now().toIso8601String();
-    final Value<String?> valueObs =
-        obs.isNotEmpty ? Value<String?>(obs) : const Value<String?>.absent();
+    final Value<String?> valueObs = obs.isNotEmpty
+        ? Value<String?>(obs)
+        : const Value<String?>.absent();
 
     final double new1RM = reps == 1 ? peso : peso * (1 + reps / 30.0);
     final double prevMax1RM = _max1RM;
@@ -832,37 +852,47 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       if (_executandoUnilateral && _lado == 'ambos') {
         // Grava dois logs: esquerdo e direito
         for (final l in ['esquerdo', 'direito']) {
-          final id = await logDao.insertLog(ExerciseLogsCompanion.insert(
+          final id = await logDao.insertLog(
+            ExerciseLogsCompanion.insert(
+              exerciseId: _current.id,
+              sessionId: widget.sessionId,
+              data: now,
+              peso: peso,
+              repeticoes: reps,
+              serie: Value(_currentSerie),
+              lado: Value(l),
+              equipamento: Value(_equipamentoSelecionado),
+              observacoes: valueObs,
+              rpe: _currentRpe != null
+                  ? Value(_currentRpe)
+                  : const Value.absent(),
+              rir: _currentRir != null
+                  ? Value(_currentRir)
+                  : const Value.absent(),
+            ),
+          );
+          insertedIds.add(id);
+        }
+      } else {
+        final id = await logDao.insertLog(
+          ExerciseLogsCompanion.insert(
             exerciseId: _current.id,
             sessionId: widget.sessionId,
             data: now,
             peso: peso,
             repeticoes: reps,
             serie: Value(_currentSerie),
-            lado: Value(l),
+            lado: Value(_lado),
             equipamento: Value(_equipamentoSelecionado),
             observacoes: valueObs,
-            rpe:
-                _currentRpe != null ? Value(_currentRpe) : const Value.absent(),
-            rir:
-                _currentRir != null ? Value(_currentRir) : const Value.absent(),
-          ));
-          insertedIds.add(id);
-        }
-      } else {
-        final id = await logDao.insertLog(ExerciseLogsCompanion.insert(
-          exerciseId: _current.id,
-          sessionId: widget.sessionId,
-          data: now,
-          peso: peso,
-          repeticoes: reps,
-          serie: Value(_currentSerie),
-          lado: Value(_lado),
-          equipamento: Value(_equipamentoSelecionado),
-          observacoes: valueObs,
-          rpe: _currentRpe != null ? Value(_currentRpe) : const Value.absent(),
-          rir: _currentRir != null ? Value(_currentRir) : const Value.absent(),
-        ));
+            rpe: _currentRpe != null
+                ? Value(_currentRpe)
+                : const Value.absent(),
+            rir: _currentRir != null
+                ? Value(_currentRir)
+                : const Value.absent(),
+          ),
+        );
         insertedIds.add(id);
       }
     } catch (e, stack) {
@@ -911,40 +941,46 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         }
       }
       if (_executandoUnilateral && _lado == 'ambos') {
-        _setsLogged.add(_SetEntry(
-          id: insertedIds[0],
-          serie: _currentSerie,
-          peso: peso,
-          reps: reps,
-          lado: 'esquerdo',
-          equipamento: _equipamentoSelecionado,
-          observacoes: obs.isNotEmpty ? obs : null,
-          rpe: _currentRpe,
-          rir: _currentRir,
-        ));
-        _setsLogged.add(_SetEntry(
-          id: insertedIds[1],
-          serie: _currentSerie,
-          peso: peso,
-          reps: reps,
-          lado: 'direito',
-          equipamento: _equipamentoSelecionado,
-          observacoes: obs.isNotEmpty ? obs : null,
-          rpe: _currentRpe,
-          rir: _currentRir,
-        ));
+        _setsLogged.add(
+          WorkoutSetEntry(
+            id: insertedIds[0],
+            serie: _currentSerie,
+            peso: peso,
+            reps: reps,
+            lado: 'esquerdo',
+            equipamento: _equipamentoSelecionado,
+            observacoes: obs.isNotEmpty ? obs : null,
+            rpe: _currentRpe,
+            rir: _currentRir,
+          ),
+        );
+        _setsLogged.add(
+          WorkoutSetEntry(
+            id: insertedIds[1],
+            serie: _currentSerie,
+            peso: peso,
+            reps: reps,
+            lado: 'direito',
+            equipamento: _equipamentoSelecionado,
+            observacoes: obs.isNotEmpty ? obs : null,
+            rpe: _currentRpe,
+            rir: _currentRir,
+          ),
+        );
       } else {
-        _setsLogged.add(_SetEntry(
-          id: insertedIds[0],
-          serie: _currentSerie,
-          peso: peso,
-          reps: reps,
-          lado: _lado,
-          equipamento: _equipamentoSelecionado,
-          observacoes: obs.isNotEmpty ? obs : null,
-          rpe: _currentRpe,
-          rir: _currentRir,
-        ));
+        _setsLogged.add(
+          WorkoutSetEntry(
+            id: insertedIds[0],
+            serie: _currentSerie,
+            peso: peso,
+            reps: reps,
+            lado: _lado,
+            equipamento: _equipamentoSelecionado,
+            observacoes: obs.isNotEmpty ? obs : null,
+            rpe: _currentRpe,
+            rir: _currentRir,
+          ),
+        );
       }
       _currentSerie++;
       _currentRpe = null;
@@ -976,8 +1012,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     _proximoExercicio();
                   },
                   style: TextButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     foregroundColor: AppColors.primaryLight,
@@ -1011,8 +1049,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final logDao = ref.read(logDaoProvider);
 
     // Encontra todos os logs desta série para o exercício atual na sessão atual
-    final entriesToDelete =
-        _setsLogged.where((e) => e.serie == serieNum).toList();
+    final entriesToDelete = _setsLogged
+        .where((e) => e.serie == serieNum)
+        .toList();
 
     for (final entry in entriesToDelete) {
       if (entry.id != null) {
@@ -1022,8 +1061,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
     // Re-sequenciar as séries seguintes no banco
     final dbLogs = await logDao.getLogsForSession(widget.sessionId);
-    final exerciseLogs =
-        dbLogs.where((l) => l.exerciseId == _current.id).toList();
+    final exerciseLogs = dbLogs
+        .where((l) => l.exerciseId == _current.id)
+        .toList();
     for (final log in exerciseLogs) {
       if (log.serie > serieNum) {
         await logDao.updateLogSerie(log.id, log.serie - 1);
@@ -1042,7 +1082,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       final pesoStr = entry.peso % 1 == 0
           ? entry.peso.toInt().toString()
           : entry.peso.toString();
-      return _EditControllers(
+      return WorkoutSetEditControllers(
         entry: entry,
         pesoCtrl: TextEditingController(text: pesoStr),
         repsCtrl: TextEditingController(text: entry.reps.toString()),
@@ -1061,7 +1101,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             return AlertDialog(
               backgroundColor: context.cardColor,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
               titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
               contentPadding: const EdgeInsets.symmetric(horizontal: 20),
               actionsPadding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
@@ -1070,15 +1111,17 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primary
-                          .withValues(alpha: isDark ? 0.15 : 0.08),
+                      color: AppColors.primary.withValues(
+                        alpha: isDark ? 0.15 : 0.08,
+                      ),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.edit_note_rounded,
                       size: 24,
-                      color:
-                          isDark ? AppColors.primaryLight : AppColors.primary,
+                      color: isDark
+                          ? AppColors.primaryLight
+                          : AppColors.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1088,8 +1131,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
-                        color:
-                            isDark ? AppColors.primaryLight : AppColors.primary,
+                        color: isDark
+                            ? AppColors.primaryLight
+                            : AppColors.primary,
                       ),
                     ),
                   ),
@@ -1110,8 +1154,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         decoration: BoxDecoration(
                           color: isDark
                               ? AppColors.surface.withValues(alpha: 0.5)
-                              : AppColors.lightBackground
-                                  .withValues(alpha: 0.5),
+                              : AppColors.lightBackground.withValues(
+                                  alpha: 0.5,
+                                ),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: context.divider.withValues(alpha: 0.5),
@@ -1125,12 +1170,15 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: (isEsquerdo
-                                              ? AppColors.info
-                                              : AppColors.success)
-                                          .withValues(alpha: 0.12),
+                                      color:
+                                          (isEsquerdo
+                                                  ? AppColors.info
+                                                  : AppColors.success)
+                                              .withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Row(
@@ -1139,9 +1187,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                         Icon(
                                           isEsquerdo
                                               ? Icons
-                                                  .keyboard_arrow_left_rounded
+                                                    .keyboard_arrow_left_rounded
                                               : Icons
-                                                  .keyboard_arrow_right_rounded,
+                                                    .keyboard_arrow_right_rounded,
                                           size: 14,
                                           color: isEsquerdo
                                               ? AppColors.info
@@ -1166,14 +1214,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                               ),
                               const SizedBox(height: 12),
                             ],
-                            _NumberField(
+                            WorkoutNumberField(
                               ctrl: c.pesoCtrl,
                               label: 'Peso (kg)',
                               decimal: true,
                               step: _getWeightStep(),
                             ),
                             const SizedBox(height: 12),
-                            _NumberField(
+                            WorkoutNumberField(
                               ctrl: c.repsCtrl,
                               label: 'Repetições',
                               step: 1.0,
@@ -1185,25 +1233,36 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                               decoration: const InputDecoration(
                                 labelText: 'Equipamento',
                                 contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                                prefixIcon: Icon(Icons.fitness_center_rounded,
-                                    size: 20),
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.fitness_center_rounded,
+                                  size: 20,
+                                ),
                               ),
                               dropdownColor: context.cardColor,
-                              items: {
-                                if (c.equipamento != null &&
-                                    !equipmentOptions.contains(c.equipamento))
-                                  c.equipamento!,
-                                ...equipmentOptions,
-                              }
-                                  .map(
-                                    (option) => DropdownMenuItem(
-                                      value: option,
-                                      child: Text(option,
-                                          style: const TextStyle(fontSize: 14)),
-                                    ),
-                                  )
-                                  .toList(),
+                              items:
+                                  {
+                                        if (c.equipamento != null &&
+                                            !equipmentOptions.contains(
+                                              c.equipamento,
+                                            ))
+                                          c.equipamento!,
+                                        ...equipmentOptions,
+                                      }
+                                      .map(
+                                        (option) => DropdownMenuItem(
+                                          value: option,
+                                          child: Text(
+                                            option,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
                               onChanged: (val) {
                                 dialogState(() {
                                   c.equipamento = val;
@@ -1216,10 +1275,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                               decoration: const InputDecoration(
                                 labelText: 'Observações',
                                 labelStyle: TextStyle(fontSize: 12),
-                                prefixIcon:
-                                    Icon(Icons.edit_note_rounded, size: 20),
+                                prefixIcon: Icon(
+                                  Icons.edit_note_rounded,
+                                  size: 20,
+                                ),
                                 contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
                               style: const TextStyle(fontSize: 14),
                             ),
@@ -1241,17 +1304,22 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                           builder: (cConfirm) => AlertDialog(
                             backgroundColor: context.cardColor,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                             title: const Row(
                               children: [
-                                Icon(Icons.warning_amber_rounded,
-                                    color: Colors.redAccent, size: 24),
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Colors.redAccent,
+                                  size: 24,
+                                ),
                                 SizedBox(width: 8),
                                 Text('Excluir Série?'),
                               ],
                             ),
                             content: const Text(
-                                'Tem certeza que deseja excluir esta série de forma permanente?'),
+                              'Tem certeza que deseja excluir esta série de forma permanente?',
+                            ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(cConfirm, false),
@@ -1273,8 +1341,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                           await _deletarSerie(serieNum);
                         }
                       },
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          color: Colors.redAccent),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Colors.redAccent,
+                      ),
                       tooltip: 'Excluir',
                     ),
                     Row(
@@ -1290,8 +1360,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             // Validação e Salvamento
                             final logDao = ref.read(logDaoProvider);
                             for (final c in controllers) {
-                              final peso = double.tryParse(
-                                      c.pesoCtrl.text.replaceAll(',', '.')) ??
+                              final peso =
+                                  double.tryParse(
+                                    c.pesoCtrl.text.replaceAll(',', '.'),
+                                  ) ??
                                   0.0;
                               final reps = int.tryParse(c.repsCtrl.text) ?? 0;
                               final obs = c.obsCtrl.text.trim();
@@ -1303,7 +1375,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                          'Carga e repetições devem ser maiores que zero.'),
+                                        'Carga e repetições devem ser maiores que zero.',
+                                      ),
                                       backgroundColor: Colors.redAccent,
                                     ),
                                   );
@@ -1411,12 +1484,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
           backgroundColor: context.cardColor,
           title: const Row(
             children: [
-              Icon(Icons.warning_amber_rounded,
-                  color: AppColors.warning, size: 28),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text('Exercícios Pendentes'),
+              Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.warning,
+                size: 28,
               ),
+              SizedBox(width: 10),
+              Expanded(child: Text('Exercícios Pendentes')),
             ],
           ),
           content: SingleChildScrollView(
@@ -1440,10 +1514,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             ? Colors.white.withValues(alpha: 0.03)
                             : Colors.black.withValues(alpha: 0.03),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: context.divider,
-                          width: 1,
-                        ),
+                        border: Border.all(color: context.divider, width: 1),
                       ),
                       child: Material(
                         color: Colors.transparent,
@@ -1458,14 +1529,17 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             child: Row(
                               children: [
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: AppColors.warning
-                                        .withValues(alpha: 0.12),
+                                    color: AppColors.warning.withValues(
+                                      alpha: 0.12,
+                                    ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: const Icon(
@@ -1492,11 +1566,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                         const SizedBox(height: 4),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: context.divider,
-                                            borderRadius:
-                                                BorderRadius.circular(4),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
                                           child: Text(
                                             muscle.toUpperCase(),
@@ -1515,8 +1592,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                 Icon(
                                   Icons.arrow_forward_ios_rounded,
                                   size: 12,
-                                  color:
-                                      context.onSurface.withValues(alpha: 0.5),
+                                  color: context.onSurface.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1584,12 +1662,17 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     int totalSetsCount = 0;
 
     try {
-      final allSessionLogs =
-          await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
+      final allSessionLogs = await ref
+          .read(logDaoProvider)
+          .getLogsForSession(widget.sessionId);
       totalVolume = allSessionLogs.fold<double>(
-          0.0, (sum, log) => sum + (log.peso * log.repeticoes));
-      uniqueExercisesCount =
-          allSessionLogs.map((log) => log.exerciseId).toSet().length;
+        0.0,
+        (sum, log) => sum + (log.peso * log.repeticoes),
+      );
+      uniqueExercisesCount = allSessionLogs
+          .map((log) => log.exerciseId)
+          .toSet()
+          .length;
       totalSetsCount = allSessionLogs
           .map((log) => '${log.exerciseId}_${log.serie}')
           .toSet()
@@ -1638,9 +1721,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     WorkoutSession? completedSession;
     try {
       final db = ref.read(databaseProvider);
-      completedSession = await (db.select(db.workoutSessions)
-            ..where((s) => s.id.equals(widget.sessionId)))
-          .getSingleOrNull();
+      completedSession = await (db.select(
+        db.workoutSessions,
+      )..where((s) => s.id.equals(widget.sessionId))).getSingleOrNull();
     } catch (e) {
       debugPrint('Erro ao recuperar sessao finalizada: $e');
     }
@@ -1670,8 +1753,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
   Future<void> _shareWorkoutAsImage() async {
     try {
-      final boundary = _shareCardKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          _shareCardKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) return;
 
       final image = await boundary.toImage(pixelRatio: 3.0);
@@ -1793,7 +1877,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                           ],
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 28),
+                          horizontal: 20,
+                          vertical: 28,
+                        ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -1862,8 +1948,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                     icon: Icons.timer_rounded,
                                     iconColor: Colors.blueAccent,
                                     label: 'Duração',
-                                    value:
-                                        WeekUtils.formatDuration(_sessionSecs),
+                                    value: WeekUtils.formatDuration(
+                                      _sessionSecs,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -1934,8 +2021,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.image_rounded,
-                                  size: 18, color: Colors.white),
+                              Icon(
+                                Icons.image_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 'COMPARTILHAR CARD (IMAGEM)',
@@ -1960,18 +2050,21 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         onPressed: () {
                           final dayNameClean =
                               widget.dayName.toLowerCase().contains('treino')
-                                  ? widget.dayName
-                                  : 'Treino de ${widget.dayName}';
+                              ? widget.dayName
+                              : 'Treino de ${widget.dayName}';
                           final durationMin = (_sessionSecs / 60).round();
                           final formattedVolume = _formatVolume(totalVolume);
                           final shareText =
                               "Meteu Marcha! 🔥 $dayNameClean concluído: $uniqueExercises ${uniqueExercises == 1 ? 'exercício' : 'exercícios'} | $durationMin min | ${formattedVolume}kg totais. #MeteMarcha";
-                          SharePlus.instance
-                              .share(ShareParams(text: shareText));
+                          SharePlus.instance.share(
+                            ShareParams(text: shareText),
+                          );
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(
-                              color: AppColors.primaryLight, width: 1.5),
+                            color: AppColors.primaryLight,
+                            width: 1.5,
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -1980,8 +2073,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.text_fields_rounded,
-                                size: 18, color: AppColors.primaryLight),
+                            Icon(
+                              Icons.text_fields_rounded,
+                              size: 18,
+                              color: AppColors.primaryLight,
+                            ),
                             SizedBox(width: 8),
                             Text(
                               'COMPARTILHAR TEXTO',
@@ -2009,7 +2105,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => WorkoutSessionDetailPage(
-                                    session: completedSession),
+                                  session: completedSession,
+                                ),
                               ),
                             );
                           },
@@ -2023,8 +2120,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.analytics_rounded,
-                                  size: 18, color: Colors.white),
+                              Icon(
+                                Icons.analytics_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 'VER RESUMO',
@@ -2065,8 +2165,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.home_rounded,
-                                size: 18, color: context.onBackground),
+                            Icon(
+                              Icons.home_rounded,
+                              size: 18,
+                              color: context.onBackground,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'VOLTAR AO INÍCIO',
@@ -2160,10 +2263,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
               color: context.onBackground,
             ),
           ),
-          if (extra != null) ...[
-            const SizedBox(height: 4),
-            extra,
-          ],
+          if (extra != null) ...[const SizedBox(height: 4), extra],
         ],
       ),
     );
@@ -2189,7 +2289,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => _AddReferencePanel(
+      builder: (ctx) => WorkoutReferencePanel(
         exercise: ex,
         onSaved: (newLink) async {
           final updated = ex.copyWith(link: drift.Value(newLink));
@@ -2245,11 +2345,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             content: const Text('O treino será marcado como em andamento.'),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Continuar')),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Continuar'),
+              ),
               TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Sair')),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Sair'),
+              ),
             ],
           ),
         );
@@ -2281,8 +2383,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.flash_on_rounded,
-                        color: Colors.greenAccent, size: 14),
+                    const Icon(
+                      Icons.flash_on_rounded,
+                      color: Colors.greenAccent,
+                      size: 14,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${_sessionVolume.toStringAsFixed(0)} kg',
@@ -2298,16 +2403,21 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             ],
             const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.music_note_rounded,
-                  color: AppColors.primaryLight),
+              icon: const Icon(
+                Icons.music_note_rounded,
+                color: AppColors.primaryLight,
+              ),
               tooltip: 'Música',
               onPressed: () => _showMusicBottomSheet(context),
             ),
             const SizedBox(width: 4),
             TextButton.icon(
               onPressed: _confirmarFinalizarTreino,
-              icon: const Icon(Icons.check_rounded,
-                  color: AppColors.primaryLight, size: 18),
+              icon: const Icon(
+                Icons.check_rounded,
+                color: AppColors.primaryLight,
+                size: 18,
+              ),
               label: const Text(
                 'Finalizar',
                 style: TextStyle(
@@ -2329,7 +2439,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
             // Banner de descanso
             if (resting)
-              _RestBanner(
+              WorkoutRestBanner(
                 left: restLeft,
                 total: restTotal,
                 onSkip: _skipRest,
@@ -2349,14 +2459,17 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        icon: Icon(Icons.arrow_back_ios_new_rounded,
-                            size: 14, color: context.onSurface),
+                        icon: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 14,
+                          color: context.onSurface,
+                        ),
                         onPressed: _exercises.length > 1
                             ? () async {
                                 setState(() {
                                   _currentIndex =
                                       (_currentIndex - 1 + _exercises.length) %
-                                          _exercises.length;
+                                      _exercises.length;
                                 });
                                 await _loadExerciseContext();
                               }
@@ -2382,8 +2495,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                               child: Row(
                                 children: [
                                   if (isCurrent)
-                                    const Icon(Icons.play_arrow_rounded,
-                                        color: AppColors.primary, size: 16)
+                                    const Icon(
+                                      Icons.play_arrow_rounded,
+                                      color: AppColors.primary,
+                                      size: 16,
+                                    )
                                   else
                                     const SizedBox(width: 16),
                                   const SizedBox(width: 8),
@@ -2417,8 +2533,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                               ),
                             ),
                             const SizedBox(width: 2),
-                            Icon(Icons.arrow_drop_down_rounded,
-                                color: context.onSurface, size: 18),
+                            Icon(
+                              Icons.arrow_drop_down_rounded,
+                              color: context.onSurface,
+                              size: 18,
+                            ),
                           ],
                         ),
                       ),
@@ -2427,8 +2546,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        icon: Icon(Icons.arrow_forward_ios_rounded,
-                            size: 14, color: context.onSurface),
+                        icon: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: context.onSurface,
+                        ),
                         onPressed: _exercises.length > 1
                             ? () async {
                                 setState(() {
@@ -2440,14 +2562,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             : null,
                       ),
                       const Spacer(),
-                      _Chip(ex.grupoMuscular),
+                      WorkoutInfoChip(ex.grupoMuscular),
                       if (ex.equipamento != 'Livre') ...[
                         const SizedBox(width: 6),
-                        _Chip(ex.equipamento),
+                        WorkoutInfoChip(ex.equipamento),
                       ],
                       if (ex.volume != null && ex.volume!.isNotEmpty) ...[
                         const SizedBox(width: 6),
-                        _Chip(ex.volume!),
+                        WorkoutInfoChip(ex.volume!),
                       ],
                     ],
                   ),
@@ -2456,10 +2578,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                   // ── Nome do exercício ──────────────────────────
                   Text(
                     ex.nome,
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontSize: 26,
-                          letterSpacing: -0.5,
-                        ),
+                    style: Theme.of(context).textTheme.headlineLarge
+                        ?.copyWith(fontSize: 26, letterSpacing: -0.5),
                   ),
 
                   // ── Badges ────────────────────────────────────
@@ -2469,11 +2589,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     runSpacing: 6,
                     children: [
                       if (ex.isUnilateral)
-                        const _BadgeTag(
+                        const WorkoutBadgeTag(
                           label: 'Unilateral',
                           icon: Icons.swap_horiz_rounded,
                         ),
-                      _BadgeTag(
+                      WorkoutBadgeTag(
                         label: 'Descanso ${ex.tempoDescansoSegundos}s',
                         icon: Icons.timer_rounded,
                         color: AppColors.info,
@@ -2481,7 +2601,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                       if (_max1RM > 0)
                         GestureDetector(
                           onTap: () => _showPrDetailsDialog(context),
-                          child: _BadgeTag(
+                          child: WorkoutBadgeTag(
                             label: 'PR: ${_max1RM.toStringAsFixed(1)} kg',
                             icon: Icons.emoji_events_rounded,
                             color: Colors.amber,
@@ -2499,7 +2619,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             ),
                           );
                         },
-                        child: const _BadgeTag(
+                        child: const WorkoutBadgeTag(
                           label: 'Histórico & Evolução',
                           icon: Icons.analytics_rounded,
                         ),
@@ -2509,7 +2629,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                           onTap: () => _openLink(ex.link!),
                           onLongPress: () =>
                               _showAddReferenceBottomSheet(context, ex),
-                          child: const _BadgeTag(
+                          child: const WorkoutBadgeTag(
                             label: 'Ver referência',
                             icon: Icons.play_circle_rounded,
                             color: AppColors.warning,
@@ -2519,7 +2639,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         GestureDetector(
                           onTap: () =>
                               _showAddReferenceBottomSheet(context, ex),
-                          child: _BadgeTag(
+                          child: WorkoutBadgeTag(
                             label: 'Adicionar referência',
                             icon: Icons.add_circle_outline_rounded,
                             color: context.onSurface,
@@ -2539,15 +2659,19 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         color: context.cardColor,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: context.divider.withValues(alpha: 0.5)),
+                          color: context.divider.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Row(
                             children: [
-                              Icon(Icons.psychology_alt_rounded,
-                                  size: 16, color: AppColors.primaryLight),
+                              Icon(
+                                Icons.psychology_alt_rounded,
+                                size: 16,
+                                color: AppColors.primaryLight,
+                              ),
                               SizedBox(width: 6),
                               Text(
                                 'Detalhes & Biomecânica',
@@ -2576,13 +2700,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                   // ── Desempenho anterior ────────────────────────
                   if (_prevLogs.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    _PreviousPerformance(logs: _prevLogs, exercise: ex),
+                    WorkoutPreviousPerformance(logs: _prevLogs, exercise: ex),
                   ],
 
                   // ── Séries já salvas nesta sessão ──────────────
                   if (_setsLogged.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    _SetsList(
+                    WorkoutSetsList(
                       sets: _setsLogged,
                       exercise: ex,
                       onTapSeries: _showEditDeleteSeriesDialog,
@@ -2591,7 +2715,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
                   // ── Inputs ────────────────────────────────────
                   const SizedBox(height: 20),
-                  _InputRow(
+                  WorkoutSetInput(
                     serie: _currentSerie,
                     pesoCtrl: _pesoCtrl,
                     repsCtrl: _repsCtrl,
@@ -2610,14 +2734,20 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             decoration: const InputDecoration(
                               labelText: 'RPE (Esforço 1-10)',
                               contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
                             dropdownColor: context.cardColor,
                             style: TextStyle(
-                                color: context.onBackground, fontSize: 14),
+                              color: context.onBackground,
+                              fontSize: 14,
+                            ),
                             items: [
                               const DropdownMenuItem(
-                                  value: null, child: Text('Nulo')),
+                                value: null,
+                                child: Text('Nulo'),
+                              ),
                               ...[
                                 10.0,
                                 9.5,
@@ -2629,12 +2759,17 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                 6.5,
                                 6.0,
                                 5.5,
-                                5.0
-                              ].map((val) => DropdownMenuItem(
+                                5.0,
+                              ].map(
+                                (val) => DropdownMenuItem(
                                   value: val,
-                                  child: Text(val % 1 == 0
-                                      ? val.toInt().toString()
-                                      : val.toString())))
+                                  child: Text(
+                                    val % 1 == 0
+                                        ? val.toInt().toString()
+                                        : val.toString(),
+                                  ),
+                                ),
+                              ),
                             ],
                             onChanged: (val) {
                               setState(() {
@@ -2658,25 +2793,28 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             decoration: const InputDecoration(
                               labelText: 'RIR (Repetições de Reserva)',
                               contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
                             dropdownColor: context.cardColor,
                             style: TextStyle(
-                                color: context.onBackground, fontSize: 14),
+                              color: context.onBackground,
+                              fontSize: 14,
+                            ),
                             items: [
                               const DropdownMenuItem(
-                                  value: null, child: Text('Nulo')),
-                              ...[
-                                0,
-                                1,
-                                2,
-                                3,
-                                4,
-                                5
-                              ].map((val) => DropdownMenuItem(
+                                value: null,
+                                child: Text('Nulo'),
+                              ),
+                              ...[0, 1, 2, 3, 4, 5].map(
+                                (val) => DropdownMenuItem(
                                   value: val,
                                   child: Text(
-                                      val == 0 ? 'Falha (0 RIR)' : '$val RIR')))
+                                    val == 0 ? 'Falha (0 RIR)' : '$val RIR',
+                                  ),
+                                ),
+                              ),
                             ],
                             onChanged: (val) {
                               setState(() {
@@ -2707,13 +2845,15 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                   SegmentedButton<bool>(
                     segments: const [
                       ButtonSegment(
-                          value: false,
-                          label: Text('Bilateral'),
-                          icon: Icon(Icons.people_rounded)),
+                        value: false,
+                        label: Text('Bilateral'),
+                        icon: Icon(Icons.people_rounded),
+                      ),
                       ButtonSegment(
-                          value: true,
-                          label: Text('Unilateral'),
-                          icon: Icon(Icons.person_rounded)),
+                        value: true,
+                        label: Text('Unilateral'),
+                        icon: Icon(Icons.person_rounded),
+                      ),
                     ],
                     selected: {_executandoUnilateral},
                     onSelectionChanged: (v) {
@@ -2768,23 +2908,28 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     isExpanded: true,
                     initialValue: _equipamentoSelecionado,
                     decoration: const InputDecoration(
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     dropdownColor: context.cardColor,
-                    items: {
-                      if (_equipamentoSelecionado != null &&
-                          !equipmentOptions.contains(_equipamentoSelecionado))
-                        _equipamentoSelecionado!,
-                      ...equipmentOptions,
-                    }
-                        .map(
-                          (option) => DropdownMenuItem(
-                            value: option,
-                            child: Text(option),
-                          ),
-                        )
-                        .toList(),
+                    items:
+                        {
+                              if (_equipamentoSelecionado != null &&
+                                  !equipmentOptions.contains(
+                                    _equipamentoSelecionado,
+                                  ))
+                                _equipamentoSelecionado!,
+                              ...equipmentOptions,
+                            }
+                            .map(
+                              (option) => DropdownMenuItem(
+                                value: option,
+                                child: Text(option),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (val) {
                       setState(() {
                         _equipamentoSelecionado = val;
@@ -2798,7 +2943,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             ),
 
             // ── Botões de ação ─────────────────────────────────
-            _ActionBar(
+            WorkoutActionBar(
               isLast: _isLast,
               resting: resting,
               hasSets: _setsLogged.isNotEmpty,
@@ -2831,8 +2976,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: context.cardColor,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           actionsPadding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
@@ -2987,10 +3133,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                 backgroundColor: Colors.amber,
                 foregroundColor: Colors.black87,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: const Text('Entendi',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Entendi',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -3004,16 +3153,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
-          ),
+          Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -3028,1088 +3171,3 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 }
 
 // ─── Sub-widgets ──────────────────────────────────────────────────────────────
-
-class _RestBanner extends StatelessWidget {
-  final int left;
-  final int total;
-  final VoidCallback onSkip;
-  final Function(int) onAdjust;
-
-  const _RestBanner({
-    required this.left,
-    required this.total,
-    required this.onSkip,
-    required this.onAdjust,
-  });
-
-  Widget _buildAdjustButton(BuildContext context, String label, int seconds) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      height: 28,
-      child: OutlinedButton(
-        onPressed: () => onAdjust(seconds),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          side: BorderSide(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            width: 1,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primaryLight,
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = total > 0 ? left / total : 0.0;
-    final m = (left ~/ 60).toString().padLeft(2, '0');
-    final s = (left % 60).toString().padLeft(2, '0');
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: context.cardColor,
-        border: Border(bottom: BorderSide(color: context.divider)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              SizedBox(
-                width: 44,
-                height: 44,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 3,
-                      backgroundColor: context.divider,
-                      valueColor:
-                          const AlwaysStoppedAnimation(AppColors.primary),
-                    ),
-                    Text(
-                      '$m:$s',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: context.onBackground,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'DESCANSO',
-                    style: TextStyle(
-                      color: context.onSurface,
-                      fontSize: 10,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    'Próxima série quando pronto',
-                    style: TextStyle(color: context.onSurface, fontSize: 12),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: onSkip,
-                child: const Text('Pular'),
-              ),
-              IconButton(
-                icon: Icon(Icons.close_rounded,
-                    color: context.onSurface, size: 20),
-                onPressed: onSkip,
-                tooltip: 'Fechar',
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildAdjustButton(context, '-30s', -30),
-                _buildAdjustButton(context, '-15s', -15),
-                _buildAdjustButton(context, '+15s', 15),
-                _buildAdjustButton(context, '+30s', 30),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviousPerformance extends StatelessWidget {
-  final List<ExerciseLog> logs;
-  final Exercise exercise;
-  const _PreviousPerformance({required this.logs, required this.exercise});
-
-  @override
-  Widget build(BuildContext context) {
-    double prevSessionMax1RM = 0.0;
-    for (final l in logs) {
-      final oneRM =
-          l.repeticoes == 1 ? l.peso : l.peso * (1 + l.repeticoes / 30.0);
-      if (oneRM > prevSessionMax1RM) {
-        prevSessionMax1RM = oneRM;
-      }
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'ÚLTIMO TREINO',
-                style: TextStyle(
-                  color: context.onSurface,
-                  fontSize: 10,
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (prevSessionMax1RM > 0)
-                Text(
-                  'Max 1RM: ${prevSessionMax1RM.toStringAsFixed(1)} kg',
-                  style: const TextStyle(
-                    color: AppColors.primaryLight,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: logs.map((l) {
-              final ladoStr = (l.lado != 'ambos') ? ' (${l.lado})' : '';
-              final eqStr = (l.equipamento != null &&
-                      l.equipamento != exercise.equipamento)
-                  ? ' [${l.equipamento}]'
-                  : '';
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: context.cardColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'S${l.serie}: ${l.peso}kg × ${l.repeticoes}$ladoStr$eqStr',
-                  style: TextStyle(
-                    color: context.onBackground,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EditControllers {
-  final _SetEntry entry;
-  final TextEditingController pesoCtrl;
-  final TextEditingController repsCtrl;
-  final TextEditingController obsCtrl;
-  String? equipamento;
-
-  _EditControllers({
-    required this.entry,
-    required this.pesoCtrl,
-    required this.repsCtrl,
-    required this.obsCtrl,
-    this.equipamento,
-  });
-
-  void dispose() {
-    pesoCtrl.dispose();
-    repsCtrl.dispose();
-    obsCtrl.dispose();
-  }
-}
-
-class _SetsList extends StatelessWidget {
-  final List<_SetEntry> sets;
-  final Exercise exercise;
-  final Function(int) onTapSeries;
-  const _SetsList({
-    required this.sets,
-    required this.exercise,
-    required this.onTapSeries,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Group sets by serie number, preserving insertion order
-    final Map<int, List<_SetEntry>> grouped = {};
-    for (final s in sets) {
-      grouped.putIfAbsent(s.serie, () => []).add(s);
-    }
-
-    final isDark = context.isDark;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.primary.withValues(red: 0.08)
-            : AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isDark
-              ? AppColors.primary.withValues(alpha: 0.2)
-              : AppColors.primary.withValues(alpha: 0.15),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'SÉRIES SALVAS',
-            style: TextStyle(
-              color: isDark ? AppColors.primaryLight : AppColors.primary,
-              fontSize: 10,
-              letterSpacing: 1.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: grouped.values.map((group) {
-              final formattedText = _formatSeriesGroup(group);
-              final serieNum = group.first.serie;
-              return InkWell(
-                onTap: () => onTapSeries(serieNum),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        formattedText,
-                        style: TextStyle(
-                          color: context.onBackground,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Icon(
-                        Icons.edit_rounded,
-                        size: 13,
-                        color: (isDark
-                                ? AppColors.primaryLight
-                                : AppColors.primary)
-                            .withValues(alpha: 0.7),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatSeriesGroup(List<_SetEntry> entries) {
-    if (entries.isEmpty) return '';
-    final s = entries.first;
-    final serieLabel = 'S${s.serie}:';
-
-    // Equipment and observations usually match, let's grab them from first or combine
-    final eqStr =
-        (s.equipamento != null && s.equipamento != exercise.equipamento)
-            ? ' [${s.equipamento}]'
-            : '';
-    final obsStr = (s.observacoes != null && s.observacoes!.isNotEmpty)
-        ? ' (${s.observacoes})'
-        : '';
-    final rpeStr = (s.rpe != null)
-        ? ' @RPE ${s.rpe! % 1 == 0 ? s.rpe!.toInt() : s.rpe}'
-        : '';
-
-    if (entries.length == 1) {
-      final ladoStr = (s.lado != 'ambos')
-          ? ' (${s.lado == 'esquerdo' ? 'E' : s.lado == 'direito' ? 'D' : s.lado})'
-          : '';
-      return '$serieLabel ${s.peso}kg × ${s.reps}$ladoStr$rpeStr$eqStr$obsStr';
-    }
-
-    // Check if all entries in this series have the same weight
-    final allSameWeight = entries.every((e) => e.peso == s.peso);
-    if (allSameWeight) {
-      final allSameReps = entries.every((e) => e.reps == s.reps);
-      if (allSameReps) {
-        // S1: 10kg × 10 (E+D)
-        return '$serieLabel ${s.peso}kg × ${s.reps} (E+D)$rpeStr$eqStr$obsStr';
-      } else {
-        // S1: 10kg × 10(E) / 8(D)
-        final repsMap = entries.map((e) {
-          final sideLetter = e.lado == 'esquerdo'
-              ? 'E'
-              : e.lado == 'direito'
-                  ? 'D'
-                  : e.lado;
-          return '${e.reps}($sideLetter)';
-        }).join(' / ');
-        return '$serieLabel ${s.peso}kg × $repsMap$rpeStr$eqStr$obsStr';
-      }
-    } else {
-      // S1: 10kg × 10(E) / 12kg × 8(D)
-      final parts = entries.map((e) {
-        final sideLetter = e.lado == 'esquerdo'
-            ? 'E'
-            : e.lado == 'direito'
-                ? 'D'
-                : e.lado;
-        return '${e.peso}kg × ${e.reps}($sideLetter)';
-      }).join(' / ');
-      return '$serieLabel $parts$rpeStr$eqStr$obsStr';
-    }
-  }
-}
-
-class _InputRow extends StatelessWidget {
-  final int serie;
-  final TextEditingController pesoCtrl;
-  final TextEditingController repsCtrl;
-  final TextEditingController obsCtrl;
-  final double pesoStep;
-  final VoidCallback? onOpenCalculator;
-
-  const _InputRow({
-    required this.serie,
-    required this.pesoCtrl,
-    required this.repsCtrl,
-    required this.obsCtrl,
-    required this.pesoStep,
-    this.onOpenCalculator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'SÉRIE $serie',
-              style: TextStyle(
-                color: context.onSurface,
-                fontSize: 11,
-                letterSpacing: 1.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (onOpenCalculator != null)
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(
-                  Icons.calculate_rounded,
-                  size: 20,
-                  color: AppColors.primaryLight,
-                ),
-                tooltip: 'Calculadora de Anilhas',
-                onPressed: onOpenCalculator,
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _NumberField(
-                ctrl: pesoCtrl,
-                label: 'Peso (kg)',
-                decimal: true,
-                step: pesoStep,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _NumberField(
-                ctrl: repsCtrl,
-                label: 'Repetições',
-                step: 1.0,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: obsCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Observações (ex: banco 80°, drop set)',
-            labelStyle: TextStyle(fontSize: 12),
-            prefixIcon: Icon(Icons.edit_note_rounded, size: 20),
-          ),
-          style: const TextStyle(fontSize: 14),
-        ),
-      ],
-    );
-  }
-}
-
-class _CircleButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final double size;
-  final bool disabled;
-
-  const _CircleButton({
-    required this.icon,
-    this.onPressed,
-    this.size = 44,
-    this.disabled = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: disabled ? null : onPressed,
-        customBorder: const CircleBorder(),
-        child: Ink(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: disabled
-                ? context.surfaceColor.withValues(alpha: 0.6)
-                : context.surfaceColor,
-            shape: BoxShape.circle,
-            border: Border.all(color: context.divider),
-          ),
-          child: Center(
-            child: Icon(
-              icon,
-              size: size * 0.5,
-              color: disabled
-                  ? context.onSurface.withValues(alpha: 0.5)
-                  : AppColors.primaryLight,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NumberField extends StatefulWidget {
-  final TextEditingController ctrl;
-  final String label;
-  final bool decimal;
-  final double step;
-
-  const _NumberField({
-    required this.ctrl,
-    required this.label,
-    this.decimal = false,
-    required this.step,
-  });
-
-  @override
-  State<_NumberField> createState() => _NumberFieldState();
-}
-
-class _NumberFieldState extends State<_NumberField> {
-  double _value = 0.0;
-  late FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode = FocusNode();
-    _focusNode.addListener(_onFocusChange);
-    _parseValue();
-    widget.ctrl.addListener(_onTextChanged);
-  }
-
-  @override
-  void dispose() {
-    _focusNode.removeListener(_onFocusChange);
-    _focusNode.dispose();
-    widget.ctrl.removeListener(_onTextChanged);
-    super.dispose();
-  }
-
-  void _onFocusChange() {
-    if (_focusNode.hasFocus) {
-      final text = widget.ctrl.text.trim();
-      if (text == '0' || text == '0.0' || text == '0,' || text == '0.00') {
-        widget.ctrl.clear();
-      }
-    } else {
-      if (widget.ctrl.text.trim().isEmpty) {
-        widget.ctrl.text = '0';
-      }
-    }
-  }
-
-  void _onTextChanged() {
-    setState(() => _parseValue());
-  }
-
-  void _parseValue() {
-    final text = widget.ctrl.text.replaceAll(',', '.');
-    _value = double.tryParse(text) ?? 0.0;
-    if (_value < 0) _value = 0;
-  }
-
-  void _adjustValue(double delta) {
-    final newVal = (_value + delta).clamp(0.0, double.infinity);
-    double val = newVal;
-    if (widget.decimal) {
-      if (val % 1 == 0) {
-        widget.ctrl.text = val.toInt().toString();
-      } else {
-        if ((val * 2) % 1 == 0) {
-          widget.ctrl.text = val.toStringAsFixed(1);
-        } else {
-          widget.ctrl.text = val.toStringAsFixed(2);
-        }
-      }
-    } else {
-      widget.ctrl.text = val.toInt().toString();
-    }
-    setState(() => _parseValue());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final minusDisabled = _value <= 0.0;
-    return Row(
-      children: [
-        Tooltip(
-          message: 'Diminuir',
-          child: _CircleButton(
-            icon: Icons.remove_rounded,
-            onPressed: minusDisabled ? null : () => _adjustValue(-widget.step),
-            size: 44,
-            disabled: minusDisabled,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: TextField(
-            controller: widget.ctrl,
-            focusNode: _focusNode,
-            textAlign: TextAlign.center,
-            keyboardType:
-                TextInputType.numberWithOptions(decimal: widget.decimal),
-            inputFormatters: [DecimalInputFormatter()],
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: context.onBackground,
-            ),
-            decoration: InputDecoration(
-              labelText: widget.label,
-              labelStyle: const TextStyle(fontSize: 11),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Tooltip(
-          message: 'Aumentar',
-          child: _CircleButton(
-            icon: Icons.add_rounded,
-            onPressed: () => _adjustValue(widget.step),
-            size: 44,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionBar extends StatelessWidget {
-  final bool isLast;
-  final bool resting;
-  final bool hasSets;
-  final VoidCallback onSkip;
-  final VoidCallback onSalvarSerie;
-  final VoidCallback onProximo;
-
-  const _ActionBar({
-    required this.isLast,
-    required this.resting,
-    required this.hasSets,
-    required this.onSkip,
-    required this.onSalvarSerie,
-    required this.onProximo,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        border: Border(top: BorderSide(color: context.divider)),
-      ),
-      child: Row(
-        children: [
-          // Pular exercício
-          OutlinedButton(
-            onPressed: onSkip,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
-            child: const Text('Pular'),
-          ),
-          const SizedBox(width: 8),
-
-          // Salvar série
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: resting ? null : onSalvarSerie,
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Salvar Série'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryDark,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          // Próximo / Finalizar
-          Expanded(
-            child: ElevatedButton(
-              onPressed: onProximo,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(isLast ? 'Finalizar' : 'Próximo'),
-                  const SizedBox(width: 4),
-                  Icon(
-                    isLast ? Icons.flag_rounded : Icons.arrow_forward_rounded,
-                    size: 16,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final String label;
-  const _Chip(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: context.divider),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: context.onSurface, fontSize: 11),
-      ),
-    );
-  }
-}
-
-class _BadgeTag extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  const _BadgeTag({
-    required this.label,
-    required this.icon,
-    this.color = AppColors.primaryLight,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  color: color, fontSize: 11, fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
-  }
-}
-
-class _AddReferencePanel extends StatefulWidget {
-  final Exercise exercise;
-  final Function(String) onSaved;
-
-  const _AddReferencePanel({
-    required this.exercise,
-    required this.onSaved,
-  });
-
-  @override
-  State<_AddReferencePanel> createState() => _AddReferencePanelState();
-}
-
-class _AddReferencePanelState extends State<_AddReferencePanel>
-    with WidgetsBindingObserver {
-  final _linkController = TextEditingController();
-  String? _detectedClipboardLink;
-  bool _checkingClipboard = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _checkClipboard();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _linkController.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkClipboard();
-    }
-  }
-
-  Future<void> _checkClipboard() async {
-    if (_checkingClipboard) return;
-    if (!mounted) return;
-    setState(() => _checkingClipboard = true);
-    try {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      final text = data?.text;
-      if (text != null &&
-          (text.contains('youtube.com') ||
-              text.contains('youtu.be') ||
-              text.contains('tiktok.com'))) {
-        if (mounted) {
-          setState(() {
-            _detectedClipboardLink = text.trim();
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _detectedClipboardLink = null;
-          });
-        }
-      }
-    } catch (_) {}
-    if (mounted) {
-      setState(() => _checkingClipboard = false);
-    }
-  }
-
-  void _searchYouTube() async {
-    final query = 'como fazer ${widget.exercise.nome}';
-    final url =
-        'https://www.youtube.com/results?search_query=${Uri.encodeComponent(query)}';
-    final uri = Uri.parse(url);
-    try {
-      final success =
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o YouTube')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao abrir o YouTube: $e')),
-        );
-      }
-    }
-  }
-
-  void _searchTikTok() async {
-    final query = 'como fazer ${widget.exercise.nome}';
-    final appUrl = 'tiktok://search?keyword=${Uri.encodeComponent(query)}';
-    final webUrl =
-        'https://www.tiktok.com/search?q=${Uri.encodeComponent(query)}';
-
-    // Tenta abrir direto no app do TikTok
-    try {
-      final success = await launchUrl(Uri.parse(appUrl),
-          mode: LaunchMode.externalApplication);
-      if (success) return;
-    } catch (_) {
-      // Ignora erro e tenta o fallback web
-    }
-
-    // Fallback: abre no browser (ou no app caso o Android resolva o link HTTPS)
-    try {
-      final success = await launchUrl(Uri.parse(webUrl),
-          mode: LaunchMode.externalApplication);
-      if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o TikTok')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao abrir o TikTok: $e')),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: 16,
-        left: 16,
-        right: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: context.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Text(
-            'Execução: ${widget.exercise.nome}',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: context.onBackground,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Busque a execução no YouTube ou TikTok. Ao copiar o link do vídeo e retornar para o app, você poderá colar e salvar o link abaixo como referência definitiva para este exercício.',
-            style: TextStyle(fontSize: 13, color: context.onSurface),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _searchYouTube,
-                  icon: const Icon(Icons.play_circle_fill,
-                      color: Colors.white, size: 18),
-                  label: const Text('YouTube'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF0000),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: Colors.white10, width: 1),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        bottomLeft: Radius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _searchTikTok,
-                  icon: const Icon(Icons.music_note,
-                      color: Colors.white, size: 18),
-                  label: const Text('TikTok'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF010101),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: Colors.white10, width: 1),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                        topRight: Radius.circular(12),
-                        bottomRight: Radius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          if (_detectedClipboardLink != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border:
-                    Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.content_paste_go_rounded,
-                          color: AppColors.primaryLight, size: 16),
-                      SizedBox(width: 6),
-                      Text(
-                        'Link detectado na Área de Transferência:',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryLight),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _detectedClipboardLink!,
-                    style: TextStyle(fontSize: 12, color: context.onBackground),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        widget.onSaved(_detectedClipboardLink!);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      child: const Text('Usar Link Copiado & Salvar'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          TextField(
-            controller: _linkController,
-            decoration: InputDecoration(
-              labelText: 'Link de referência manual',
-              hintText: 'https://www.youtube.com/watch?...',
-              labelStyle: TextStyle(color: context.onSurface),
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: context.divider),
-              ),
-              focusedBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: AppColors.primary),
-              ),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.paste_rounded,
-                    color: AppColors.primaryLight),
-                onPressed: () async {
-                  final data = await Clipboard.getData(Clipboard.kTextPlain);
-                  if (data?.text != null) {
-                    _linkController.text = data!.text!.trim();
-                  }
-                },
-              ),
-            ),
-            style: TextStyle(color: context.onBackground),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              final link = _linkController.text.trim();
-              if (link.isNotEmpty) {
-                widget.onSaved(link);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-            child: const Text('Salvar Referência'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
