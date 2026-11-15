@@ -102,6 +102,8 @@ Continuar em entregas independentes:
 - O alerta de mensalidade e suas métricas foram extraídos para
   `ProfileMembershipCard`, que continua consumindo os providers de mensalidade
   diretamente.
+- O lembrete de treino foi extraído para `ProfileWorkoutReminderCard`, mantendo
+  a agenda e a configuração de avisos nos providers existentes.
 - Com Flutter 3.50.0 e Dart 3.14.0, a análise não apontou erros nem avisos;
   retornou 73 mensagens informativas de depreciação no projeto. Os 16 testes
   existentes passaram. `dart format` foi executado nos componentes extraídos.
