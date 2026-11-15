@@ -139,6 +139,11 @@ Não executar essas correções junto de uma movimentação mecânica de widgets
 Somente iniciar depois de definir com o responsável pelo Go os formatos e erros
 da API, autenticação e regras de visibilidade.
 
+**Atualização:** este trecho descreve o piloto original. O escopo completo aprovado
+depois está em [`social-migration-plan.md`](social-migration-plan.md): vários
+Cohorts, várias fotos, rankings, notificações e sincronização entre aparelhos.
+As limitações abaixo não se aplicam às etapas posteriores do produto.
+
 Escopo previsto:
 
 - Uma roda privada por participante no piloto, com convites.
