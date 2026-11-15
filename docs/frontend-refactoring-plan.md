@@ -104,6 +104,9 @@ Continuar em entregas independentes:
   diretamente.
 - O lembrete de treino foi extraído para `ProfileWorkoutReminderCard`, mantendo
   a agenda e a configuração de avisos nos providers existentes.
+- A interface de dados e backup foi extraída para `ProfileDataBackupCard`.
+  `ProfilePage` mantém as quatro ações de exportação/importação e passa callbacks
+  para os botões; formatos de arquivo e persistência não foram alterados.
 - Com Flutter 3.50.0 e Dart 3.14.0, a análise não apontou erros nem avisos;
   retornou 73 mensagens informativas de depreciação no projeto. Os 16 testes
   existentes passaram. `dart format` foi executado nos componentes extraídos.
