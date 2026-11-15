@@ -1,12 +1,13 @@
 # MeteMarcha — backend das rodas (piloto)
 
-Backend mínimo em Go para o piloto de **rodas**: pequenos grupos privados de amigos que
+Backend em Go para o piloto de **Cohorts** (grupos privados): pequenos grupos de amigos que
 publicam *stories* de treino (foto + legenda opcional + trecho opcional de uma música do
 catálogo) e reagem às publicações.
 
 O aplicativo Flutter continua registrando treinos **offline**, sem depender deste servidor.
-O servidor só conhece o que a pessoa **publica explicitamente** (conta, roda, stories). Treinos,
-medidas e fotos locais nunca são enviados.
+Nesta versão, o servidor só conhece o que a pessoa **publica explicitamente** (conta,
+grupo, stories). Treinos, medidas e fotos locais ainda não são enviados; a sincronização
+do histórico e os rankings estão previstos em [`../docs/social-migration-plan.md`](../docs/social-migration-plan.md).
 
 | Documento | Para quê |
 |---|---|

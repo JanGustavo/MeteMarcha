@@ -17,9 +17,40 @@ func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
 func (h *Handler) Register(mux *http.ServeMux, require func(http.HandlerFunc) http.HandlerFunc) {
 	mux.HandleFunc("POST /v1/groups", require(h.create))
 	mux.HandleFunc("GET /v1/groups/me", require(h.mine))
+	mux.HandleFunc("GET /v1/groups", require(h.list))
+	mux.HandleFunc("PUT /v1/groups/active", require(h.selectGroup))
 	mux.HandleFunc("POST /v1/groups/me/invites", require(h.invite))
 	mux.HandleFunc("POST /v1/groups/join", require(h.join))
 	mux.HandleFunc("POST /v1/groups/me/leave", require(h.leave))
+}
+
+func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	groups, activeID, err := h.svc.List(r.Context(), auth.UserFrom(r.Context()).ID)
+	if err != nil {
+		platform.WriteError(w, r, err)
+		return
+	}
+	views := make([]groupView, len(groups))
+	for i, g := range groups {
+		views[i] = h.view(g)
+	}
+	platform.WriteJSON(w, http.StatusOK, map[string]any{"groups": views, "active_group_id": activeID})
+}
+
+func (h *Handler) selectGroup(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		GroupID string `json:"group_id"`
+	}
+	if err := platform.ReadJSON(w, r, &req); err != nil {
+		platform.WriteError(w, r, err)
+		return
+	}
+	g, err := h.svc.Select(r.Context(), auth.UserFrom(r.Context()).ID, req.GroupID)
+	if err != nil {
+		platform.WriteError(w, r, err)
+		return
+	}
+	platform.WriteJSON(w, http.StatusOK, map[string]any{"group": h.view(g)})
 }
 
 type groupView struct {

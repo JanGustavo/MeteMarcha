@@ -7,7 +7,8 @@ Todas as datas são **segundos Unix (UTC)** guardados como `INTEGER`. Ids públi
 ```mermaid
 erDiagram
     users ||--o{ sessions : "tem"
-    users ||--o| group_members : "participa de no máx. uma"
+    users ||--o{ group_members : "participa"
+    users ||--o| active_groups : "seleciona"
     groups ||--o{ group_members : "reúne"
     groups ||--o{ group_invites : "emite"
     users ||--o{ media_files : "envia"
@@ -24,7 +25,8 @@ erDiagram
 | `users` | auth | e-mail, nome, hash argon2id | `email` único (sem diferenciar maiúsculas) |
 | `sessions` | auth | **hash SHA-256** do token, expiração, revogação | `token_hash` único; só vale se `revoked_at IS NULL` e `expires_at > agora` |
 | `groups` | groups | nome da roda, criador | — |
-| `group_members` | groups | quem está em qual roda, papel (`owner`/`member`) | **`user_id` é a chave primária**: o banco impõe "uma roda por pessoa" |
+| `group_members` | groups | quem está em qual roda, papel (`owner`/`member`) | chave primária `(user_id, group_id)`: uma participação por par |
+| `active_groups` | groups | roda selecionada para os endpoints sem ID de grupo | chave estrangeira para a participação: não seleciona grupo alheio |
 | `group_invites` | groups | **hash** do código, validade, quem usou | `code_hash` único; uso único (`used_at`) |
 | `media_files` | media | fotos: nome interno do arquivo, tipo, tamanho; controle de exclusão (`delete_attempts`, `next_attempt_at`, `last_error`) | `file_name` único |
 | `tracks` | media | catálogo de músicas (copiado de `catalog.json`) | `active = 0` para faixas removidas do JSON (stories antigos ainda as referenciam) |
@@ -36,11 +38,12 @@ usada por um story.
 
 ### Migrações
 
-- Ficam em `migrations/` e são **embutidas no binário**. Há um arquivo por módulo: `0001_auth.sql`, `0002_groups.sql`,
-  `0003_media.sql`, `0004_stories.sql`.
+- Ficam em `migrations/` e são **embutidas no binário**. Os arquivos atuais vão de
+  `0001_auth.sql` a `0005_multi_groups.sql`. A migração 0005 preserva a roda
+  existente de cada pessoa e a torna a roda ativa.
 - Ao iniciar, `platform.Migrate` aplica, em ordem alfabética, os arquivos que ainda não constam na tabela
   `schema_migrations`. Cada arquivo roda numa transação (tudo ou nada).
-- Para mudar o esquema, **crie** `0005_algo.sql`. Nunca edite um arquivo já aplicado: bancos existentes não o
+- Para mudar o esquema, **crie** uma nova migração. Nunca edite um arquivo já aplicado: bancos existentes não o
   executariam de novo.
 
 ## Regras de horário dos stories
@@ -71,7 +74,8 @@ segundo não for maior que o primeiro.
 1. Toda rota (exceto cadastro, login e `/healthz`) exige `Authorization: Bearer <token>`.
 2. O usuário vem **sempre da sessão**. Ids de usuário ou de roda enviados pelo cliente nunca são usados para decidir
    permissões.
-3. A roda de uma pessoa é consultada em `group_members` a cada operação. Não existe "roda ativa" informada pelo app.
+3. Os endpoints sem ID de grupo consultam `active_groups` e confirmam a associação em
+   `group_members` a cada operação. O app só pode selecionar grupos de que participa.
 4. Fotos e áudios **não têm URL pública**: toda entrega passa por autenticação + autorização, com
    `Cache-Control: private, no-store` (fotos). Os caminhos na API (`photo_url`, `audio_url`) são relativos e exigem o
    cabeçalho `Authorization`.
@@ -118,7 +122,7 @@ ilustrativo de `arquitetura.md` mostra como acrescentar `GET /v1/stories/mine` e
 ## Consistência e concorrência
 
 - **Limite de participantes**: entrar numa roda é **uma transação** que valida o convite, confere se a pessoa já está
-  em roda, conta os participantes, insere e consome o convite. O banco abre toda transação já reservando a escrita
+  naquela roda, conta os participantes, insere e consome o convite. O banco abre toda transação já reservando a escrita
   (`_txlock=immediate`), então duas entradas simultâneas se enfileiram e a contagem nunca é lida "velha". Um teste
   verifica essa propriedade diretamente (não depende de sorte de tempo) e outro dispara 60 entradas simultâneas para
   3 vagas.

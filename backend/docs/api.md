@@ -111,7 +111,19 @@ Erro (qualquer rota protegida, sem token, token inventado, expirado ou revogado)
 
 ## Rodas
 
-Cada pessoa participa de **no máximo uma** roda; cada roda tem até 10 participantes (`max_members`).
+Cada pessoa pode participar de várias rodas; cada roda tem até 10 participantes (`max_members`).
+Os endpoints antigos `/v1/groups/me`, `/v1/groups/me/invites`, `/v1/groups/me/leave`,
+`/v1/stories` e `/v1/feed` usam a **roda ativa**. Criar ou entrar em uma roda a seleciona.
+
+### `GET /v1/groups` — minhas rodas
+
+`200 OK`: `{ "groups": [{ "id": "...", "name": "Cohort A", "created_at": "...", "max_members": 10 }], "active_group_id": "..." }`.
+Sem grupos, `groups` é `[]` e `active_group_id` é `""`.
+
+### `PUT /v1/groups/active` — selecionar roda
+
+Corpo: `{ "group_id": "..." }`. `200 OK`: `{ "group": { ... } }`.
+`404 group_not_found` se a pessoa não participa da roda, inclusive se o ID não existe.
 
 ### `POST /v1/groups` — criar roda (quem cria vira dona)
 
@@ -124,12 +136,9 @@ curl -X POST $B/v1/groups -H "Authorization: Bearer $TOKEN" -H 'Content-Type: ap
 { "group": { "id": "b32509dea206ac372ad7cf322c43dda7", "name": "Roda da Perna",
              "created_at": "2026-11-15T12:07:13Z", "max_members": 10 } }
 ```
-Erros: `409 already_in_group`, `422 invalid_name` (1 a 40 caracteres).
-```json
-{ "error": { "code": "already_in_group", "message": "Você já participa de uma roda. Saia dela antes de entrar em outra." } }
-```
+Erro: `422 invalid_name` (1 a 40 caracteres).
 
-### `GET /v1/groups/me` — minha roda e participantes
+### `GET /v1/groups/me` — roda ativa e participantes
 
 ```bash
 curl $B/v1/groups/me -H "Authorization: Bearer $TOKEN"
@@ -172,7 +181,7 @@ curl -X POST $B/v1/groups/join -H "Authorization: Bearer $TOKEN" -H 'Content-Typ
 ```
 `200 OK` — `{ "group": { ... } }` (mesmo formato de criar).
 Erros: `404 invite_invalid` (inexistente, expirado **ou** já usado; a mesma resposta para os três),
-`409 group_full`, `409 already_in_group`.
+`409 group_full`, `409 already_in_group` (já participa **daquela** roda).
 ```json
 { "error": { "code": "invite_invalid", "message": "Convite inválido, expirado ou já utilizado." } }
 ```
@@ -183,7 +192,8 @@ Erros: `404 invite_invalid` (inexistente, expirado **ou** já usado; a mesma res
 ### `POST /v1/groups/me/leave` — sair da roda
 
 `204 No Content`. Se era a dona, a pessoa mais antiga da roda vira dona. Erro: `403 not_in_group`.
-Depois de sair, a pessoa perde o acesso aos stories da roda na hora e pode entrar em outra.
+Depois de sair, a pessoa perde o acesso aos stories da roda na hora. Se participa
+de outra roda, a mais antiga vira a ativa.
 
 ---
 
@@ -401,7 +411,7 @@ Content-Type: audio/mpeg
 | 400 | `invalid_json`, `invalid_idempotency_key`, `invalid_multipart`, `photo_required`, `invalid_field`, `invalid_limit`, `invalid_cursor` |
 | 401 | `unauthorized`, `invalid_credentials` |
 | 403 | `not_in_group` |
-| 404 | `not_found`, `invite_invalid` |
+| 404 | `not_found`, `invite_invalid`, `group_not_found` |
 | 409 | `email_taken`, `already_in_group`, `group_full` |
 | 410 | `story_expired` |
 | 413 | `photo_too_large`, `request_too_large` |
