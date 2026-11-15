@@ -90,6 +90,16 @@ ou validação em Android. Manter a entrega como rascunho até essas verificaç�
 Perfil e Treino ainda terão orquestradores grandes após a primeira extração.
 Continuar em entregas independentes:
 
+### Entrega em andamento — identificação do Perfil
+
+- Formulário de avatar, nome, altura, peso e IMC extraído para
+  `ProfileIdentificationCard`.
+- `ProfilePage` mantém os controladores, a gravação e as ações de foto; o card
+  recebe os dados e callbacks necessários.
+- Verificações locais: `git diff --check` e conferência de imports concluídas.
+  `flutter analyze`, `flutter test` e `dart format` dependem de instalar o SDK,
+  ausente neste ambiente.
+
 1. **Perfil:** extrair seções de identificação, permissões, lembretes,
    configurações e transferência de dados. Ações dependentes de estado devem ter
    callbacks explícitos; não mover todo o `State` para um mixin gigante.

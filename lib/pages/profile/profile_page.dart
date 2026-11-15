@@ -20,12 +20,10 @@ import 'package:gym_tracker/core/providers/alerts_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:gym_tracker/core/theme/app_theme.dart';
 import 'package:gym_tracker/core/utils/week_utils.dart';
-import 'package:gym_tracker/core/utils/decimal_input_formatter.dart';
-import 'package:gym_tracker/core/utils/string_input_formatter.dart';
 import 'package:gym_tracker/core/widgets/streak_badge.dart';
 import 'package:gym_tracker/core/services/ota_update_service.dart';
 import 'package:gym_tracker/core/services/auto_backup_service.dart';
-import 'package:gym_tracker/pages/profile/widgets/profile_bmi_banner.dart';
+import 'package:gym_tracker/pages/profile/widgets/profile_identification_card.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_weight_row.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_achievement_card.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_audio_settings_card.dart';
@@ -884,170 +882,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
               data: (profile) {
                 _populate(profile);
 
-                final photoPath = ref.watch(profilePhotoProvider);
-                Widget avatarChild;
-                if (photoPath == null || photoPath.isEmpty) {
-                  avatarChild = const Icon(
-                    Icons.person_rounded,
-                    size: 36,
-                    color: AppColors.primary,
-                  );
-                } else if (photoPath.startsWith('http') ||
-                    photoPath.startsWith('https')) {
-                  avatarChild = ClipRRect(
-                    borderRadius: BorderRadius.circular(44),
-                    child: Image.network(
-                      photoPath,
-                      width: 88,
-                      height: 88,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.person_rounded,
-                        size: 36,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  );
-                } else if (kIsWeb) {
-                  avatarChild = ClipRRect(
-                    borderRadius: BorderRadius.circular(44),
-                    child: Image.network(
-                      photoPath,
-                      width: 88,
-                      height: 88,
-                      fit: BoxFit.cover,
-                    ),
-                  );
-                } else {
-                  avatarChild = ClipRRect(
-                    borderRadius: BorderRadius.circular(44),
-                    child: Image.file(
-                      File(photoPath),
-                      width: 88,
-                      height: 88,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.person_rounded,
-                        size: 36,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  );
-                }
-
-                return Card(
-                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        // Avatar / ícone
-                        GestureDetector(
-                          onTap: () => _showPhotoOptions(context),
-                          child: Stack(
-                            children: [
-                              CircleAvatar(
-                                radius: 44,
-                                backgroundColor: AppColors.primary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                child: avatarChild,
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt_rounded,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Nome
-                        TextField(
-                          controller: _nomeCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Nome',
-                            prefixIcon: Icon(Icons.badge_rounded),
-                          ),
-                          inputFormatters: [StringInputFormatter()],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Altura + Peso
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _alturaCtrl,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [DecimalInputFormatter()],
-                                decoration: const InputDecoration(
-                                  labelText: 'Altura (cm)',
-                                  prefixIcon: Icon(Icons.height_rounded),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextField(
-                                controller: _pesoCtrl,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                inputFormatters: [DecimalInputFormatter()],
-                                decoration: const InputDecoration(
-                                  labelText: 'Peso (kg)',
-                                  prefixIcon: Icon(
-                                    Icons.monitor_weight_rounded,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-
-                        // IMC (calculado on-the-fly)
-                        ProfileBmiBanner(
-                          peso: double.tryParse(
-                            _pesoCtrl.text.replaceAll(',', '.'),
-                          ),
-                          altura: double.tryParse(_alturaCtrl.text),
-                        ),
-                        const SizedBox(height: 16),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _saving ? null : _save,
-                            child: _saving
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text('Salvar'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                return ProfileIdentificationCard(
+                  photoPath: ref.watch(profilePhotoProvider),
+                  nameController: _nomeCtrl,
+                  heightController: _alturaCtrl,
+                  weightController: _pesoCtrl,
+                  saving: _saving,
+                  onPhotoTap: () => _showPhotoOptions(context),
+                  onSave: _save,
                 );
               },
               loading: () => const Center(
