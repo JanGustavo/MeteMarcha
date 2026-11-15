@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -36,13 +37,6 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		application.Cleanup.Run(ctx)
-	}()
-
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           application.Handler,
@@ -51,9 +45,23 @@ func main() {
 		WriteTimeout:      2 * time.Minute,
 		IdleTimeout:       2 * time.Minute,
 	}
+	listener, err := net.Listen("tcp", cfg.Addr)
+	if err != nil {
+		slog.Error("não foi possível abrir a porta do servidor", "addr", cfg.Addr, "err", err)
+		application.Close()
+		os.Exit(1)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		slog.Info("servidor ouvindo", "addr", cfg.Addr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		defer wg.Done()
+		application.Cleanup.Run(ctx)
+	}()
+
+	go func() {
+		slog.Info("servidor ouvindo", "addr", listener.Addr().String())
+		if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("servidor", "err", err)
 			stop()
 		}

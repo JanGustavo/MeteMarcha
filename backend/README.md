@@ -42,7 +42,7 @@ Pré-requisitos: **Go 1.22 ou mais novo** e um compilador C (`gcc`). O driver SQ
 
 ```bash
 cd backend
-go mod tidy                 # primeira vez: baixa as dependências e gera o go.sum
+go mod download             # baixa as dependências verificadas pelo go.sum
 go test ./...               # roda toda a suíte (usa bancos e pastas temporários)
 
 cp .env.example .env        # ajuste se quiser; os padrões já funcionam
@@ -99,7 +99,7 @@ adapte domínio e caminhos. **Não foram testados em uma VPS real** nesta entreg
    ```bash
    sudo apt install build-essential golang-go   # confira que o Go instalado é 1.22+ (go version)
    git clone <repo> && cd MeteMarcha/backend && git checkout feature/backend-rodas
-   go mod tidy && go test ./...
+   go mod download && go test ./...
    CGO_ENABLED=1 go build -o api ./cmd/api
    ```
 2. **Usuário e pastas** (o programa não roda como root):
