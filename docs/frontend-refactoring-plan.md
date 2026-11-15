@@ -90,7 +90,7 @@ ou validação em Android. Manter a entrega como rascunho até essas verificaç�
 Perfil e Treino ainda terão orquestradores grandes após a primeira extração.
 Continuar em entregas independentes:
 
-### Entrega em andamento — identificação e permissão de overlay do Perfil
+### Entrega em andamento — seções do Perfil
 
 - Formulário de avatar, nome, altura, peso e IMC extraído para
   `ProfileIdentificationCard`.
@@ -99,6 +99,9 @@ Continuar em entregas independentes:
 - O card de permissão do painel flutuante foi extraído para
   `ProfileOverlayPermissionCard`. A página mantém o pedido de permissão e o
   estado, passados ao card por valor e callback.
+- O alerta de mensalidade e suas métricas foram extraídos para
+  `ProfileMembershipCard`, que continua consumindo os providers de mensalidade
+  diretamente.
 - Com Flutter 3.50.0 e Dart 3.14.0, a análise não apontou erros nem avisos;
   retornou 73 mensagens informativas de depreciação no projeto. Os 16 testes
   existentes passaram. `dart format` foi executado nos componentes extraídos.
