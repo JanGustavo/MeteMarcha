@@ -93,13 +93,18 @@ Valores inválidos (por exemplo, `72h` menor que `24h`) impedem o início, com m
 
 ## Configurar a VPS
 
+Para a VPS compartilhada já inspecionada, siga primeiro
+[`deploy/README.md`](deploy/README.md) e use `deploy/newDeploy.sh`: a porta 8080
+está ocupada, e o script escolhe 127.0.0.1:8084. O roteiro manual abaixo é
+apenas um exemplo para uma máquina sem esses serviços.
+
 Exemplo para Ubuntu/Debian. Os arquivos em [`deploy/`](deploy/) são pontos de partida:
 adapte domínio e caminhos. **Não foram testados em uma VPS real** nesta entrega (veja "Verificações").
 
 1. **Compilar na própria VPS** (o driver usa cgo, então compilar em outro sistema exige toolchain cruzada):
    ```bash
    sudo apt install build-essential golang-go   # confira que o Go instalado é 1.22+ (go version)
-   git clone <repo> && cd MeteMarcha/backend && git checkout feature/backend-rodas
+   git clone <repo> && cd MeteMarcha/backend
    go mod download && go test ./...
    CGO_ENABLED=1 go build -o api ./cmd/api
    ```
