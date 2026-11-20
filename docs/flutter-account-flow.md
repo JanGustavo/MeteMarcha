@@ -15,26 +15,29 @@ não pode entrar nesse mesmo banco sem um fluxo futuro de troca ou importação 
 dados. O cadastro **não envia** treinos, medidas ou fotos do aparelho ao servidor;
 essa etapa depende da sincronização do histórico, ainda não implementada.
 
-Para ativar as chamadas de rede, compile com a origem HTTPS da API:
+O app usa `https://api.metemarcha.jangustavo.me` por padrão. Para apontar uma
+compilação de desenvolvimento para outra API, use:
 
 ```sh
 flutter run --dart-define=MM_API_URL=https://api.exemplo.com
 ```
 
-O endereço não pode ser um domínio de exemplo no aplicativo distribuído. HTTP é
-aceito apenas para `localhost` ou `127.0.0.1` em desenvolvimento. Sem
-`MM_API_URL`, o cadastro e o login ficam indisponíveis e o app permite continuar
-com os treinos locais. Antes de liberar a versão com conta obrigatória, configurar
-o domínio real da VPS e testar o fluxo num aparelho.
+HTTP é aceito apenas para `localhost` ou `127.0.0.1` em desenvolvimento. Quem já
+tem dados locais pode continuar usando os treinos sem conta. Antes de distribuir
+o app, testar cadastro, login e preservação dos dados em um aparelho.
 
 ## Verificação desta etapa
 
-Os testes Flutter passaram, incluindo cadastro, login, expiração de sessão e
-proteção do banco local contra outra conta. A análise não apontou erros nem
-avisos; o SDK instalado em novembro de 2026 emitiu avisos informativos de API
-`material.dart` depreciada em todo o projeto.
+Os 21 testes Flutter passaram, incluindo cadastro, login, expiração de sessão e
+proteção do banco local contra outra conta. O APK debug e o APK release foram
+gerados com Flutter 3.50, Gradle 9.3.1 e Android Gradle Plugin 9.1.1. O APK
+release inclui a permissão `INTERNET`, e a API pública respondeu em `/healthz`.
 
-O APK não foi gerado: o Flutter instalado exige Gradle 9.3.1, mas o wrapper do
-projeto está em 8.14. Dispensar a checagem de versão também falhou por
-incompatibilidade da API do plugin Android. É preciso atualizar a configuração
-Android e repetir o build antes de distribuir a tela de conta.
+O projeto mantém `android.builtInKotlin=false` e `android.newDsl=false` enquanto
+os plugins Android dependem do plugin Kotlin antigo. O `file_picker` 11.x precisa
+de um ajuste no Gradle raiz para compilar seu código Kotlin nessa configuração;
+veja o [problema confirmado pelo mantenedor](https://github.com/vicajilau/flutter_file_picker/issues/2200).
+
+Ainda falta instalar o APK em um aparelho e testar cadastro, login e preservação
+dos dados locais contra a API real. Nenhum aparelho estava conectado ao ADB na
+verificação. O build não criou uma conta de teste no servidor.

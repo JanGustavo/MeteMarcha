@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
-const apiBaseUrl = String.fromEnvironment('MM_API_URL');
+const apiBaseUrl = String.fromEnvironment(
+  'MM_API_URL',
+  defaultValue: 'https://api.metemarcha.jangustavo.me',
+);
 
 abstract class AccountStore {
   Future<String?> read(String key);
