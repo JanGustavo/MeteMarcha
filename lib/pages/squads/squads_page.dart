@@ -1,7 +1,9 @@
+import '../../core/services/squad_invite_service.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:share_plus/share_plus.dart';
 import 'squad_editor.dart';
+import 'workout_report.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -24,7 +26,48 @@ class _SquadsPageState extends State<SquadsPage> {
   @override
   void initState() {
     super.initState();
-    load();
+    SquadInviteService.pending.addListener(inviteReceived);
+    load().then((_) => inviteReceived());
+  }
+
+  bool inviteOpen = false;
+  @override
+  void dispose() {
+    SquadInviteService.pending.removeListener(inviteReceived);
+    super.dispose();
+  }
+
+  void inviteReceived() {
+    if (SquadInviteService.pending.value == null || inviteOpen || !mounted)
+      return;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || inviteOpen) return;
+      final code = SquadInviteService.pending.value;
+      if (code == null) return;
+      inviteOpen = true;
+      final accepted = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+                  title: const Text('Convite para um squad'),
+                  content: const Text(
+                      'Quer entrar no squad deste convite? Se você já participa de outro, será necessário sair dele primeiro.'),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Agora não')),
+                    FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Entrar no squad'))
+                  ]));
+      if (accepted == true && mounted)
+        await action(() async {
+          await api.request('POST', '/v1/groups/join', {'code': code});
+          await SquadInviteService.clear();
+          await load();
+        });
+      if (accepted == false) await SquadInviteService.clear();
+      inviteOpen = false;
+    });
   }
 
   void message(Object e) {
@@ -128,12 +171,12 @@ class _SquadsPageState extends State<SquadsPage> {
             text:
                 'Bora treinar com a gente no ${group!['name']}! 💪\n${api.url('/invite').replace(queryParameters: {
                   'code': code
-                })}\nAbra o Mete Marcha → Squads → Tenho um convite e cole o link ou o código: $code\nO convite tem prazo e vale para uma pessoa.',
+                })}\nToque no link para entrar no squad pelo Mete Marcha.\nSe precisar, entre por Squads → Tenho um convite e cole o código: $code\nO convite tem prazo e vale para uma pessoa.',
             subject: 'Convite para ${group!['name']}'));
       });
   Future<void> compose() async {
     final posted = await Navigator.push<bool>(
-        context, MaterialPageRoute(builder: (_) => _Composer(api: api)));
+        context, MaterialPageRoute(builder: (_) => StoryComposer(api: api)));
     if (posted == true) await load();
   }
 
@@ -496,16 +539,35 @@ class _StoryCardState extends State<_StoryCard> {
               title: Text(s['author']['display_name']),
               subtitle: Text(
                   'Até ${DateTime.parse(s['visible_until']).toLocal().toString().substring(0, 16)}')),
-          ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(widget.api.url(s['photo_url']).toString(),
-                  headers: widget.headers,
-                  width: double.infinity,
-                  height: 320,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox(
-                      height: 160,
-                      child: Center(child: Text('Foto indisponível'))))),
+          InkWell(
+              onTap: s['workout_report'] == null
+                  ? null
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => WorkoutReportPage(
+                              report: Map<String, dynamic>.from(
+                                  s['workout_report'])))),
+              child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: AspectRatio(
+                      aspectRatio: 1,
+                      child: Image.network(
+                          widget.api.url(s['photo_url']).toString(),
+                          headers: widget.headers,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Center(
+                              child: Text('Foto indisponível')))))),
+          if (s['workout_report'] != null)
+            TextButton.icon(
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => WorkoutReportPage(
+                            report: Map<String, dynamic>.from(
+                                s['workout_report'])))),
+                icon: const Icon(Icons.description_outlined),
+                label: const Text('Ver treino completo')),
           if ((s['caption'] as String).isNotEmpty)
             Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -552,14 +614,17 @@ class _Viewer extends StatelessWidget {
       ]));
 }
 
-class _Composer extends StatefulWidget {
-  const _Composer({required this.api});
+class StoryComposer extends StatefulWidget {
+  const StoryComposer(
+      {super.key, required this.api, this.initialPhoto, this.report});
+  final XFile? initialPhoto;
+  final Map<String, dynamic>? report;
   final SquadService api;
   @override
-  State<_Composer> createState() => _ComposerState();
+  State<StoryComposer> createState() => StoryComposerState();
 }
 
-class _ComposerState extends State<_Composer> {
+class StoryComposerState extends State<StoryComposer> {
   final caption = TextEditingController();
   final keyValue = 'story-${DateTime.now().microsecondsSinceEpoch}';
   XFile? photo;
@@ -570,6 +635,7 @@ class _ComposerState extends State<_Composer> {
   @override
   void initState() {
     super.initState();
+    photo = widget.initialPhoto;
     catalog();
   }
 
@@ -608,7 +674,8 @@ class _ComposerState extends State<_Composer> {
   Future<void> publish() async {
     setState(() => busy = true);
     try {
-      await widget.api.publish(photo!, caption.text.trim(), track, keyValue);
+      await widget.api.publish(photo!, caption.text.trim(), track, keyValue,
+          report: widget.report);
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -653,6 +720,19 @@ class _ComposerState extends State<_Composer> {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => pick(ImageSource.gallery)),
                 ])),
+            if (widget.report != null)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('Relatório completo anexado'),
+                subtitle: const Text(
+                    'O squad poderá ver suas séries, cargas e observações. Toque para revisar.'),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            WorkoutReportPage(report: widget.report!))),
+              ),
             if (photo != null)
               FutureBuilder(
                   future: photo!.readAsBytes(),
@@ -665,7 +745,7 @@ class _ComposerState extends State<_Composer> {
             TextField(
                 controller: caption,
                 enabled: !busy,
-                maxLength: 500,
+                maxLength: 300,
                 maxLines: 3,
                 decoration: const InputDecoration(labelText: 'Legenda')),
             const SizedBox(height: 20),

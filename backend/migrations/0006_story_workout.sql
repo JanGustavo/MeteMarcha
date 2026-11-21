@@ -1,0 +1,1 @@
+ALTER TABLE stories ADD COLUMN workout_report TEXT NOT NULL DEFAULT '';

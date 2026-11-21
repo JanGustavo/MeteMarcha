@@ -16,6 +16,9 @@ func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
 // Register recebe "require" (o protetor de rotas do módulo auth) como parâmetro:
 // assim este módulo não precisa saber como a autenticação funciona por dentro.
 func (h *Handler) Register(mux *http.ServeMux, require func(http.HandlerFunc) http.HandlerFunc) {
+	mux.HandleFunc("GET /.well-known/assetlinks.json", func(w http.ResponseWriter, r *http.Request) {
+		platform.WriteJSON(w, 200, []any{map[string]any{"relation": []string{"delegate_permission/common.handle_all_urls"}, "target": map[string]any{"namespace": "android_app", "package_name": "dev.jangustavo.metemarcha", "sha256_cert_fingerprints": []string{"4A:4C:02:74:A1:FE:2C:2F:DF:23:A7:7E:A9:82:4D:BF:21:2D:BA:E1:21:D1:54:2E:C6:CA:01:20:E8:99:13:BC"}}}})
+	})
 	mux.HandleFunc("GET /invite", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")

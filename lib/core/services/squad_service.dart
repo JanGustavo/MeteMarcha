@@ -47,23 +47,35 @@ class SquadService {
     return data;
   }
 
-  Future<void> publish(XFile photo, String caption, Map<String, dynamic>? track,
-      String key) async {
-    final request = http.MultipartRequest('POST', url('/v1/stories'));
-    request.headers.addAll(await headers());
-    request.headers['Idempotency-Key'] = key;
-    request.fields['caption'] = caption;
+  Future<void> publish(
+      XFile photo, String caption, Map<String, dynamic>? track, String key,
+      {Map<String, dynamic>? report}) async {
+    if (report != null) {
+      try {
+        final capabilities = await request('GET', '/v1/story-capabilities');
+        if (capabilities['workout_report_version'] != 1)
+          throw const AccountException('Versão incompatível.');
+      } catch (_) {
+        throw const AccountException(
+            'O servidor precisa ser atualizado para receber relatórios de treino. Nenhuma publicação foi enviada.');
+      }
+    }
+    final upload = http.MultipartRequest('POST', url('/v1/stories'));
+    upload.headers.addAll(await headers());
+    upload.headers['Idempotency-Key'] = key;
+    upload.fields['caption'] = caption;
+    if (report != null) upload.fields['workout_report'] = jsonEncode(report);
     if (track != null) {
-      request.fields.addAll({
+      upload.fields.addAll({
         'track_id': track['id'],
         'track_start_ms': '0',
         'track_duration_ms': '${(track['duration_ms'] as int).clamp(1, 15000)}'
       });
     }
-    request.files.add(http.MultipartFile.fromBytes(
+    upload.files.add(http.MultipartFile.fromBytes(
         'photo', await photo.readAsBytes(),
         filename: photo.name));
     decode(await http.Response.fromStream(
-        await client.send(request).timeout(const Duration(seconds: 60))));
+        await client.send(upload).timeout(const Duration(seconds: 60))));
   }
 }

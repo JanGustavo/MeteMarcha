@@ -5,6 +5,7 @@ package stories
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"io"
 	"net/http"
 	"regexp"
@@ -19,6 +20,7 @@ import (
 )
 
 type Story struct {
+	WorkoutReport    json.RawMessage `json:"workout_report,omitempty"`
 	ID               string          `json:"id"`
 	Author           Author          `json:"author"`
 	Caption          string          `json:"caption"`
@@ -103,6 +105,7 @@ func (s *Service) visibleInFeed(created time.Time) bool {
 // ---- Publicar -----------------------------------------------------------------
 
 type PublishInput struct {
+	Report          string
 	AuthorID        string
 	RequestID       string // Idempotency-Key: o mesmo valor devolve o mesmo story
 	Caption         string
@@ -127,6 +130,10 @@ func (s *Service) Publish(ctx context.Context, in PublishInput) (Story, bool, er
 		return Story{}, false, groups.ErrNotInGroup
 	}
 
+	report, err := validateReport(in.Report)
+	if err != nil {
+		return Story{}, false, err
+	}
 	caption := strings.TrimSpace(in.Caption)
 	if utf8.RuneCountInString(caption) > maxCaptionRunes {
 		return Story{}, false, platform.NewError(http.StatusUnprocessableEntity, "invalid_caption", "A legenda pode ter no máximo 300 caracteres.")
@@ -152,7 +159,7 @@ func (s *Service) Publish(ctx context.Context, in PublishInput) (Story, bool, er
 
 	err = s.store.insert(ctx, newStory{
 		ID: platform.NewID(), AuthorID: in.AuthorID, GroupID: membership.GroupID, MediaID: mediaID,
-		Caption: caption, RequestID: in.RequestID, Clip: trackClip, CreatedAt: s.now().UTC(),
+		Report: report, Caption: caption, RequestID: in.RequestID, Clip: trackClip, CreatedAt: s.now().UTC(),
 	})
 	if err != nil {
 		s.media.DiscardPhoto(ctx, mediaID) // esta foto não será usada
@@ -362,6 +369,7 @@ func (s *Service) assemble(ctx context.Context, rows []storyRow, viewerID string
 			ID:               r.ID,
 			Author:           Author{ID: r.AuthorID, DisplayName: r.AuthorName},
 			Caption:          r.Caption,
+			WorkoutReport:    json.RawMessage(r.Report),
 			CreatedAt:        r.CreatedAt,
 			VisibleUntil:     r.CreatedAt.Add(s.visibleFor),
 			RecoverableUntil: r.CreatedAt.Add(s.recoverableFor),
