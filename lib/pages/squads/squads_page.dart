@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:file_picker/file_picker.dart';
 import '../../core/services/squad_invite_service.dart';
 import 'dart:async';
@@ -51,7 +52,7 @@ class _SquadsPageState extends State<SquadsPage> {
           builder: (context) => AlertDialog(
                   title: const Text('Convite para um squad'),
                   content: const Text(
-                      'Quer entrar no squad deste convite? Se você já participa de outro, será necessário sair dele primeiro.'),
+                      'Quer entrar no squad deste convite? Ele passará a ser o seu squad ativo.'),
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(context, false),
@@ -388,7 +389,7 @@ class _SquadsPageState extends State<SquadsPage> {
                               const SizedBox(height: 16),
                               if (stories.isNotEmpty)
                                 SizedBox(
-                                    height: 92,
+                                    height: 116,
                                     child: ListView(
                                         scrollDirection: Axis.horizontal,
                                         children: [
@@ -402,7 +403,7 @@ class _SquadsPageState extends State<SquadsPage> {
                                                     onTap: () => Navigator.push(
                                                         context,
                                                         MaterialPageRoute(
-                                                            builder: (_) => _Viewer(
+                                                            builder: (_) => StoryViewer(
                                                                 api: api,
                                                                 stories: stories
                                                                     .where((s) =>
@@ -430,7 +431,13 @@ class _SquadsPageState extends State<SquadsPage> {
                                                                   s['author']
                                                                       ['id'] ==
                                                                   id)['author']
-                                                          ['display_name'])
+                                                          ['display_name']),
+                                                      Text(
+                                                          '${stories.where((s) => s['author']['id'] == id).length} publicações',
+                                                          style:
+                                                              Theme.of(context)
+                                                                  .textTheme
+                                                                  .labelSmall)
                                                     ])))
                                         ])),
                               if (stories.isEmpty)
@@ -440,7 +447,10 @@ class _SquadsPageState extends State<SquadsPage> {
                                         'Nenhum story por enquanto. Compartilhe seu primeiro treino.')),
                               for (final story in stories)
                                 _StoryCard(
-                                    api: api, story: story, headers: headers),
+                                    key: ValueKey(story['id']),
+                                    api: api,
+                                    story: story,
+                                    headers: headers),
                               if (cursor != null)
                                 TextButton(
                                     onPressed: busy
@@ -464,7 +474,10 @@ class _SquadsPageState extends State<SquadsPage> {
 
 class _StoryCard extends StatefulWidget {
   const _StoryCard(
-      {required this.api, required this.story, required this.headers});
+      {super.key,
+      required this.api,
+      required this.story,
+      required this.headers});
   final SquadService api;
   final dynamic story;
   final Map<String, String> headers;
@@ -598,20 +611,70 @@ class _StoryCardState extends State<_StoryCard> {
   }
 }
 
-class _Viewer extends StatelessWidget {
-  const _Viewer(
-      {required this.api, required this.stories, required this.headers});
+class StoryViewer extends StatefulWidget {
+  const StoryViewer(
+      {super.key,
+      required this.api,
+      required this.stories,
+      required this.headers});
   final SquadService api;
   final List<dynamic> stories;
   final Map<String, String> headers;
   @override
+  State<StoryViewer> createState() => _StoryViewerState();
+}
+
+class _StoryViewerState extends State<StoryViewer> {
+  final controller = PageController();
+  int index = 0;
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Stories')),
-      body: PageView(children: [
-        for (final story in stories)
-          SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: _StoryCard(api: api, story: story, headers: headers))
+      appBar: AppBar(
+          title: Text('Publicação ${index + 1} de ${widget.stories.length}')),
+      body: Column(children: [
+        Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(children: [
+              IconButton(
+                  tooltip: 'Publicação anterior',
+                  onPressed: index == 0
+                      ? null
+                      : () => controller.previousPage(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOut),
+                  icon: const Icon(Icons.chevron_left)),
+              Expanded(
+                  child: LinearProgressIndicator(
+                      value: widget.stories.isEmpty
+                          ? 0
+                          : (index + 1) / widget.stories.length)),
+              IconButton(
+                  tooltip: 'Próxima publicação',
+                  onPressed: index + 1 >= widget.stories.length
+                      ? null
+                      : () => controller.nextPage(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOut),
+                  icon: const Icon(Icons.chevron_right)),
+            ])),
+        Expanded(
+            child: PageView.builder(
+                controller: controller,
+                itemCount: widget.stories.length,
+                onPageChanged: (value) => setState(() => index = value),
+                itemBuilder: (context, i) => SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: _StoryCard(
+                        key: ValueKey(widget.stories[i]['id']),
+                        api: widget.api,
+                        story: widget.stories[i],
+                        headers: widget.headers)))),
       ]));
 }
 
@@ -627,7 +690,8 @@ class StoryComposer extends StatefulWidget {
 
 class StoryComposerState extends State<StoryComposer> {
   final caption = TextEditingController();
-  final keyValue = 'story-${DateTime.now().microsecondsSinceEpoch}';
+  final keyValue =
+      'story-${List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
   XFile? photo;
   List<dynamic> tracks = [];
   Map<String, dynamic>? track;
@@ -698,8 +762,9 @@ class StoryComposerState extends State<StoryComposer> {
                   ]));
       if (confirmed != true || !mounted) return;
       setState(() => busy = true);
-      final selected = await widget.api
-          .uploadAudio(XFile.fromData(file.bytes!, name: file.name));
+      final selected = await widget.api.uploadAudio(
+          XFile.fromData(file.bytes!, name: file.name),
+          filename: file.name);
       if (mounted)
         setState(() {
           tracks.removeWhere((t) => t['id'] == selected['id']);

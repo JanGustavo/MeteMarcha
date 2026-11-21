@@ -8,6 +8,24 @@ import 'package:http/testing.dart';
 import 'account_service_test.dart' show MemoryAccountStore;
 
 void main() {
+  test('capa em memória é enviada como arquivo mesmo sem nome nativo',
+      () async {
+    final store = MemoryAccountStore();
+    store.values['mm.session.token'] = 'session';
+    final api = SquadService(
+        storage: store,
+        client: MockClient((request) async {
+          if (request.url.path == '/v1/story-capabilities')
+            return http.Response('{"workout_report_version":1}', 200);
+          expect(request.body, contains('name="photo"; filename="story.png"'));
+          expect(request.body, contains('name="workout_report"'));
+          return http.Response('{"story":{"id":"new-story"}}', 201);
+        }));
+    await api.publish(XFile.fromData(Uint8List.fromList([1, 2, 3])), '', null,
+        'memory-report',
+        report: {'version': 1});
+  });
+
   test('não publica a capa sozinha quando a API não aceita relatórios',
       () async {
     final store = MemoryAccountStore();
@@ -22,7 +40,10 @@ void main() {
           return http.Response('Not found', 404);
         }));
     await expectLater(
-        api.publish(XFile.fromData(Uint8List.fromList([1, 2, 3]), name: 'cover.png'), ' ', null,
+        api.publish(
+            XFile.fromData(Uint8List.fromList([1, 2, 3]), name: 'cover.png'),
+            ' ',
+            null,
             'report-key',
             report: {'version': 1}),
         throwsA(isA<AccountException>()));

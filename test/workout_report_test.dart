@@ -25,10 +25,10 @@ void main() {
   testWidgets('relatório permite alcançar a última execução', (tester) async {
     await tester
         .pumpWidget(MaterialApp(home: WorkoutReportPage(report: report)));
-    expect(find.text('Exercício 1 · série 1'), findsOneWidget);
-    await tester.dragUntilVisible(find.text('Exercício 60 · série 60'),
+    expect(find.byKey(const ValueKey('report-set-0')), findsOneWidget);
+    await tester.dragUntilVisible(find.byKey(const ValueKey('report-set-59')),
         find.byType(Scrollable), const Offset(0, -500));
-    expect(find.text('Exercício 60 · série 60'), findsOneWidget);
+    expect(find.byKey(const ValueKey('report-set-59')), findsOneWidget);
   });
   testWidgets('capa do relatório é uma imagem PNG quadrada', (tester) async {
     await tester.runAsync(() async {

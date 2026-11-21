@@ -47,18 +47,21 @@ class SquadService {
     return data;
   }
 
-  Future<Map<String, dynamic>> uploadAudio(XFile audio) async {
+  Future<Map<String, dynamic>> uploadAudio(XFile audio,
+      {String? filename}) async {
     final bytes = await audio.readAsBytes();
     if (bytes.length > 15 * 1024 * 1024)
       throw const AccountException('Escolha um áudio de até 15 MB.');
     final upload = http.MultipartRequest('POST', url('/v1/tracks/upload'));
     upload.headers.addAll(await headers());
     upload.fields.addAll({
-      'title': audio.name.replaceFirst(RegExp(r'\.[^.]+$'), ''),
+      'title':
+          (filename ?? (audio.name.isEmpty ? 'Áudio do celular' : audio.name))
+              .replaceFirst(RegExp(r'\.[^.]+$'), ''),
       'license': 'open-or-owned'
     });
-    upload.files.add(
-        http.MultipartFile.fromBytes('audio', bytes, filename: audio.name));
+    upload.files.add(http.MultipartFile.fromBytes('audio', bytes,
+        filename: filename ?? (audio.name.isEmpty ? 'audio' : audio.name)));
     final result = decode(await http.Response.fromStream(
         await client.send(upload).timeout(const Duration(seconds: 60))));
     return Map<String, dynamic>.from(result['track']);
@@ -91,7 +94,7 @@ class SquadService {
     }
     upload.files.add(http.MultipartFile.fromBytes(
         'photo', await photo.readAsBytes(),
-        filename: photo.name));
+        filename: photo.name.isEmpty ? 'story.png' : photo.name));
     decode(await http.Response.fromStream(
         await client.send(upload).timeout(const Duration(seconds: 60))));
   }

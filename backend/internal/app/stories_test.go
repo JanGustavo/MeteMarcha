@@ -506,3 +506,24 @@ func TestWorkoutReportSnapshotInFeed(t *testing.T) {
 		t.Fatal("expired report in feed")
 	}
 }
+
+func TestSecondStoryDoesNotReplaceFirst(t *testing.T) {
+	e := newEnv(t)
+	author, viewer := e.register("listauthor"), e.register("listviewer")
+	e.newGroup("Publicações", author, viewer)
+	_, _, first := e.publish(author.token, keyN("separate", 1), map[string]string{"caption": "Primeiro"}, jpegBytes(20, 20))
+	firstID := str(first, "story", "id")
+	_, before, _ := e.getBytes("/v1/stories/"+firstID+"/photo", viewer.token)
+	status, _, second := e.publish(author.token, keyN("separate", 2), map[string]string{"caption": "Segundo"}, jpegBytes(30, 30))
+	if status != 201 || str(second, "story", "id") == firstID {
+		t.Fatalf("second not created: %d %v", status, second)
+	}
+	_, items := e.feed(viewer)
+	if len(items) != 2 {
+		t.Fatalf("wanted 2 separate posts, got %d", len(items))
+	}
+	_, after, _ := e.getBytes("/v1/stories/"+firstID+"/photo", viewer.token)
+	if !bytes.Equal(before, after) {
+		t.Fatal("first story photo was overwritten")
+	}
+}
