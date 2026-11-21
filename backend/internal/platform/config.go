@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// Config guarda todos os limites e prazos do piloto. Nada aqui é segredo:
-// o servidor não usa chaves de API nem credenciais externas.
+// Config guarda os limites e prazos do piloto. Credenciais da IA são lidas
+// separadamente pelo módulo workoutai e nunca fazem parte das respostas da API.
 type Config struct {
 	Addr     string // endereço de escuta, ex.: ":8080"
 	DBPath   string // arquivo SQLite

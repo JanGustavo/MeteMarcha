@@ -154,3 +154,23 @@ adapte domínio e caminhos. **Não foram testados em uma VPS real** nesta entreg
 - Uma instância apenas (SQLite). Sem recuperação de senha, sem verificação de e-mail.
 - O servidor remove os metadados EXIF das fotos, **inclusive a orientação**. O app precisa enviar
   a imagem já rotacionada (veja `docs/api.md`).
+
+### IA de treinos
+
+Configure `MM_AI_API_KEY` e `MM_AI_MODEL` no ambiente do serviço (não no app).
+`POST /v1/ai/workouts` exige sessão e aceita `mode: generate` para um mini treino
+ou `mode: parse` para organizar texto de treino. O rascunho é validado no servidor
+antes de voltar ao app e só é salvo depois da revisão pelo usuário.
+
+A geração usa foco, tempo aproximado (10, 15 ou 20 minutos) e equipamentos
+explicitamente disponíveis. O catálogo inicial de movimentos é limitado e não
+recomenda cargas em kg. Isto configura instruções e validação para o modelo;
+não é treinamento ou ajuste dos pesos do modelo.
+
+Para validar o fluxo com o provedor, carregue as variáveis do serviço e execute
+`go run ./cmd/check-ai`. O comando faz uma chamada real, valida o rascunho e não
+cria conta, sessão ou treino no banco. Nunca registre a chave em logs ou no Git.
+
+O modelo é configurável. Nesta implantação, `openai/gpt-oss-20b` foi validado
+com geração real de um rascunho. O servidor valida o conteúdo além de pedir JSON,
+pois [JSON Object Mode não garante o esquema da resposta](https://console.groq.com/docs/structured-outputs).

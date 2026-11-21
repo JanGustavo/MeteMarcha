@@ -1,3 +1,6 @@
+import '../../core/services/squad_service.dart';
+import 'mini_workout_page.dart';
+import '../../core/providers/training_focus_provider.dart';
 // lib/pages/setup/split_selection_page.dart
 
 import 'package:flutter/material.dart';
@@ -7,8 +10,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/database/app_database.dart';
@@ -29,6 +30,7 @@ class SplitSelectionPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isCalisthenics=ref.watch(trainingFocusProvider).valueOrNull=='calistenia';
     return Scaffold(
       appBar: isOnboarding
           ? null
@@ -100,6 +102,7 @@ class SplitSelectionPage extends ConsumerWidget {
               ],
 
               // Grid 2x2 dos Cards de Treino
+              Padding(padding:const EdgeInsets.symmetric(vertical:12),child:FilledButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>MiniWorkoutPage(onboarding:isOnboarding))),icon:const Icon(Icons.auto_awesome_outlined),label:const Text('Montar mini treino com IA'))),
               Expanded(
                 child: GridView.count(
                   crossAxisCount: 2,
@@ -107,7 +110,7 @@ class SplitSelectionPage extends ConsumerWidget {
                   mainAxisSpacing: 16,
                   childAspectRatio: 0.85,
                   children: [
-                    _buildSplitCard(
+                    if(!isCalisthenics) _buildSplitCard(
                       context,
                       ref,
                       tipo: 'ABC',
@@ -134,7 +137,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         'Dia C: Perna e Core',
                       ],
                     ),
-                    _buildSplitCard(
+                    if(!isCalisthenics) _buildSplitCard(
                       context,
                       ref,
                       tipo: 'ABCD',
@@ -163,7 +166,7 @@ class SplitSelectionPage extends ConsumerWidget {
                         'Dia D: Perna Completa',
                       ],
                     ),
-                    _buildSplitCard(
+                    if(!isCalisthenics) _buildSplitCard(
                       context,
                       ref,
                       tipo: 'ABCDE',
@@ -925,12 +928,7 @@ class SplitSelectionPage extends ConsumerWidget {
                                     });
 
                                     try {
-                                      final prefs = await SharedPreferences.getInstance();
-                                      final apiKey = prefs.getString('groq_api_key') ??
-                                          ('gsk_0U02Xmja'
-                                              '1UEmgIbrgdUkWGdyb3FYQUYZfpEQGVx0CSYa9Hz0RHIS');
-
-                                      final jsonResult = await _processWorkoutWithGroq(rawText, apiKey);
+                                      final jsonResult = await _processWorkoutWithAI(rawText);
 
                                       textCtrl.text = jsonResult;
 
@@ -984,7 +982,7 @@ class SplitSelectionPage extends ConsumerWidget {
                                             errStr.contains('401') ||
                                             errStr.contains('Unauthorized')) {
                                           errorMsg =
-                                              'A chave de API da IA está inválida ou expirada. Verifique as configurações.';
+                                              'Entre na sua conta para usar a IA. Se o erro persistir, tente novamente mais tarde.';
                                         }
                                         setState(() {
                                           isLoading = false;
@@ -1195,79 +1193,11 @@ class SplitSelectionPage extends ConsumerWidget {
     );
   }
 
-  Future<String> _processWorkoutWithGroq(String rawText, String apiKey) async {
-    final url = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
-    
-    const systemPrompt = '''
-Converta o texto de treino em um objeto JSON válido seguindo esta estrutura:
-{
-  "nome": "Nome do Treino",
-  "tipo": "ABC", // "ABC", "ABCD", "ABCDE" ou "CUSTOM"
-  "dias": [
-    {
-      "letra": "A", // "A", "B", "C", "D", "E" sequencialmente
-      "nome": "Nome do Dia",
-      "exercicios": [
-        {
-          "nome": "Nome do Exercício",
-          "grupoMuscular": "Peito", // Peito, Costas, Ombro, Tríceps, Bíceps, Quadríceps, Posterior, Panturrilha, Core, Glúteo
-          "equipamento": "Barra", // Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith
-          "isUnilateral": false,
-          "tempoDescansoSegundos": 90,
-          "volume": "4x10", // séries x repetições
-          "observacoes": "Instruções específicas, biomecânica ou dicas de execução" // ou null
-        }
-      ]
-    }
-  ]
-}
-
-Regras:
-1. grupoMuscular deve ser exatamente um destes: [Peito, Costas, Ombro, Tríceps, Bíceps, Quadríceps, Posterior, Panturrilha, Core, Glúteo]. Mapeie Elevação Lateral/Crucifixo Invertido/Posterior de Ombro como "Ombro"; Abdominais como "Core"; Agachamento/Leg Press/Cadeira Extensora como "Quadríceps"; Mesa Flexora/Cadeira Flexora/Stiff como "Posterior"; Panturrilha/Gêmeos como "Panturrilha"; Elevação de Quadril como "Glúteo".
-2. equipamento deve ser exatamente um destes: [Livre, Barra, Haltere, Cabo, Máquina, Peso Corporal, Smith]. Mapeie "Halteres" como "Haltere"; "Polia/Crossover/Pulley" como "Cabo"; Leg Press/Extensora/Flexora/Hack/Gêmeos na máquina como "Máquina"; Flexão/Barra Fixa/Abdominais como "Peso Corporal".
-3. letra começa em "A" e segue sequencialmente.
-4. tipo: 3 dias = "ABC", 4 dias = "ABCD", 5 dias = "ABCDE", outro = "CUSTOM".
-5. observacoes: extraia detalhes, biomecânica ou observações do texto original para este campo.
-6. Retorne APENAS o código JSON bruto sem markdown ou textos explicativos.
-''';
-
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: jsonEncode({
-        'model': 'llama-3.3-70b-versatile',
-        'messages': [
-          {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': rawText}
-        ],
-        'temperature': 0.1,
-        'max_tokens': 4000,
-        'response_format': {'type': 'json_object'},
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(utf8.decode(response.bodyBytes));
-      final content = responseData['choices'][0]['message']['content'] as String;
-      
-      String cleanJson = content.trim();
-      if (cleanJson.startsWith('```')) {
-        final lines = cleanJson.split('\n');
-        if (lines.first.startsWith('```')) {
-          lines.removeAt(0);
-        }
-        if (lines.last.startsWith('```')) {
-          lines.removeLast();
-        }
-        cleanJson = lines.join('\n').trim();
-      }
-      return cleanJson;
-    } else {
-      throw Exception('Groq API Error (${response.statusCode}): ${response.body}');
-    }
+  Future<String> _processWorkoutWithAI(String rawText) async {
+    final result=await SquadService().request('POST','/v1/ai/workouts',{'mode':'parse','text':rawText});
+    final workout=Map<String,dynamic>.from(result['workout']);
+    workout['dias']=[for(final day in workout['days']) {...Map<String,dynamic>.from(day),'exercicios':day['exercises']}];
+    return jsonEncode(workout);
   }
 
   String _localParseWorkoutFallback(String rawText) {

@@ -1,3 +1,5 @@
+import '../../core/providers/training_focus_provider.dart';
+import '../setup/training_focus_page.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -1175,6 +1177,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
             ),
 
           const SliverToBoxAdapter(child: ProfileAccountCard()),
+          SliverToBoxAdapter(child:ListTile(leading:const Icon(Icons.tune),title:const Text('Foco do treino'),subtitle:Text(ref.watch(trainingFocusProvider).valueOrNull=='calistenia'?'Calistenia':'Musculação'),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const TrainingFocusPage(editing:true))))),
 
           // ── Alerta de Mensalidade ───────────────────────────────────────────
           const SliverToBoxAdapter(child: ProfileMembershipCard()),

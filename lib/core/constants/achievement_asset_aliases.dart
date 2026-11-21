@@ -1,0 +1,23 @@
+// Identical achievement images share one asset; level badges remain separate.
+const achievementAssetAliases = <String, String>{
+  'abs_ouro.png': 'abs_bronze.png',
+  'abs_prata.png': 'abs_bronze.png',
+  'back_ouro.png': 'back_bronze.png',
+  'back_prata.png': 'back_bronze.png',
+  'bench_press_ouro.png': 'bench_press_bronze.png',
+  'bench_press_prata.png': 'bench_press_bronze.png',
+  'biceps_ouro.png': 'biceps_bronze.png',
+  'biceps_prata.png': 'biceps_bronze.png',
+  'calves_ouro.png': 'calves_bronze.png',
+  'calves_prata.png': 'calves_bronze.png',
+  'deadlift_ouro.png': 'deadlift_bronze.png',
+  'deadlift_prata.png': 'deadlift_bronze.png',
+  'squat_ouro.png': 'squat_bronze.png',
+  'squat_prata.png': 'squat_bronze.png',
+  'total_volume_ouro.png': 'total_volume_bronze.png',
+  'total_volume_prata.png': 'total_volume_bronze.png',
+  'week_streak_ouro.png': 'week_streak_bronze.png',
+  'week_streak_prata.png': 'week_streak_bronze.png',
+  'workouts_count_ouro.png': 'workouts_count_bronze.png',
+  'workouts_count_prata.png': 'workouts_count_bronze.png',
+};

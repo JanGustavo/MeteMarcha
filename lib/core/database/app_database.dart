@@ -754,7 +754,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
     };
   }
 
-  Future<int> importWorkoutSplit(Map<String, dynamic> data) async {
+  Future<int> importWorkoutSplit(Map<String, dynamic> data, {bool preservePrescription = false}) async {
     return await transaction(() async {
       final nome = data['nome'] ?? 'Treino Importado';
       final tipo = data['tipo'] ?? 'CUSTOM';
@@ -793,6 +793,9 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
                 ..limit(1))
               .getSingleOrNull();
 
+          if(preservePrescription && existingEx!=null && (existingEx.volume!=exData['volume'] || existingEx.tempoDescansoSegundos!=(exData['tempoDescansoSegundos'] ?? 90) || existingEx.equipamento!=(exData['equipamento'] ?? 'Livre') || existingEx.observacoes!=exData['observacoes'])) {
+            existingEx=null;
+          }
           int exId;
           if (existingEx != null) {
             exId = existingEx.id;

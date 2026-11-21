@@ -53,6 +53,12 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
   String _selectedMuscleFilter = 'Tudo';
   int? _expandedExerciseChartId;
 
+  Future<void> _deleteSession() async {
+    final confirmed=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:const Text('Excluir esta sessão?'),content:const Text('As séries e o registro deste treino serão removidos do histórico. A rotina e os stories já publicados serão preservados.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancelar')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Excluir sessão'))]));
+    if(confirmed!=true || !mounted) return;
+    try {await ref.read(workoutDaoProvider).deleteSession(widget.session.id);if(mounted)Navigator.pop(context);}
+    catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Não foi possível excluir o treino. Tente novamente.')));}
+  }
   @override
   Widget build(BuildContext context) {
     final exercisesAsync = ref.watch(allExercisesProvider);
@@ -64,6 +70,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        actions:[IconButton(tooltip:"Excluir sessão de treino",icon:const Icon(Icons.delete_outline),onPressed:()=>_deleteSession())],
         title: daysMapAsync.when(
           data: (daysMap) {
             final wDay = daysMap[widget.session.dayId];

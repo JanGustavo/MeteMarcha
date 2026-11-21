@@ -11,7 +11,7 @@ class SquadInviteService {
     final prefs = await SharedPreferences.getInstance();
     pending.value = prefs.getString('mm.pending.invite');
     if (pending.value != null)
-      globalProviderContainer.read(homeTabProvider.notifier).state = 3;
+      globalProviderContainer.read(homeTabProvider.notifier).state = 2;
     if (kIsWeb) {
       await receive(Uri.base.toString());
       return;
@@ -34,7 +34,7 @@ class SquadInviteService {
       return;
     await (await SharedPreferences.getInstance())
         .setString('mm.pending.invite', code);
-    globalProviderContainer.read(homeTabProvider.notifier).state = 3;
+    globalProviderContainer.read(homeTabProvider.notifier).state = 2;
     pending.value = code;
   }
 

@@ -1,7 +1,9 @@
 # Expansão para calistenia
 
-Proposta para a etapa seguinte à correção de stories e relatórios. A modalidade
-não está implementada ainda.
+A escolha inicial de foco (Academia/Musculação ou Calistenia), a alteração pelo
+perfil e o mini treino por IA com recursos disponíveis foram implementados.
+Os campos de origem da carga, equipamentos pessoais e progressões abaixo ainda
+são proposta para a próxima etapa.
 
 ## Entrada e navegação
 

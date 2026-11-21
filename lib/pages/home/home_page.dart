@@ -1,3 +1,5 @@
+import '../../core/providers/training_focus_provider.dart';
+import '../setup/training_focus_page.dart';
 import '../squads/squads_page.dart';
 // lib/pages/home/home_page.dart
 
@@ -55,6 +57,10 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final focus = ref.watch(trainingFocusProvider);
+    if(focus.isLoading) return const Scaffold(body:Center(child:CircularProgressIndicator()));
+    if(focus.hasError) return Scaffold(body:Center(child:TextButton(onPressed:()=>ref.read(trainingFocusProvider.notifier).load(),child:const Text('Tentar carregar preferências novamente'))));
+    if(focus.valueOrNull==null) return const TrainingFocusPage();
     ref.watch(foregroundSessionControllerProvider);
     ref.watch(widgetSyncControllerProvider);
     final splitsAsync = ref.watch(splitsProvider);
@@ -71,8 +77,8 @@ class _HomePageState extends ConsumerState<HomePage> {
             children: const [
               _TreinoTab(),
               ProgressPage(),
-              ProfilePage(),
               SquadsPage(),
+              ProfilePage(),
             ],
           ),
           bottomNavigationBar: BottomNavigationBar(
@@ -87,11 +93,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 icon: Icon(Icons.bar_chart_rounded),
                 label: 'Progresso',
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_rounded),
-                label: 'Perfil',
-              ),
               BottomNavigationBarItem(icon: Icon(Icons.groups_rounded), label: 'Squads'),
+              BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Perfil'),
             ],
           ),
         );
@@ -119,7 +122,7 @@ class _TreinoTab extends ConsumerWidget {
         backgroundColor: context.cardColor,
         title: const Text('Excluir treino?'),
         content: Text(
-          'Deseja excluir permanentemente a rotina "$displayName" e todo o histórico de execuções vinculado a ela?',
+          'Deseja excluir permanentemente a rotina "$displayName"? O histórico de execuções será preservado.',
         ),
         actions: [
           TextButton(
@@ -757,7 +760,7 @@ class _TreinoTab extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        '(Segure para opções)',
+                        'Use ⋯ para editar ou excluir',
                         style: TextStyle(
                           color: context.onSurface.withValues(alpha: 0.5),
                           fontSize: 10,
@@ -779,7 +782,7 @@ class _TreinoTab extends ConsumerWidget {
                             return GestureDetector(
                               onLongPress: () => _showSplitOptions(context, ref, split),
                               child: ChoiceChip(
-                                label: Text(split.nome.isNotEmpty ? split.nome : split.tipo),
+                                label: Row(mainAxisSize:MainAxisSize.min,children:[ConstrainedBox(constraints:const BoxConstraints(maxWidth:160),child:Text(split.nome.isNotEmpty ? split.nome : split.tipo,overflow:TextOverflow.ellipsis)),IconButton(tooltip:'Opções de ${split.nome.isNotEmpty ? split.nome : split.tipo}',onPressed:()=>_showSplitOptions(context,ref,split),icon:const Icon(Icons.more_horiz,size:20))]),
                                 selected: isSelected,
                                 onSelected: (selected) {
                                   if (selected) {
