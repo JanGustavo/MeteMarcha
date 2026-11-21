@@ -3,10 +3,16 @@
 package groups
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -15,6 +21,9 @@ import (
 )
 
 type Group struct {
+	Color     string    `json:"color"`
+	Theme     string    `json:"theme"`
+	Avatar    string    `json:"avatar"`
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
@@ -183,4 +192,41 @@ func normalizeCode(code string) string {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	code = strings.ReplaceAll(code, "-", "")
 	return strings.ReplaceAll(code, " ", "")
+}
+
+// UpdateStyle authorizes each write against the current membership.
+func (s *Service) UpdateStyle(ctx context.Context, userID, name, color, theme, avatar string) (Group, error) {
+	m, ok, err := s.store.membership(ctx, userID)
+	if err != nil {
+		return Group{}, err
+	}
+	if !ok {
+		return Group{}, ErrNotInGroup
+	}
+	if m.Role != "owner" {
+		return Group{}, platform.NewError(403, "owner_required", "Só o administrador pode editar o squad.")
+	}
+	name = strings.TrimSpace(name)
+	if utf8.RuneCountInString(name) < 1 || utf8.RuneCountInString(name) > 40 || !regexp.MustCompile(`^#[0-9a-fA-F]{6}$`).MatchString(color) || (theme != "classic" && theme != "energy" && theme != "calm") {
+		return Group{}, platform.NewError(422, "invalid_style", "Confira o nome, a cor e o tema.")
+	}
+	if avatar != "" {
+		raw, err := base64.StdEncoding.DecodeString(avatar)
+		if err != nil || len(raw) > 256*1024 {
+			return Group{}, platform.NewError(422, "invalid_avatar", "Use uma foto de até 256 KB.")
+		}
+		config, format, err := image.DecodeConfig(bytes.NewReader(raw))
+		if err != nil || (format != "jpeg" && format != "png") || config.Width > 1024 || config.Height > 1024 {
+			return Group{}, platform.NewError(422, "invalid_avatar", "Use uma foto JPEG ou PNG de até 1024 pixels.")
+		}
+	}
+	result, err := s.store.db.ExecContext(ctx, `UPDATE groups SET name=?, color=?, theme=?, avatar=? WHERE id=? AND EXISTS (SELECT 1 FROM group_members WHERE group_id=groups.id AND user_id=? AND role='owner')`, name, color, theme, avatar, m.GroupID, userID)
+	if err != nil {
+		return Group{}, err
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return Group{}, platform.NewError(403, "owner_required", "Só o administrador pode editar o squad.")
+	}
+	return s.store.group(ctx, m.GroupID)
 }

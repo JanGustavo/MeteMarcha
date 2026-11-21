@@ -1,7 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 
 plugins {
     id("com.android.application")
@@ -10,7 +9,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-android {
+extensions.configure<com.android.build.api.dsl.ApplicationExtension>("android") {
     namespace = "dev.jangustavo.metemarcha"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -39,10 +38,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "dev.jangustavo.metemarcha"
@@ -65,17 +60,11 @@ android {
         }
     }
 
-    applicationVariants.configureEach {
-        val variant = this
-        outputs.configureEach {
-            val output = this as? ApkVariantOutputImpl
-            output?.let {
-                val appName = "metemarcha"
-                val version = variant.versionName ?: "1.0"
-                val buildType = variant.buildType.name
-                it.outputFileName = "${appName}-${version}-${buildType}.apk"
-            }
-        }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
     }
 }
 

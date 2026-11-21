@@ -476,3 +476,33 @@ func TestFeedPagination(t *testing.T) {
 		t.Errorf("cursor inválido: %d %v", s, b)
 	}
 }
+
+func TestWorkoutReportSnapshotInFeed(t *testing.T) {
+	e := newEnv(t)
+	a, b := e.register("reporta"), e.register("reportb")
+	outsider := e.register("reportoutside")
+	e.newGroup("Reports", a, b)
+	e.newGroup("Other", outsider)
+	raw := `{"version":1,"title":"Treino A","date":"2026-11-20","duration_seconds":60,"sets":[{"exercise":"Supino","number":1,"weight_kg":20,"reps":10,"side":"ambos","completed":true,"equipment":"barra","notes":"","at":"2026-11-20"}]}`
+	status, _, body := e.publish(a.token, keyN("report", 1), map[string]string{"workout_report": raw}, jpegBytes(20, 20))
+	if status != 201 {
+		t.Fatalf("publish: %d %v", status, body)
+	}
+	_, items := e.feed(b)
+	if len(items) != 1 {
+		t.Fatal(items)
+	}
+	report := items[0].(map[string]any)["workout_report"].(map[string]any)
+	if report["title"] != "Treino A" || len(report["sets"].([]any)) != 1 {
+		t.Fatal(report)
+	}
+	_, outside := e.feed(outsider)
+	if len(outside) != 0 {
+		t.Fatal("report leaked")
+	}
+	e.clock.Advance(25 * time.Hour)
+	_, items = e.feed(b)
+	if len(items) != 0 {
+		t.Fatal("expired report in feed")
+	}
+}

@@ -1,3 +1,4 @@
+import '../squads/squads_page.dart';
 // lib/pages/home/home_page.dart
 
 import 'package:flutter/material.dart';
@@ -71,6 +72,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               _TreinoTab(),
               ProgressPage(),
               ProfilePage(),
+              SquadsPage(),
             ],
           ),
           bottomNavigationBar: BottomNavigationBar(
@@ -89,6 +91,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 icon: Icon(Icons.person_rounded),
                 label: 'Perfil',
               ),
+              BottomNavigationBarItem(icon: Icon(Icons.groups_rounded), label: 'Squads'),
             ],
           ),
         );

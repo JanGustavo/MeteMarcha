@@ -1,6 +1,7 @@
 package groups
 
 import (
+	"html/template"
 	"net/http"
 	"time"
 
@@ -15,6 +16,15 @@ func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
 // Register recebe "require" (o protetor de rotas do módulo auth) como parâmetro:
 // assim este módulo não precisa saber como a autenticação funciona por dentro.
 func (h *Handler) Register(mux *http.ServeMux, require func(http.HandlerFunc) http.HandlerFunc) {
+	mux.HandleFunc("GET /.well-known/assetlinks.json", func(w http.ResponseWriter, r *http.Request) {
+		platform.WriteJSON(w, 200, []any{map[string]any{"relation": []string{"delegate_permission/common.handle_all_urls"}, "target": map[string]any{"namespace": "android_app", "package_name": "dev.jangustavo.metemarcha", "sha256_cert_fingerprints": []string{"4A:4C:02:74:A1:FE:2C:2F:DF:23:A7:7E:A9:82:4D:BF:21:2D:BA:E1:21:D1:54:2E:C6:CA:01:20:E8:99:13:BC"}}}})
+	})
+	mux.HandleFunc("GET /invite", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+		template.Must(template.New("invite").Parse(`<!doctype html><html lang="pt-BR"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Convite · Mete Marcha</title><body style="background:#111827;color:#fff;font:18px system-ui;padding:32px;max-width:540px;margin:auto"><h1>Bora treinar juntos?</h1><p>Abra o Mete Marcha, entre na sua conta e vá a <b>Squads → Tenho um convite</b>.</p><p>Copie e cole este código:</p><p style="overflow-wrap:anywhere;padding:20px;background:#273449">{{.}}</p><p>O convite tem prazo e vale para uma pessoa. O app confirma se ele ainda está disponível.</p></body></html>`)).Execute(w, r.URL.Query().Get("code"))
+	})
+	mux.HandleFunc("PATCH /v1/groups/me", require(h.update))
 	mux.HandleFunc("POST /v1/groups", require(h.create))
 	mux.HandleFunc("GET /v1/groups/me", require(h.mine))
 	mux.HandleFunc("GET /v1/groups", require(h.list))
@@ -82,7 +92,14 @@ func (h *Handler) mine(w http.ResponseWriter, r *http.Request) {
 		platform.WriteError(w, r, err)
 		return
 	}
-	platform.WriteJSON(w, http.StatusOK, map[string]any{"group": h.view(g), "members": members})
+	platform.WriteJSON(w, http.StatusOK, map[string]any{"group": h.view(g), "members": members, "can_edit": func() bool {
+		for _, member := range members {
+			if member.UserID == auth.UserFrom(r.Context()).ID {
+				return member.Role == "owner"
+			}
+		}
+		return false
+	}()})
 }
 
 func (h *Handler) invite(w http.ResponseWriter, r *http.Request) {
@@ -121,4 +138,23 @@ func (h *Handler) leave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name   string `json:"name"`
+		Color  string `json:"color"`
+		Theme  string `json:"theme"`
+		Avatar string `json:"avatar"`
+	}
+	if err := platform.ReadJSON(w, r, &req); err != nil {
+		platform.WriteError(w, r, err)
+		return
+	}
+	g, err := h.svc.UpdateStyle(r.Context(), auth.UserFrom(r.Context()).ID, req.Name, req.Color, req.Theme, req.Avatar)
+	if err != nil {
+		platform.WriteError(w, r, err)
+		return
+	}
+	platform.WriteJSON(w, 200, map[string]any{"group": h.view(g)})
 }

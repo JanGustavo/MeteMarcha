@@ -1,3 +1,6 @@
+import '../squads/workout_report.dart';
+import '../squads/squads_page.dart';
+import '../../core/services/squad_service.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -74,7 +77,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   List<ExerciseLog> _prevLogs = []; // último treino deste exercício
   double _max1RM = 0.0; // recorde máximo 1RM histórico do exercício
   ExerciseLog?
-  _max1RMLog; // registro do recorde máximo 1RM histórico do exercício
+      _max1RMLog; // registro do recorde máximo 1RM histórico do exercício
 
   // ── Inputs ──────────────────────────────────────────────────────
   final _pesoCtrl = TextEditingController(text: '0');
@@ -143,8 +146,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       });
 
       if (_globalOverlayStream == null) {
-        _globalOverlayStream = FlutterOverlayWindow.overlayListener
-            .asBroadcastStream();
+        _globalOverlayStream =
+            FlutterOverlayWindow.overlayListener.asBroadcastStream();
         _globalOverlayStream!.listen(
           (_) {},
         ); // Dummy listener to keep underlying subscription alive
@@ -209,7 +212,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       final db = ref.read(databaseProvider);
       final session = await (db.select(
         db.workoutSessions,
-      )..where((s) => s.id.equals(widget.sessionId))).getSingleOrNull();
+      )..where((s) => s.id.equals(widget.sessionId)))
+          .getSingleOrNull();
       if (session != null) {
         final startTime = DateTime.tryParse(session.data);
         if (startTime != null) {
@@ -301,15 +305,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       if (!isOverlayActive) return;
 
       final timerState = ref.read(restTimerProvider);
-      final completedLogs = await ref
-          .read(logDaoProvider)
-          .getLogsForSession(widget.sessionId);
+      final completedLogs =
+          await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
       final completedIds = completedLogs.map((l) => l.exerciseId).toSet();
 
       final exercisesList = _exercises.map((e) => e.nome).toList();
-      final exercisesCompleted = _exercises
-          .map((e) => completedIds.contains(e.id))
-          .toList();
+      final exercisesCompleted =
+          _exercises.map((e) => completedIds.contains(e.id)).toList();
 
       final data = {
         'type': 'state_update',
@@ -355,16 +357,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   // ── Data loading ────────────────────────────────────────────────
 
   Future<void> _loadExercises() async {
-    final exs = await ref
-        .read(exerciseDaoProvider)
-        .getExercisesForDay(widget.dayId);
+    final exs =
+        await ref.read(exerciseDaoProvider).getExercisesForDay(widget.dayId);
     if (!mounted) return;
 
     int initialIndex = 0;
     try {
-      final currentLogs = await ref
-          .read(logDaoProvider)
-          .getLogsForSession(widget.sessionId);
+      final currentLogs =
+          await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
       if (!mounted) return;
       if (currentLogs.isNotEmpty) {
         final sortedLogs = List<ExerciseLog>.from(currentLogs)
@@ -388,9 +388,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
           .getPreviousCompletedSession(widget.dayId, widget.sessionId);
       if (!mounted) return;
       if (prevSession != null) {
-        final prevLogs = await ref
-            .read(logDaoProvider)
-            .getLogsForSession(prevSession.id);
+        final prevLogs =
+            await ref.read(logDaoProvider).getLogsForSession(prevSession.id);
         if (!mounted) return;
         prevVol = prevLogs.fold<double>(
           0.0,
@@ -421,29 +420,26 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     if (!mounted) return;
 
     // Busca recorde máximo 1RM histórico
-    final prevMax1RM = await ref
-        .read(logDaoProvider)
-        .getMax1RMForExercise(ex.id);
+    final prevMax1RM =
+        await ref.read(logDaoProvider).getMax1RMForExercise(ex.id);
     if (!mounted) return;
-    final prevMax1RMLog = await ref
-        .read(logDaoProvider)
-        .getMax1RMLogForExercise(ex.id);
+    final prevMax1RMLog =
+        await ref.read(logDaoProvider).getMax1RMLogForExercise(ex.id);
     if (!mounted) return;
 
     // Busca logs já realizados na sessão atual para este exercício
-    final currentLogs = await ref
-        .read(logDaoProvider)
-        .getLogsForSession(widget.sessionId);
+    final currentLogs =
+        await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
     if (!mounted) return;
-    final exerciseSessionLogs = currentLogs
-        .where((l) => l.exerciseId == ex.id)
-        .toList();
+    final exerciseSessionLogs =
+        currentLogs.where((l) => l.exerciseId == ex.id).toList();
 
     final completedIds = currentLogs.map((l) => l.exerciseId).toSet();
     final hasOtherUncompleted = _exercises.asMap().entries.any(
-      (entry) =>
-          entry.key != _currentIndex && !completedIds.contains(entry.value.id),
-    );
+          (entry) =>
+              entry.key != _currentIndex &&
+              !completedIds.contains(entry.value.id),
+        );
 
     final isBodyWeight = ex.equipamento.trim().toLowerCase() == 'peso corporal';
 
@@ -464,10 +460,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         0.0,
         (sum, log) => sum + (log.peso * log.repeticoes),
       );
-      final numUniqueSeries = exerciseSessionLogs
-          .map((l) => l.serie)
-          .toSet()
-          .length;
+      final numUniqueSeries =
+          exerciseSessionLogs.map((l) => l.serie).toSet().length;
       _currentSerie = numUniqueSeries + 1;
       _currentRpe = null;
       _currentRir = null;
@@ -509,12 +503,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             : lastPeso.toString();
         _repsCtrl.text = exerciseSessionLogs.last.repeticoes.toString();
       } else if (prev.isNotEmpty) {
-        final totalPeso = prev
-            .map((l) => l.peso)
-            .fold<double>(0.0, (a, b) => a + b);
-        final totalReps = prev
-            .map((l) => l.repeticoes)
-            .fold<int>(0, (a, b) => a + b);
+        final totalPeso =
+            prev.map((l) => l.peso).fold<double>(0.0, (a, b) => a + b);
+        final totalReps =
+            prev.map((l) => l.repeticoes).fold<int>(0, (a, b) => a + b);
         double avgPeso = ((totalPeso / prev.length) * 2).round() / 2.0;
         final avgReps = (totalReps / prev.length).round();
 
@@ -647,9 +639,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   }
 
   void _startRestTimer(int seconds) {
-    ref
-        .read(restTimerProvider.notifier)
-        .startRest(
+    ref.read(restTimerProvider.notifier).startRest(
           seconds,
           dayId: widget.dayId,
           dayName: widget.dayName,
@@ -669,14 +659,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   double _getWeightStep() {
     if (_exercises.isEmpty) return 0.5;
     final ex = _current;
-    final equip = (_equipamentoSelecionado ?? ex.equipamento)
-        .trim()
-        .toLowerCase();
+    final equip =
+        (_equipamentoSelecionado ?? ex.equipamento).trim().toLowerCase();
     final muscle = ex.grupoMuscular.trim().toLowerCase();
     final isUnilateral = _executandoUnilateral;
 
-    final isLegs =
-        muscle.contains('perna') ||
+    final isLegs = muscle.contains('perna') ||
         muscle.contains('coxa') ||
         muscle.contains('gluteo') ||
         muscle.contains('quadriceps') ||
@@ -684,8 +672,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         muscle.contains('panturrilha') ||
         muscle.contains('leg');
 
-    final isLargeUpper =
-        muscle.contains('costas') ||
+    final isLargeUpper = muscle.contains('costas') ||
         muscle.contains('dorsal') ||
         muscle.contains('back') ||
         muscle.contains('peito') ||
@@ -839,9 +826,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final obs = _obsCtrl.text.trim();
     final logDao = ref.read(logDaoProvider);
     final now = DateTime.now().toIso8601String();
-    final Value<String?> valueObs = obs.isNotEmpty
-        ? Value<String?>(obs)
-        : const Value<String?>.absent();
+    final Value<String?> valueObs =
+        obs.isNotEmpty ? Value<String?>(obs) : const Value<String?>.absent();
 
     final double new1RM = reps == 1 ? peso : peso * (1 + reps / 30.0);
     final double prevMax1RM = _max1RM;
@@ -885,12 +871,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             lado: Value(_lado),
             equipamento: Value(_equipamentoSelecionado),
             observacoes: valueObs,
-            rpe: _currentRpe != null
-                ? Value(_currentRpe)
-                : const Value.absent(),
-            rir: _currentRir != null
-                ? Value(_currentRir)
-                : const Value.absent(),
+            rpe:
+                _currentRpe != null ? Value(_currentRpe) : const Value.absent(),
+            rir:
+                _currentRir != null ? Value(_currentRir) : const Value.absent(),
           ),
         );
         insertedIds.add(id);
@@ -1049,9 +1033,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final logDao = ref.read(logDaoProvider);
 
     // Encontra todos os logs desta série para o exercício atual na sessão atual
-    final entriesToDelete = _setsLogged
-        .where((e) => e.serie == serieNum)
-        .toList();
+    final entriesToDelete =
+        _setsLogged.where((e) => e.serie == serieNum).toList();
 
     for (final entry in entriesToDelete) {
       if (entry.id != null) {
@@ -1061,9 +1044,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
     // Re-sequenciar as séries seguintes no banco
     final dbLogs = await logDao.getLogsForSession(widget.sessionId);
-    final exerciseLogs = dbLogs
-        .where((l) => l.exerciseId == _current.id)
-        .toList();
+    final exerciseLogs =
+        dbLogs.where((l) => l.exerciseId == _current.id).toList();
     for (final log in exerciseLogs) {
       if (log.serie > serieNum) {
         await logDao.updateLogSerie(log.id, log.serie - 1);
@@ -1119,9 +1101,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     child: Icon(
                       Icons.edit_note_rounded,
                       size: 24,
-                      color: isDark
-                          ? AppColors.primaryLight
-                          : AppColors.primary,
+                      color:
+                          isDark ? AppColors.primaryLight : AppColors.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1131,9 +1112,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
-                        color: isDark
-                            ? AppColors.primaryLight
-                            : AppColors.primary,
+                        color:
+                            isDark ? AppColors.primaryLight : AppColors.primary,
                       ),
                     ),
                   ),
@@ -1174,11 +1154,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color:
-                                          (isEsquerdo
-                                                  ? AppColors.info
-                                                  : AppColors.success)
-                                              .withValues(alpha: 0.12),
+                                      color: (isEsquerdo
+                                              ? AppColors.info
+                                              : AppColors.success)
+                                          .withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Row(
@@ -1187,9 +1166,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                         Icon(
                                           isEsquerdo
                                               ? Icons
-                                                    .keyboard_arrow_left_rounded
+                                                  .keyboard_arrow_left_rounded
                                               : Icons
-                                                    .keyboard_arrow_right_rounded,
+                                                  .keyboard_arrow_right_rounded,
                                           size: 14,
                                           color: isEsquerdo
                                               ? AppColors.info
@@ -1242,27 +1221,26 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                 ),
                               ),
                               dropdownColor: context.cardColor,
-                              items:
-                                  {
-                                        if (c.equipamento != null &&
-                                            !equipmentOptions.contains(
-                                              c.equipamento,
-                                            ))
-                                          c.equipamento!,
-                                        ...equipmentOptions,
-                                      }
-                                      .map(
-                                        (option) => DropdownMenuItem(
-                                          value: option,
-                                          child: Text(
-                                            option,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                            ),
-                                          ),
+                              items: {
+                                if (c.equipamento != null &&
+                                    !equipmentOptions.contains(
+                                      c.equipamento,
+                                    ))
+                                  c.equipamento!,
+                                ...equipmentOptions,
+                              }
+                                  .map(
+                                    (option) => DropdownMenuItem(
+                                      value: option,
+                                      child: Text(
+                                        option,
+                                        style: const TextStyle(
+                                          fontSize: 14,
                                         ),
-                                      )
-                                      .toList(),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
                               onChanged: (val) {
                                 dialogState(() {
                                   c.equipamento = val;
@@ -1360,8 +1338,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             // Validação e Salvamento
                             final logDao = ref.read(logDaoProvider);
                             for (final c in controllers) {
-                              final peso =
-                                  double.tryParse(
+                              final peso = double.tryParse(
                                     c.pesoCtrl.text.replaceAll(',', '.'),
                                   ) ??
                                   0.0;
@@ -1662,17 +1639,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     int totalSetsCount = 0;
 
     try {
-      final allSessionLogs = await ref
-          .read(logDaoProvider)
-          .getLogsForSession(widget.sessionId);
+      final allSessionLogs =
+          await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
       totalVolume = allSessionLogs.fold<double>(
         0.0,
         (sum, log) => sum + (log.peso * log.repeticoes),
       );
-      uniqueExercisesCount = allSessionLogs
-          .map((log) => log.exerciseId)
-          .toSet()
-          .length;
+      uniqueExercisesCount =
+          allSessionLogs.map((log) => log.exerciseId).toSet().length;
       totalSetsCount = allSessionLogs
           .map((log) => '${log.exerciseId}_${log.serie}')
           .toSet()
@@ -1723,7 +1697,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       final db = ref.read(databaseProvider);
       completedSession = await (db.select(
         db.workoutSessions,
-      )..where((s) => s.id.equals(widget.sessionId))).getSingleOrNull();
+      )..where((s) => s.id.equals(widget.sessionId)))
+          .getSingleOrNull();
     } catch (e) {
       debugPrint('Erro ao recuperar sessao finalizada: $e');
     }
@@ -1753,9 +1728,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
   Future<void> _shareWorkoutAsImage() async {
     try {
-      final boundary =
-          _shareCardKey.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
+      final boundary = _shareCardKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
       if (boundary == null) return;
 
       final image = await boundary.toImage(pixelRatio: 3.0);
@@ -1994,6 +1968,35 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     ),
                     const SizedBox(height: 20),
 
+                    if (completedSession != null)
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: FilledButton.icon(
+                              icon: const Icon(Icons.groups_outlined),
+                              label: const Text('Publicar relatório no squad'),
+                              onPressed: () async {
+                                try {
+                                  final report = await snapshotWorkout(
+                                      ref.read(databaseProvider),
+                                      completedSession);
+                                  if ((report['sets'] as List).isEmpty)
+                                    throw Exception(
+                                        'Não há execuções para compartilhar.');
+                                  final cover = await reportCover(report);
+                                  if (!mounted) return;
+                                  await Navigator.of(this.context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) => StoryComposer(
+                                              api: SquadService(),
+                                              initialPhoto: cover,
+                                              report: report)));
+                                } catch (e) {
+                                  if (mounted)
+                                    ScaffoldMessenger.of(this.context)
+                                        .showSnackBar(SnackBar(
+                                            content: Text(e.toString())));
+                                }
+                              })),
                     // Buttons Area
                     // 1. Compartilhar Imagem
                     SizedBox(
@@ -2050,8 +2053,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         onPressed: () {
                           final dayNameClean =
                               widget.dayName.toLowerCase().contains('treino')
-                              ? widget.dayName
-                              : 'Treino de ${widget.dayName}';
+                                  ? widget.dayName
+                                  : 'Treino de ${widget.dayName}';
                           final durationMin = (_sessionSecs / 60).round();
                           final formattedVolume = _formatVolume(totalVolume);
                           final shareText =
@@ -2469,7 +2472,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                 setState(() {
                                   _currentIndex =
                                       (_currentIndex - 1 + _exercises.length) %
-                                      _exercises.length;
+                                          _exercises.length;
                                 });
                                 await _loadExerciseContext();
                               }
@@ -2578,7 +2581,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                   // ── Nome do exercício ──────────────────────────
                   Text(
                     ex.nome,
-                    style: Theme.of(context).textTheme.headlineLarge
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineLarge
                         ?.copyWith(fontSize: 26, letterSpacing: -0.5),
                   ),
 
@@ -2914,22 +2919,21 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                       ),
                     ),
                     dropdownColor: context.cardColor,
-                    items:
-                        {
-                              if (_equipamentoSelecionado != null &&
-                                  !equipmentOptions.contains(
-                                    _equipamentoSelecionado,
-                                  ))
-                                _equipamentoSelecionado!,
-                              ...equipmentOptions,
-                            }
-                            .map(
-                              (option) => DropdownMenuItem(
-                                value: option,
-                                child: Text(option),
-                              ),
-                            )
-                            .toList(),
+                    items: {
+                      if (_equipamentoSelecionado != null &&
+                          !equipmentOptions.contains(
+                            _equipamentoSelecionado,
+                          ))
+                        _equipamentoSelecionado!,
+                      ...equipmentOptions,
+                    }
+                        .map(
+                          (option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (val) {
                       setState(() {
                         _equipamentoSelecionado = val;

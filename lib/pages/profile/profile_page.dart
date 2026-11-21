@@ -29,6 +29,7 @@ import 'package:gym_tracker/pages/profile/widgets/profile_weight_row.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_achievement_card.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_audio_settings_card.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_data_backup_card.dart';
+import 'package:gym_tracker/pages/profile/widgets/profile_account_card.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -1172,6 +1173,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                 onChanged: _changeOverlayPermission,
               ),
             ),
+
+          const SliverToBoxAdapter(child: ProfileAccountCard()),
 
           // ── Alerta de Mensalidade ───────────────────────────────────────────
           const SliverToBoxAdapter(child: ProfileMembershipCard()),
