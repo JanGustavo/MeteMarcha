@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:share_plus/share_plus.dart';
+import 'squad_editor.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../core/services/account_service.dart';
@@ -18,7 +20,7 @@ class _SquadsPageState extends State<SquadsPage> {
   List<dynamic> members = [], stories = [];
   Map<String, String> headers = {};
   String? error, cursor;
-  bool loading = true, busy = false;
+  bool loading = true, busy = false, canEdit = false;
   @override
   void initState() {
     super.initState();
@@ -40,6 +42,7 @@ class _SquadsPageState extends State<SquadsPage> {
       headers = await api.headers();
       final result = await api.request('GET', '/v1/groups/me');
       group = result['group'];
+      canEdit = result['can_edit'] == true;
       members = result['members'] ?? [];
       final feed = await api.request('GET', '/v1/feed');
       stories = feed['stories'];
@@ -70,6 +73,20 @@ class _SquadsPageState extends State<SquadsPage> {
   }
 
   Future<void> enter(bool create) async {
+    if (create) {
+      final style = await Navigator.push<Map<String, dynamic>>(
+          context, MaterialPageRoute(builder: (_) => const SquadEditor()));
+      if (style == null) return;
+      await action(() async {
+        await api.request('POST', '/v1/groups', {'name': style['name']});
+        try {
+          await api.request('PATCH', '/v1/groups/me', style);
+        } finally {
+          await load();
+        }
+      });
+      return;
+    }
     final controller = TextEditingController();
     final value = await showDialog<String>(
         context: context,
@@ -77,7 +94,7 @@ class _SquadsPageState extends State<SquadsPage> {
               title: Text(create ? 'Criar squad' : 'Entrar por convite'),
               content: TextField(
                   controller: controller,
-                  maxLength: create ? 80 : 100,
+                  maxLength: 300,
                   decoration: InputDecoration(
                       labelText:
                           create ? 'Nome do squad' : 'Código do convite')),
@@ -95,8 +112,10 @@ class _SquadsPageState extends State<SquadsPage> {
             ));
     if (value == null) return;
     await action(() async {
-      await api.request('POST', create ? '/v1/groups' : '/v1/groups/join',
-          {create ? 'name' : 'code': value});
+      await api.request('POST', create ? '/v1/groups' : '/v1/groups/join', {
+        create ? 'name' : 'code':
+            Uri.tryParse(value)?.queryParameters['code'] ?? value
+      });
       await load();
     });
   }
@@ -104,20 +123,13 @@ class _SquadsPageState extends State<SquadsPage> {
   Future<void> invite() => action(() async {
         final result = await api.request('POST', '/v1/groups/me/invites');
         if (!mounted) return;
-        await showDialog<void>(
-            context: context,
-            builder: (context) => AlertDialog(
-                    title: const Text('Convide para o squad'),
-                    content: SelectableText(result['invite']['code']),
-                    actions: [
-                      TextButton(
-                          onPressed: () async {
-                            await Clipboard.setData(
-                                ClipboardData(text: result['invite']['code']));
-                            if (context.mounted) Navigator.pop(context);
-                          },
-                          child: const Text('Copiar código'))
-                    ]));
+        final code = result['invite']['code'];
+        await SharePlus.instance.share(ShareParams(
+            text:
+                'Bora treinar com a gente no ${group!['name']}! 💪\n${api.url('/invite').replace(queryParameters: {
+                  'code': code
+                })}\nAbra o Mete Marcha → Squads → Tenho um convite e cole o link ou o código: $code\nO convite tem prazo e vale para uma pessoa.',
+            subject: 'Convite para ${group!['name']}'));
       });
   Future<void> compose() async {
     final posted = await Navigator.push<bool>(
@@ -176,41 +188,117 @@ class _SquadsPageState extends State<SquadsPage> {
                         child: ListView(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                             children: [
-                              Text(group!['name'],
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium),
+                              Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                      color: Color(int.parse(
+                                                  (group!['color'] ?? '#7C6EF6')
+                                                      .substring(1),
+                                                  radix: 16) |
+                                              0xff000000)
+                                          .withValues(
+                                              alpha: group!['theme'] == 'energy'
+                                                  ? .32
+                                                  : group!['theme'] == 'calm'
+                                                      ? .08
+                                                      : .16),
+                                      borderRadius: BorderRadius.circular(24)),
+                                  child: Column(children: [
+                                    CircleAvatar(
+                                        radius: 40,
+                                        backgroundImage: (group!['avatar'] ??
+                                                    '')
+                                                .isEmpty
+                                            ? null
+                                            : MemoryImage(
+                                                base64Decode(group!['avatar'])),
+                                        child: (group!['avatar'] ?? '').isEmpty
+                                            ? Text(
+                                                (group!['name'] as String)
+                                                    .substring(0, 1)
+                                                    .toUpperCase(),
+                                                style: const TextStyle(
+                                                    fontSize: 32))
+                                            : null),
+                                    const SizedBox(height: 12),
+                                    Text(group!['name'],
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium),
+                                    TextButton.icon(
+                                        icon: const Icon(Icons.people_outline),
+                                        label: Text(
+                                            '${members.length} de ${group!['max_members'] ?? 10} membros · ver todos'),
+                                        onPressed: () => showModalBottomSheet<
+                                                void>(
+                                            context: context,
+                                            isScrollControlled: true,
+                                            showDragHandle: true,
+                                            builder: (context) =>
+                                                DraggableScrollableSheet(
+                                                    expand: false,
+                                                    initialChildSize: .5,
+                                                    minChildSize: .3,
+                                                    maxChildSize: .9,
+                                                    builder: (context,
+                                                            controller) =>
+                                                        ListView(
+                                                            controller:
+                                                                controller,
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .all(20),
+                                                            children: [
+                                                              Text(
+                                                                  'Quem treina junto',
+                                                                  style: Theme.of(
+                                                                          context)
+                                                                      .textTheme
+                                                                      .headlineSmall),
+                                                              for (final m
+                                                                  in members)
+                                                                ListTile(
+                                                                    leading: CircleAvatar(
+                                                                        child: Text((m['display_name'] as String).substring(
+                                                                            0,
+                                                                            1))),
+                                                                    title: Text(m[
+                                                                        'display_name']),
+                                                                    subtitle: Text(m['role'] ==
+                                                                            'owner'
+                                                                        ? 'Administrador'
+                                                                        : 'Membro'))
+                                                            ])))),
+                                    if (canEdit)
+                                      TextButton.icon(
+                                          icon: const Icon(Icons.edit_outlined),
+                                          label:
+                                              const Text('Personalizar squad'),
+                                          onPressed: busy
+                                              ? null
+                                              : () async {
+                                                  final style =
+                                                      await Navigator.push<
+                                                              Map<String,
+                                                                  dynamic>>(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                              builder: (_) =>
+                                                                  SquadEditor(
+                                                                      group:
+                                                                          group)));
+                                                  if (style != null)
+                                                    await action(() async {
+                                                      await api.request(
+                                                          'PATCH',
+                                                          '/v1/groups/me',
+                                                          style);
+                                                      await load();
+                                                    });
+                                                }),
+                                  ])),
                               Wrap(spacing: 8, children: [
-                                TextButton(
-                                    onPressed: () => showDialog<void>(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                                title: const Text('Membros'),
-                                                content:
-                                                    Column(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                      for (final m in members)
-                                                        ListTile(
-                                                            title: Text(m[
-                                                                'display_name']),
-                                                            subtitle: Text(m[
-                                                                        'role'] ==
-                                                                    'owner'
-                                                                ? 'Administrador'
-                                                                : 'Membro'))
-                                                    ]),
-                                                actions: [
-                                                  TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                              context),
-                                                      child:
-                                                          const Text('Fechar'))
-                                                ])),
-                                    child: Text(
-                                        '${members.length}/${group!['max_members'] ?? 10} membros')),
                                 TextButton(
                                     onPressed: busy ? null : invite,
                                     child: const Text('Convidar')),
@@ -537,19 +625,34 @@ class _ComposerState extends State<_Composer> {
       child: Scaffold(
           appBar: AppBar(title: const Text('Publicar story')),
           body: ListView(padding: const EdgeInsets.all(20), children: [
+            Text('Um momento do seu treino.',
+                style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: 8),
             const Text(
-                'Compartilhe um momento do treino. O story fica no squad por 24 horas.'),
-            const SizedBox(height: 20),
-            Wrap(spacing: 12, children: [
-              OutlinedButton.icon(
-                  onPressed: busy ? null : () => pick(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Câmera')),
-              OutlinedButton.icon(
-                  onPressed: busy ? null : () => pick(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Galeria'))
-            ]),
+                'Foto, legenda e uma música para acompanhar. Disponível no squad por 24 horas.'),
+            const SizedBox(height: 24),
+            Material(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(20),
+                child: Column(children: [
+                  ListTile(
+                      enabled: !busy,
+                      contentPadding: const EdgeInsets.all(16),
+                      leading: const Icon(Icons.camera_alt_outlined),
+                      title: const Text('Registrar agora'),
+                      subtitle: const Text('Abra a câmera e capture o treino'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => pick(ImageSource.camera)),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
+                      enabled: !busy,
+                      contentPadding: const EdgeInsets.all(16),
+                      leading: const Icon(Icons.photo_library_outlined),
+                      title: const Text('Escolher da galeria'),
+                      subtitle: const Text('Use uma foto que você já tirou'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => pick(ImageSource.gallery)),
+                ])),
             if (photo != null)
               FutureBuilder(
                   future: photo!.readAsBytes(),

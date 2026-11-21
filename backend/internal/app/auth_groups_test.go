@@ -250,3 +250,26 @@ func TestCatalogInvalidStopsStartup(t *testing.T) {
 		t.Fatal("catálogo inválido deveria impedir o início")
 	}
 }
+
+func TestGroupStyleOwnerOnly(t *testing.T) {
+	e := newEnv(t)
+	owner := e.register("styleowner")
+	member := e.register("stylemember")
+	e.do("POST", "/v1/groups", owner.token, map[string]string{"name": "Original"})
+	_, invite := e.do("POST", "/v1/groups/me/invites", owner.token, nil)
+	e.do("POST", "/v1/groups/join", member.token, map[string]string{"code": str(invite, "invite", "code")})
+	style := map[string]string{"name": "Os Treinamole", "color": "#279E83", "theme": "calm", "avatar": ""}
+	if status, _ := e.do("PATCH", "/v1/groups/me", member.token, style); status != 403 {
+		t.Fatalf("member edit: %d", status)
+	}
+	if status, body := e.do("PATCH", "/v1/groups/me", owner.token, style); status != 200 || str(body, "group", "name") != "Os Treinamole" {
+		t.Fatalf("owner edit: %d %v", status, body)
+	}
+	if status, body := e.do("GET", "/v1/groups/me", member.token, nil); status != 200 || str(body, "group", "color") != "#279E83" || body["can_edit"] != false {
+		t.Fatalf("member read: %d %v", status, body)
+	}
+	style["avatar"] = "invalid"
+	if status, _ := e.do("PATCH", "/v1/groups/me", owner.token, style); status != 422 {
+		t.Fatalf("bad photo: %d", status)
+	}
+}
