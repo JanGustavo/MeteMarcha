@@ -67,6 +67,25 @@ programa, então reinicie depois de alterá-lo. Se algo estiver errado (arquivo 
 vazio, id repetido), o programa **não inicia** e lista todos os problemas.
 Formatos aceitos: `.mp3`, `.m4a`, `.ogg`, `.wav`.
 
+Para importar um lote de músicas abertas, instale `ffmpeg` (inclui `ffprobe`) e rode:
+
+```sh
+python3 tools/import_open_music.py --output ./data/music --limit 50
+```
+
+O importador busca faixas CC0 no Openverse, confirma a licença na página original
+do Freesound, baixa o áudio, confere a duração com `ffprobe` e grava `catalog.json`
+de forma atômica. Cada entrada guarda a fonte, a licença e o SHA-256 do áudio.
+Arquivos que excedam 15 MB ou cuja licença não seja confirmada são descartados.
+Reinicie a API depois de publicar o catálogo. Use `--queries` para escolher as buscas.
+
+O app também pode enviar áudio do celular por `POST /v1/tracks/upload`: MP3, M4A,
+OGG ou WAV de até 15 MB e dez minutos. O servidor precisa de `ffprobe` no PATH.
+Esses arquivos ficam associados à conta que os enviou e não entram no catálogo
+compartilhado; outros membros só os acessam através de stories ainda visíveis.
+A sincronização do catálogo preserva as faixas pessoais. Há um limite de 20
+arquivos por conta, e o reenvio do mesmo arquivo reutiliza a faixa existente.
+
 ## Configuração
 
 Tudo por variáveis de ambiente `MM_*`, todas opcionais (veja [`.env.example`](.env.example)).

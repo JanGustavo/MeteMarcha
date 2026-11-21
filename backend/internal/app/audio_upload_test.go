@@ -2,12 +2,15 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
 	"os/exec"
 	"testing"
+
+	"github.com/JanGustavo/MeteMarcha/backend/internal/media"
 )
 
 func waveAudio() []byte {
@@ -85,5 +88,15 @@ func TestPrivateAudioUpload(t *testing.T) {
 	}
 	if n := e.count(`SELECT COUNT(*) FROM tracks WHERE owner_id=?`, owner.id); n != 1 {
 		t.Fatalf("duplicate personal audio: %d", n)
+	}
+	storage, err := media.NewStorage(e.cfg.MediaDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := media.NewService(e.app.DB, storage, e.cfg, e.clock.Now).SyncCatalog(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if n := e.count(`SELECT COUNT(*) FROM tracks WHERE owner_id=? AND active=1`, owner.id); n != 1 {
+		t.Fatalf("catalog sync removed personal audio: %d", n)
 	}
 }
