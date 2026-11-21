@@ -47,6 +47,23 @@ class SquadService {
     return data;
   }
 
+  Future<Map<String, dynamic>> uploadAudio(XFile audio) async {
+    final bytes = await audio.readAsBytes();
+    if (bytes.length > 15 * 1024 * 1024)
+      throw const AccountException('Escolha um áudio de até 15 MB.');
+    final upload = http.MultipartRequest('POST', url('/v1/tracks/upload'));
+    upload.headers.addAll(await headers());
+    upload.fields.addAll({
+      'title': audio.name.replaceFirst(RegExp(r'\.[^.]+$'), ''),
+      'license': 'open-or-owned'
+    });
+    upload.files.add(
+        http.MultipartFile.fromBytes('audio', bytes, filename: audio.name));
+    final result = decode(await http.Response.fromStream(
+        await client.send(upload).timeout(const Duration(seconds: 60))));
+    return Map<String, dynamic>.from(result['track']);
+  }
+
   Future<void> publish(
       XFile photo, String caption, Map<String, dynamic>? track, String key,
       {Map<String, dynamic>? report}) async {

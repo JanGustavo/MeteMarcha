@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import '../../core/services/squad_invite_service.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -671,6 +672,59 @@ class StoryComposerState extends State<StoryComposer> {
     }
   }
 
+  Future<void> localAudio() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['mp3', 'm4a', 'ogg', 'wav'],
+          withData: true);
+      if (picked == null || !mounted) return;
+      final file = picked.files.single;
+      if (file.size > 15 * 1024 * 1024)
+        throw const AccountException('Escolha um áudio de até 15 MB.');
+      final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+                  title: const Text('Áudio do celular'),
+                  content: Text(
+                      'Usar “${file.name}” neste story? Escolha apenas músicas de licença aberta ou de sua autoria. O arquivo ficará disponível para você e para quem puder ver o story.'),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancelar')),
+                    FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Usar este áudio'))
+                  ]));
+      if (confirmed != true || !mounted) return;
+      setState(() => busy = true);
+      final selected = await widget.api
+          .uploadAudio(XFile.fromData(file.bytes!, name: file.name));
+      if (mounted)
+        setState(() {
+          tracks.removeWhere((t) => t['id'] == selected['id']);
+          tracks.add(selected);
+          track = selected;
+        });
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> chooseMusic() async {
+    final selected = await showModalBottomSheet<Map<String, dynamic>>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (context) => _MusicPicker(tracks: tracks, api: widget.api));
+    if (selected != null && mounted)
+      setState(() => track = selected.isEmpty ? null : selected);
+  }
+
   Future<void> publish() async {
     setState(() => busy = true);
     try {
@@ -749,25 +803,20 @@ class StoryComposerState extends State<StoryComposer> {
                 maxLines: 3,
                 decoration: const InputDecoration(labelText: 'Legenda')),
             const SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-                initialValue: track?['id'],
-                isExpanded: true,
-                decoration:
-                    const InputDecoration(labelText: 'Música (opcional)'),
-                items: [
-                  const DropdownMenuItem(value: '', child: Text('Sem música')),
-                  for (final t in tracks)
-                    DropdownMenuItem(
-                        value: t['id'] as String,
-                        child: Text('${t['title']} · ${t['artist']}',
-                            overflow: TextOverflow.ellipsis))
-                ],
-                onChanged: busy
-                    ? null
-                    : (id) => setState(() => track = id == null || id.isEmpty
-                        ? null
-                        : Map<String, dynamic>.from(
-                            tracks.firstWhere((t) => t['id'] == id)))),
+            ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.music_note_outlined),
+                title:
+                    Text(track == null ? 'Escolher música' : track!['title']),
+                subtitle: Text(track == null
+                    ? 'Catálogo aberto ou áudios já enviados'
+                    : track!['artist']),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: busy ? null : chooseMusic),
+            OutlinedButton.icon(
+                onPressed: busy ? null : localAudio,
+                icon: const Icon(Icons.audio_file_outlined),
+                label: const Text('Escolher áudio do celular')),
             if (tracks.isEmpty && catalogError == null)
               const Text('O catálogo ainda não tem músicas disponíveis.'),
             if (catalogError != null)
@@ -778,5 +827,114 @@ class StoryComposerState extends State<StoryComposer> {
             FilledButton(
                 onPressed: busy || photo == null ? null : publish,
                 child: Text(busy ? 'Publicando…' : 'Publicar no squad')),
+          ])));
+}
+
+class _MusicPicker extends StatefulWidget {
+  const _MusicPicker({required this.tracks, required this.api});
+  final List<dynamic> tracks;
+  final SquadService api;
+  @override
+  State<_MusicPicker> createState() => _MusicPickerState();
+}
+
+class _MusicPickerState extends State<_MusicPicker> {
+  String search = '';
+  String? playing;
+  String? loading;
+  final player = AudioPlayer();
+  Timer? timer;
+  int sequence = 0;
+  @override
+  void dispose() {
+    sequence++;
+    timer?.cancel();
+    player.dispose();
+    super.dispose();
+  }
+
+  Future<void> preview(dynamic track) async {
+    final current = ++sequence;
+    try {
+      timer?.cancel();
+      await player.stop();
+      if (playing == track['id']) {
+        if (mounted) setState(() => playing = null);
+        return;
+      }
+      setState(() {
+        playing = null;
+        loading = track['id'];
+      });
+      final response = await widget.api.client
+          .get(widget.api.url(track['audio_url']),
+              headers: await widget.api.headers())
+          .timeout(const Duration(seconds: 30));
+      if (!mounted || current != sequence) return;
+      if (response.statusCode != 200) throw Exception('Áudio indisponível');
+      await player.play(BytesSource(response.bodyBytes));
+      if (!mounted || current != sequence) return;
+      setState(() {
+        playing = track['id'];
+        loading = null;
+      });
+      timer = Timer(const Duration(seconds: 15), () async {
+        await player.stop();
+        if (mounted) setState(() => playing = null);
+      });
+    } catch (_) {
+      if (mounted && current == sequence) {
+        setState(() => loading = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Não foi possível tocar a prévia.')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+      child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * .8,
+          child: Column(children: [
+            Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                    decoration: const InputDecoration(
+                        labelText: 'Buscar título ou artista',
+                        prefixIcon: Icon(Icons.search)),
+                    onChanged: (v) =>
+                        setState(() => search = v.toLowerCase()))),
+            ListTile(
+                title: const Text('Sem música'),
+                onTap: () => Navigator.pop(context, <String, dynamic>{})),
+            Expanded(
+                child: ListView(children: [
+              for (final t in widget.tracks.where((t) =>
+                  ('${t['title']} ${t['artist']}')
+                      .toLowerCase()
+                      .contains(search)))
+                ListTile(
+                    title: Text(t['title']),
+                    subtitle: Text(t['artist']),
+                    onTap: () =>
+                        Navigator.pop(context, Map<String, dynamic>.from(t)),
+                    trailing: IconButton(
+                        tooltip: 'Ouvir prévia',
+                        onPressed: () => preview(t),
+                        icon: loading == t['id']
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : Icon(playing == t['id']
+                                ? Icons.stop
+                                : Icons.play_arrow))),
+              if (widget.tracks.isEmpty)
+                const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                        'Ainda não há faixas no catálogo. Você pode escolher um áudio do celular.'))
+            ])),
           ])));
 }

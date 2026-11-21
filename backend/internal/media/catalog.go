@@ -73,7 +73,7 @@ func (s *Service) SyncCatalog(ctx context.Context) (int, error) {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(ctx, `UPDATE tracks SET active = 0`); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE tracks SET active = 0 WHERE owner_id IS NULL`); err != nil {
 		return 0, err
 	}
 	for _, e := range entries {
@@ -97,7 +97,7 @@ func (s *Service) validateCatalog(entries []catalogEntry) (map[string]string, er
 
 	for i, e := range entries {
 		where := fmt.Sprintf("faixa #%d (%q)", i+1, e.ID)
-		if !trackIDRe.MatchString(e.ID) {
+		if !trackIDRe.MatchString(e.ID) || strings.HasPrefix(e.ID, "user-") {
 			problems = append(problems, where+": id deve usar a-z, 0-9 e hífen (até 40 caracteres)")
 		}
 		if seen[e.ID] {
@@ -129,7 +129,7 @@ func (s *Service) validateCatalog(entries []catalogEntry) (map[string]string, er
 
 func (s *Service) ListTracks(ctx context.Context) ([]Track, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, title, artist, duration_ms FROM tracks WHERE active = 1 ORDER BY title, id`)
+		`SELECT id, title, artist, duration_ms FROM tracks WHERE active = 1 AND owner_id IS NULL ORDER BY title, id`)
 	if err != nil {
 		return nil, err
 	}

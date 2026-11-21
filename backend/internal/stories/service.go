@@ -192,7 +192,7 @@ func (s *Service) resolveClip(ctx context.Context, in PublishInput) (*clip, erro
 		}
 		return nil, nil
 	}
-	track, found, err := s.media.ActiveTrack(ctx, in.TrackID)
+	track, found, err := s.media.ActiveTrackForUser(ctx, in.TrackID, in.AuthorID)
 	if err != nil {
 		return nil, err
 	}
