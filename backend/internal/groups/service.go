@@ -36,7 +36,7 @@ type Member struct {
 	JoinedAt    time.Time `json:"joined_at"`
 }
 
-// Membership diz a qual roda a pessoa pertence (no piloto, no máximo uma).
+// Membership identifica a roda ativa usada pelos endpoints sem group_id.
 type Membership struct {
 	GroupID string
 	Role    string
@@ -44,8 +44,9 @@ type Membership struct {
 
 var (
 	ErrNotInGroup     = platform.NewError(http.StatusForbidden, "not_in_group", "Você não participa de nenhuma roda.")
-	ErrAlreadyInGroup = platform.NewError(http.StatusConflict, "already_in_group", "Você já participa de uma roda. Saia dela antes de entrar em outra.")
+	ErrAlreadyInGroup = platform.NewError(http.StatusConflict, "already_in_group", "Você já participa deste grupo.")
 	ErrGroupFull      = platform.NewError(http.StatusConflict, "group_full", "Esta roda já atingiu o limite de participantes.")
+	ErrGroupNotFound  = platform.NewError(http.StatusNotFound, "group_not_found", "Grupo não encontrado entre os seus grupos.")
 	// Convite inexistente, expirado ou já usado respondem igual: quem tenta
 	// adivinhar códigos não descobre nada.
 	ErrInviteInvalid = platform.NewError(http.StatusNotFound, "invite_invalid", "Convite inválido, expirado ou já utilizado.")
@@ -72,13 +73,37 @@ func (s *Service) Create(ctx context.Context, userID, name string) (Group, error
 	now := s.now().UTC()
 	g := Group{ID: platform.NewID(), Name: name, CreatedAt: now}
 	if err := s.store.createGroup(ctx, g, userID, now); err != nil {
-		if platform.IsUniqueViolation(err) {
-			return Group{}, ErrAlreadyInGroup
-		}
 		return Group{}, err
 	}
 	g.CreatedAt = platform.FromUnix(platform.Unix(now))
 	return g, nil
+}
+
+// List devolve os grupos da pessoa e a seleção atual.
+func (s *Service) List(ctx context.Context, userID string) ([]Group, string, error) {
+	groups, err := s.store.memberships(ctx, userID)
+	if err != nil {
+		return nil, "", err
+	}
+	active, ok, err := s.store.membership(ctx, userID)
+	if err != nil {
+		return nil, "", err
+	}
+	if !ok {
+		return groups, "", nil
+	}
+	return groups, active.GroupID, nil
+}
+
+func (s *Service) Select(ctx context.Context, userID, groupID string) (Group, error) {
+	ok, err := s.store.selectGroup(ctx, userID, groupID)
+	if err != nil {
+		return Group{}, err
+	}
+	if !ok {
+		return Group{}, ErrGroupNotFound
+	}
+	return s.store.group(ctx, groupID)
 }
 
 // Mine devolve a roda da pessoa e seus participantes.

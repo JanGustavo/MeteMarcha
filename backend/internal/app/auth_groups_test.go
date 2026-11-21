@@ -93,9 +93,6 @@ func TestGroupRules(t *testing.T) {
 	}
 
 	e.createGroup(owner, "Roda da Perna")
-	if status, body := e.do("POST", "/v1/groups", owner.token, map[string]string{"name": "Outra"}); status != 409 || errCode(body) != "already_in_group" {
-		t.Errorf("segunda roda: %d %v", status, body)
-	}
 
 	code := e.invite(owner)
 	// código aceita minúsculas e sem hífen
@@ -110,10 +107,9 @@ func TestGroupRules(t *testing.T) {
 	if status, body := e.join(caio, "AAAAA-AAAAA"); status != 404 || errCode(body) != "invite_invalid" {
 		t.Errorf("convite inexistente: %d %v", status, body)
 	}
-	// quem já está numa roda não entra em outra
-	e.newGroup("Outra roda", caio)
-	if status, body := e.join(caio, e.invite(owner)); status != 409 || errCode(body) != "already_in_group" {
-		t.Errorf("entrar já estando em roda: %d %v", status, body)
+	// O mesmo participante não entra duas vezes no mesmo grupo.
+	if status, body := e.join(bia, e.invite(owner)); status != 409 || errCode(body) != "already_in_group" {
+		t.Errorf("entrar novamente no mesmo grupo: %d %v", status, body)
 	}
 
 	// convite expira
@@ -137,8 +133,76 @@ func TestGroupRules(t *testing.T) {
 		t.Errorf("sair sem estar em roda: %d %v", status, body)
 	}
 	// a ex-dona pode entrar em outra roda depois de sair
+	e.createGroup(caio, "Outra roda")
 	if status, body := e.join(owner, e.invite(caio)); status != 200 {
 		t.Errorf("entrar em outra roda após sair: %d %v", status, body)
+	}
+}
+
+func TestMultipleGroupsAndActiveFeed(t *testing.T) {
+	e := newEnv(t)
+	ana, bia, intruso := e.register("ana"), e.register("bia"), e.register("intruso")
+	e.createGroup(ana, "Cohort A")
+	_, first := e.do("GET", "/v1/groups/me", ana.token, nil)
+	firstID := str(first, "group", "id")
+	storyA := e.post(ana, "cohort-a-01")
+
+	e.createGroup(ana, "Cohort B")
+	_, second := e.do("GET", "/v1/groups/me", ana.token, nil)
+	secondID := str(second, "group", "id")
+	if firstID == secondID {
+		t.Fatal("cada grupo precisa de ID próprio")
+	}
+	storyB := e.post(ana, "cohort-b-01")
+	if status, feed := e.feed(ana); status != 200 || len(feed) != 1 || str(feed[0].(map[string]any), "id") != storyB {
+		t.Fatalf("feed do grupo B: %d %v", status, feed)
+	}
+
+	status, list := e.do("GET", "/v1/groups", ana.token, nil)
+	groups, _ := list["groups"].([]any)
+	if status != 200 || len(groups) != 2 || str(list, "active_group_id") != secondID {
+		t.Fatalf("lista de grupos: %d %v", status, list)
+	}
+	if status, body := e.do("PUT", "/v1/groups/active", ana.token, map[string]string{"group_id": firstID}); status != 200 || str(body, "group", "id") != firstID {
+		t.Fatalf("seleção: %d %v", status, body)
+	}
+	if status, feed := e.feed(ana); status != 200 || len(feed) != 1 || str(feed[0].(map[string]any), "id") != storyA {
+		t.Fatalf("feed do grupo A: %d %v", status, feed)
+	}
+	if status, body := e.do("PUT", "/v1/groups/active", intruso.token, map[string]string{"group_id": secondID}); status != 404 || errCode(body) != "group_not_found" {
+		t.Fatalf("intruso não pode selecionar grupo: %d %v", status, body)
+	}
+	if status, _ := e.join(bia, e.invite(ana)); status != 200 {
+		t.Fatalf("bia não entrou em A: %d", status)
+	}
+	if status, feed := e.feed(bia); status != 200 || len(feed) != 1 {
+		t.Fatalf("feed de bia em A: %d %v", status, feed)
+	}
+	if status, _, _ := e.getBytes("/v1/stories/"+storyB+"/photo", bia.token); status != 404 {
+		t.Fatalf("integrante de A não pode acessar foto de B: %d", status)
+	}
+	if status, _ := e.do("PUT", "/v1/groups/active", ana.token, map[string]string{"group_id": secondID}); status != 200 {
+		t.Fatalf("seleção de B: %d", status)
+	}
+	if status, _ := e.join(bia, e.invite(ana)); status != 200 {
+		t.Fatalf("bia não entrou em B: %d", status)
+	}
+	if status, feed := e.feed(bia); status != 200 || len(feed) != 1 || str(feed[0].(map[string]any), "id") != storyB {
+		t.Fatalf("feed de bia em B: %d %v", status, feed)
+	}
+
+	// Ao sair de B, A volta a ser o grupo ativo; a associação de A persiste.
+	if status, _ := e.do("POST", "/v1/groups/me/leave", bia.token, nil); status != 204 {
+		t.Fatalf("sair de B: %d", status)
+	}
+	if status, feed := e.feed(bia); status != 200 || len(feed) != 1 || str(feed[0].(map[string]any), "id") != storyA {
+		t.Fatalf("feed após sair: %d %v", status, feed)
+	}
+	if n := e.count(`SELECT COUNT(*) FROM group_members WHERE user_id = ?`, bia.id); n != 1 {
+		t.Fatalf("bia deveria continuar em A: %d", n)
+	}
+	if status, _, _ := e.getBytes("/v1/stories/"+storyB+"/photo", bia.token); status != 404 {
+		t.Fatalf("após sair de B, foto de B deve ficar inacessível: %d", status)
 	}
 }
 
