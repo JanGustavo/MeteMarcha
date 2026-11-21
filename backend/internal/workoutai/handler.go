@@ -125,7 +125,7 @@ func (h *Handler) generate(w http.ResponseWriter, r *http.Request) {
 		if model := os.Getenv("MM_AI_MODEL"); model != "" {
 			return model
 		}
-		return "llama-3.3-70b-versatile"
+		return "openai/gpt-oss-20b"
 	}(), "messages": []map[string]string{{"role": "system", "content": schemaPrompt + "\n" + instruction}, {"role": "user", "content": string(content)}}, "temperature": 0.1, "max_tokens": 4000, "response_format": map[string]string{"type": "json_object"}})
 	req, err := http.NewRequestWithContext(r.Context(), "POST", h.endpoint, bytes.NewReader(body))
 	if err != nil {
