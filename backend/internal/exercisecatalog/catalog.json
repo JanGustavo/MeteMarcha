@@ -1,0 +1,288 @@
+{
+  "version": 1,
+  "exercises": [
+    {
+      "id": "wall-push-up",
+      "name": "Flexão na parede",
+      "muscle": "Peito",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Flexão de braços na parede",
+        "Wall push-up"
+      ],
+      "mini_workout": true,
+      "video": {
+        "url": "https://www.youtube.com/watch?v=t6wxV5jG0Vg",
+        "language": "pt-BR",
+        "title": "Flexão na parede!",
+        "channel": "Aurélio Alfieri",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; disponibilidade e título conferidos"
+      }
+    },
+    {
+      "id": "bodyweight-squat",
+      "name": "Agachamento livre",
+      "muscle": "Quadríceps",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Agachamento sem peso",
+        "Agachamento com peso corporal"
+      ],
+      "mini_workout": true,
+      "video": null
+    },
+    {
+      "id": "standing-calf-raise",
+      "name": "Elevação de panturrilhas",
+      "muscle": "Panturrilha",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Panturrilha em pé sem peso"
+      ],
+      "mini_workout": true,
+      "video": null
+    },
+    {
+      "id": "glute-bridge",
+      "name": "Ponte de glúteos",
+      "muscle": "Glúteo",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Ponte de glúteos no solo",
+        "Glute bridge"
+      ],
+      "mini_workout": true,
+      "video": null
+    },
+    {
+      "id": "crunch",
+      "name": "Abdominal curto",
+      "muscle": "Core",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Abdominal supra no solo",
+        "Crunch"
+      ],
+      "mini_workout": true,
+      "video": null
+    },
+    {
+      "id": "knee-push-up",
+      "name": "Flexão com joelhos apoiados",
+      "muscle": "Peito",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Flexão de joelhos"
+      ],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "push-up",
+      "name": "Flexão de braços",
+      "muscle": "Peito",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Flexão tradicional",
+        "Push-up"
+      ],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "plank",
+      "name": "Prancha frontal",
+      "muscle": "Core",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Prancha abdominal"
+      ],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "side-plank",
+      "name": "Prancha lateral",
+      "muscle": "Core",
+      "equipment": "Peso Corporal",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "dead-bug",
+      "name": "Dead bug",
+      "muscle": "Core",
+      "equipment": "Peso Corporal",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "bird-dog",
+      "name": "Bird dog",
+      "muscle": "Core",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Perdigueiro"
+      ],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "reverse-lunge",
+      "name": "Afundo reverso",
+      "muscle": "Quadríceps",
+      "equipment": "Peso Corporal",
+      "aliases": [
+        "Avanço para trás"
+      ],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "split-squat",
+      "name": "Agachamento afundo",
+      "muscle": "Quadríceps",
+      "equipment": "Peso Corporal",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "pull-up",
+      "name": "Barra fixa pronada",
+      "muscle": "Costas",
+      "equipment": "Barra",
+      "aliases": [
+        "Pull-up"
+      ],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "chin-up",
+      "name": "Barra fixa supinada",
+      "muscle": "Costas",
+      "equipment": "Barra",
+      "aliases": [
+        "Chin-up"
+      ],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "scapular-pull-up",
+      "name": "Retração escapular na barra",
+      "muscle": "Costas",
+      "equipment": "Barra",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "dumbbell-curl",
+      "name": "Rosca com halteres",
+      "muscle": "Bíceps",
+      "equipment": "Haltere",
+      "aliases": [
+        "Rosca direta com halteres"
+      ],
+      "mini_workout": true,
+      "video": null
+    },
+    {
+      "id": "dumbbell-row",
+      "name": "Remada com halter",
+      "muscle": "Costas",
+      "equipment": "Haltere",
+      "aliases": [
+        "Remada unilateral com halter"
+      ],
+      "mini_workout": true,
+      "video": null
+    },
+    {
+      "id": "barbell-bench-press",
+      "name": "Supino reto com barra",
+      "muscle": "Peito",
+      "equipment": "Barra",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "dumbbell-bench-press",
+      "name": "Supino reto com halteres",
+      "muscle": "Peito",
+      "equipment": "Haltere",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "incline-dumbbell-press",
+      "name": "Supino inclinado com halteres",
+      "muscle": "Peito",
+      "equipment": "Haltere",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "lateral-raise",
+      "name": "Elevação lateral com halteres",
+      "muscle": "Ombro",
+      "equipment": "Haltere",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "lat-pulldown",
+      "name": "Puxada frontal",
+      "muscle": "Costas",
+      "equipment": "Cabo",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "leg-press",
+      "name": "Leg press",
+      "muscle": "Quadríceps",
+      "equipment": "Máquina",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "leg-extension",
+      "name": "Cadeira extensora",
+      "muscle": "Quadríceps",
+      "equipment": "Máquina",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "leg-curl",
+      "name": "Mesa flexora",
+      "muscle": "Posterior",
+      "equipment": "Máquina",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    },
+    {
+      "id": "cable-pushdown",
+      "name": "Tríceps na polia",
+      "muscle": "Tríceps",
+      "equipment": "Cabo",
+      "aliases": [],
+      "mini_workout": false,
+      "video": null
+    }
+  ]
+}

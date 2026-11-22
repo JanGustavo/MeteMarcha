@@ -1,3 +1,4 @@
+import '../../core/media/exercise_catalog.dart';
 import '../../core/services/squad_service.dart';
 import 'mini_workout_page.dart';
 import '../../core/providers/training_focus_provider.dart';
@@ -1217,6 +1218,7 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                           Navigator.pop(ctx);
 
                           final db = ref.read(databaseProvider);
+                          final catalog = await ExerciseCatalog.load();
                           await db.transaction(() async {
                             if (clearUnused) {
                               await ref
@@ -1254,8 +1256,9 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                               if (exercisesList is! List) continue;
 
                               for (int i = 0; i < exercisesList.length; i++) {
-                                final exObj = exercisesList[i];
-                                if (exObj is! Map<String, dynamic>) continue;
+                                final rawExercise = exercisesList[i];
+                                if (rawExercise is! Map<String, dynamic>) continue;
+                                final exObj = catalog.enrich(rawExercise);
 
                                 final exName =
                                     exObj['nome']?.toString().trim() ?? '';
@@ -1273,6 +1276,7 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                                 }
 
                                 int exId;
+                                if (foundEx != null && exObj['link'] != null && foundEx.link != exObj['link']) foundEx = null;
                                 if (foundEx != null) {
                                   exId = foundEx.id;
                                   final jsonObs =

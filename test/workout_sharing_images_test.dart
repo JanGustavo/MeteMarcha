@@ -10,6 +10,7 @@ import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() => open.overrideFor(OperatingSystem.linux,
       () => DynamicLibrary.open('/usr/lib/x86_64-linux-gnu/libsqlite3.so.0')));
   test('divisão compartilhada preserva dias, imagens e referência de vídeo',

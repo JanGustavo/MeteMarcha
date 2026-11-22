@@ -1,3 +1,4 @@
+import '../../core/media/photo_capture.dart';
 import '../../core/media/video_cover.dart';
 import '../../core/services/story_audio_controller.dart';
 import '../../core/media/social_video_card.dart';
@@ -589,20 +590,26 @@ class _StoryCardState extends State<_StoryCard> {
               title: Text(s['author']['display_name']),
               subtitle: Text(
                   'Até ${DateTime.parse(s['visible_until']).toLocal().toString().substring(0, 16)}')),
-          InkWell(
-              onTap: s['workout_report'] == null
-                  ? (widget.active ? null : openViewer)
-                  : openReport,
-              child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: AspectRatio(
-                      aspectRatio: 1,
-                      child: Image.network(
-                          widget.api.url(s['photo_url']).toString(),
-                          headers: widget.headers,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Center(
-                              child: Text('Foto indisponível')))))),
+          if (s['video_url'] != null && s['video_url'] != '')
+            SocialVideoCard(
+                url: s['video_url'],
+                active: widget.active,
+                beforePlay: () => audio?.stop() ?? Future.value())
+          else
+            InkWell(
+                onTap: s['workout_report'] == null
+                    ? (widget.active ? null : openViewer)
+                    : openReport,
+                child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: AspectRatio(
+                        aspectRatio: 1,
+                        child: Image.network(
+                            widget.api.url(s['photo_url']).toString(),
+                            headers: widget.headers,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(
+                                child: Text('Foto indisponível')))))),
           if (s['workout_report'] != null)
             TextButton.icon(
                 onPressed: openReport,
@@ -654,10 +661,6 @@ class _StoryCardState extends State<_StoryCard> {
                             onChanged: audio!.setVolume),
                       if (audio?.error != null) Text(audio!.error!)
                     ])),
-          if (s['video_url'] != null && s['video_url'] != '')
-            SocialVideoCard(
-                url: s['video_url'],
-                beforePlay: () => audio?.stop() ?? Future.value()),
           Wrap(children: [
             for (final entry in {
               'fire': '🔥',
@@ -795,8 +798,7 @@ class StoryComposerState extends State<StoryComposer> {
 
   Future<void> pick(ImageSource source) async {
     try {
-      final selected = await ImagePicker()
-          .pickImage(source: source, maxWidth: 1920, imageQuality: 85);
+      final selected = await pickAppPhoto(context, source: source);
       if (selected != null && mounted) setState(() => photo = selected);
     } catch (_) {
       if (mounted)

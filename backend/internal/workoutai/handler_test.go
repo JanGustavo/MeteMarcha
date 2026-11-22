@@ -70,3 +70,17 @@ func TestAIUnavailable(t *testing.T) {
 		t.Fatal(response.Code)
 	}
 }
+
+func TestCatalogReferencesAreAuthoritative(t *testing.T) {
+	w := fixture()
+	w.Days[0].Exercises[0].Link = "https://malicious.example/video"
+	w.Days[0].Exercises[1].CatalogID = "wall-push-up"
+	w.Days[0].Exercises[1].Link = "https://malicious.example/video"
+	enrichReferences(&w)
+	if w.Days[0].Exercises[0].CatalogID != "wall-push-up" || w.Days[0].Exercises[0].Link != "https://www.youtube.com/watch?v=t6wxV5jG0Vg" {
+		t.Fatal("wall reference missing")
+	}
+	if w.Days[0].Exercises[1].CatalogID != "bodyweight-squat" || w.Days[0].Exercises[1].Link != "" {
+		t.Fatal("invented reference accepted")
+	}
+}

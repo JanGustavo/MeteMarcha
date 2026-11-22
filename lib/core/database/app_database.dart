@@ -8,6 +8,7 @@
 
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import '../media/exercise_catalog.dart';
 import 'database_helper.dart'
     if (dart.library.js_interop) 'database_helper_web.dart';
 
@@ -759,6 +760,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
   }
 
   Future<int> importWorkoutSplit(Map<String, dynamic> data, {bool preservePrescription = false}) async {
+    final catalog = await ExerciseCatalog.load();
     return await transaction(() async {
       final nome = data['nome'] ?? 'Treino Importado';
       final tipo = data['tipo'] ?? 'CUSTOM';
@@ -788,7 +790,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
 
         final exercises = dayData['exercises'] as List<dynamic>? ?? [];
         for (var i = 0; i < exercises.length; i++) {
-          final exData = exercises[i];
+          final exData = catalog.enrich(Map<String, dynamic>.from(exercises[i]));
           final exNome = exData['nome'] ?? '';
           if (exNome.isEmpty) continue;
 
@@ -802,6 +804,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
             existingEx=null;
           }
           if(existingEx!=null && exData['referenceImage']!=null && existingEx.referenceImage!=exData['referenceImage']) existingEx=null;
+          if(existingEx!=null && exData['link']!=null && existingEx.link!=exData['link']) existingEx=null;
           int exId;
           if (existingEx != null) {
             exId = existingEx.id;
