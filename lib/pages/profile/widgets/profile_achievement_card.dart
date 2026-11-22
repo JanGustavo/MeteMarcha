@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/consistency/weekly_consistency.dart';
+import '../../../core/consistency/consistency_provider.dart';
+import '../../consistency/reward_celebration.dart';
 import 'package:gym_tracker/core/providers/progress_extended_provider.dart';
 import 'package:gym_tracker/core/theme/app_theme.dart';
 import 'package:gym_tracker/core/constants/achievements.dart';
@@ -321,8 +324,8 @@ class ProfileAchievementCard extends StatelessWidget {
                           color: isUnlocked
                               ? color.withValues(alpha: 0.3)
                               : isNext
-                              ? AppColors.primary.withValues(alpha: 0.4)
-                              : context.divider.withValues(alpha: 0.15),
+                                  ? AppColors.primary.withValues(alpha: 0.4)
+                                  : context.divider.withValues(alpha: 0.15),
                           width: isUnlocked || isNext ? 1.5 : 1.0,
                         ),
                       ),
@@ -565,16 +568,35 @@ class ProfileAchievementCard extends StatelessWidget {
                       color: Colors.white70,
                       size: 28,
                     ),
-                    onPressed: () {
-                      final shareText =
-                          '🏆 Conquista no MeteMarcha Fit! 🏆\n\n'
-                          '💪 Conquista: "${ach.title}"\n'
-                          '🎯 Categoria: ${ach.description}\n'
-                          '⭐ Nível: $levelName\n'
-                          '📈 Meu Progresso: ${_formatValue(status.currentValue, ach.type)}\n\n'
-                          '#MeteMarchaFit #Foco #FreadoPorNada #FOSS';
-                      SharePlus.instance.share(ShareParams(text: shareText));
-                    },
+                    onPressed: isLocked
+                        ? null
+                        : () async {
+                            Navigator.pop(ctx);
+                            final reward = EarnedReward(
+                                id: 'achievement:${ach.id}:$levelIdx',
+                                title: ach.title,
+                                detail: 'Nível $levelName · ${ach.description}',
+                                kind: 'achievement',
+                                value: levelName,
+                                earnedAt: DateTime.now(),
+                                seen: true);
+                            final controller = ProviderScope.containerOf(
+                                    context,
+                                    listen: false)
+                                .read(rewardProvider.notifier);
+                            try {
+                              await controller.add(reward);
+                              await controller.viewed(reward.id);
+                              if (context.mounted)
+                                await showRewardCelebration(context, reward);
+                            } catch (_) {
+                              if (context.mounted)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Não foi possível abrir o compartilhamento.')));
+                            }
+                          },
                   ),
                 ),
                 // Botão de fechar

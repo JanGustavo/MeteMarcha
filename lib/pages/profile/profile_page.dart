@@ -1,3 +1,4 @@
+import '../consistency/consistency_page.dart';
 import '../../core/media/photo_capture.dart';
 import '../../core/providers/training_focus_provider.dart';
 import '../setup/training_focus_page.dart';
@@ -742,11 +743,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
     final weeklyWeightsAsync = ref.watch(weeklyWeightsProvider);
     final evolution = ref.watch(evolutionProvider);
     final firstUseDate = ref.watch(firstUseDateProvider);
-    final weeklySchedule = ref.watch(weeklyScheduleProvider).value ?? [];
-    final scheduledWorkoutsCount =
-        weeklySchedule.where((s) => s.dayId != null).length;
-    final weeklyTarget =
-        scheduledWorkoutsCount > 0 ? scheduledWorkoutsCount : 1;
 
     return SafeArea(
       child: CustomScrollView(
@@ -761,6 +757,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
               ),
             ),
           ),
+
+          const SliverToBoxAdapter(child: ConsistencyProfileShowcase()),
 
           // ── Stats Row ────────────────────────────────────────
           SliverToBoxAdapter(
@@ -782,7 +780,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                               const StreakBadge(style: StreakStyle.profile),
                               const SizedBox(height: 4),
                               Text(
-                                'Meta: $weeklyTarget ${weeklyTarget == 1 ? "treino" : "treinos"}/sem',
+                                'Uma semana ativa por vez',
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: context.onSurface,

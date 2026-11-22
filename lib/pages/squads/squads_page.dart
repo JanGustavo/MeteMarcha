@@ -750,8 +750,13 @@ class _StoryViewerState extends State<StoryViewer> {
 
 class StoryComposer extends StatefulWidget {
   const StoryComposer(
-      {super.key, required this.api, this.initialPhoto, this.report});
+      {super.key,
+      required this.api,
+      this.initialPhoto,
+      this.report,
+      this.initialCaption = ''});
   final XFile? initialPhoto;
+  final String initialCaption;
   final Map<String, dynamic>? report;
   final SquadService api;
   @override
@@ -772,6 +777,7 @@ class StoryComposerState extends State<StoryComposer> {
   void initState() {
     super.initState();
     photo = widget.initialPhoto;
+    caption.text = widget.initialCaption;
     catalog();
   }
 

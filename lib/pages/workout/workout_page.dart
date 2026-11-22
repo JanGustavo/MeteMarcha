@@ -27,7 +27,9 @@ import 'package:gym_tracker/core/database/app_database.dart';
 import 'package:gym_tracker/core/constants/equipment_options.dart';
 import 'package:gym_tracker/core/providers/providers.dart';
 import 'package:gym_tracker/core/providers/progress_extended_provider.dart';
-import 'package:gym_tracker/core/widgets/achievement_unlock_overlay.dart';
+import '../../core/consistency/weekly_consistency.dart';
+import '../../core/consistency/consistency_provider.dart';
+import '../consistency/reward_celebration.dart';
 import 'package:gym_tracker/core/providers/rest_timer_provider.dart';
 import 'package:gym_tracker/core/services/audio_service.dart';
 import 'package:gym_tracker/core/services/notification_service.dart';
@@ -715,67 +717,28 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     return null;
   }
 
-  void _showPrCelebration(
-    double peso,
-    int reps,
-    double new1RM,
-    double prevMax1RM,
-  ) {
+  Future<void> _showPrCelebration(
+      double peso, int reps, double new1RM, double prevMax1RM) async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.amber[900],
-        duration: const Duration(seconds: 4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        content: Row(
-          children: [
-            const Icon(
-              Icons.emoji_events_rounded,
-              color: Colors.yellowAccent,
-              size: 36,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'RECORDE PESSOAL! 🏆',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Você superou seu recorde anterior neste exercício!',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Novo 1RM Estimado: ${new1RM.toStringAsFixed(1)} kg (era ${prevMax1RM.toStringAsFixed(1)} kg)',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.yellowAccent,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    final exercise = _exercises[_currentIndex];
+    final reward = EarnedReward(
+        id:
+            'pr:${widget.sessionId}:${exercise.id}:${DateTime.now().microsecondsSinceEpoch}',
+        title: 'Recorde pessoal · ${exercise.nome}',
+        detail:
+            '${peso.toStringAsFixed(1)} kg × $reps repetições. 1RM estimado: ${new1RM.toStringAsFixed(1)} kg (anterior: ${prevMax1RM.toStringAsFixed(1)} kg).',
+        kind: 'pr',
+        value: '${new1RM.toStringAsFixed(1)} kg',
+        earnedAt: DateTime.now());
+    try {
+      await ref.read(rewardProvider.notifier).add(reward);
+      await ref.read(rewardProvider.notifier).viewed(reward.id);
+      if (mounted) await showRewardCelebration(context, reward);
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Não foi possível salvar a conquista.')));
+    }
   }
 
   void _showPlateCalculator() {
@@ -1672,8 +1635,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         .read(workoutDaoProvider)
         .finishSession(widget.sessionId, _sessionSecs);
 
-    // Aguarda atualização assíncrona nos streams do Riverpod
-    await Future.delayed(const Duration(milliseconds: 250));
+    // Read the completed state deterministically before comparing achievements.
+    ref.invalidate(completedSessionsProvider);
+    ref.invalidate(allCompletedLogsProvider);
+    await ref.read(completedSessionsProvider.future);
+    await ref.read(allCompletedLogsProvider.future);
+    if (!mounted) return;
     final nextAchievements = ref.read(achievementsStatusProvider);
 
     final newlyUnlocked = <AchievementStatus>[];
@@ -1715,18 +1682,23 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
     if (!mounted) return;
 
-    // Dispara animações sequenciais de conquistas desbloqueadas
-    if (newlyUnlocked.isNotEmpty) {
-      int delayMs = 500;
-      for (final status in newlyUnlocked) {
-        Future.delayed(Duration(milliseconds: delayMs), () {
-          if (mounted) {
-            AchievementUnlockOverlay.show(context, status);
-          }
-        });
-        delayMs += 5000;
+    // Persist rewards; the home host presents them after the finish dialog closes.
+    for (final status in newlyUnlocked) {
+      if (status.achievement.id == 'week_streak') continue;
+      final level = status.achievement.levels[status.unlockedLevelIndex];
+      try {
+        await ref.read(rewardProvider.notifier).add(EarnedReward(
+            id: 'achievement:${status.achievement.id}:${status.unlockedLevelIndex}',
+            title: status.achievement.title,
+            detail: 'Nível ${level.name} · ${status.achievement.description}',
+            kind: 'achievement',
+            value: level.name,
+            earnedAt: DateTime.now()));
+      } catch (_) {
+        /* Keep the workout saved if reward storage is unavailable. */
       }
     }
+    if (!mounted) return;
 
     _showFinishDialog(
       totalVolume: totalVolume,

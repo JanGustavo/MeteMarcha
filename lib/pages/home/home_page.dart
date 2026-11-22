@@ -1,3 +1,4 @@
+import '../consistency/consistency_page.dart';
 import '../../core/media/reference_video_page.dart';
 import 'widgets/workout_split_selector.dart';
 import '../../core/media/reference_image.dart';
@@ -81,7 +82,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           return const SplitSelectionPage(isOnboarding: true);
         }
         return Scaffold(
-          body: IndexedStack(
+          body: ConsistencyHost(
+              child: IndexedStack(
             index: currentTab,
             children: const [
               _TreinoTab(),
@@ -89,7 +91,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               SquadsPage(),
               ProfilePage(),
             ],
-          ),
+          )),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: currentTab,
             onTap: (index) => ref.read(homeTabProvider.notifier).state = index,
@@ -472,6 +474,7 @@ class _TreinoTab extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             const StreakBadge(style: StreakStyle.appBar),
+            const RewardInboxButton(),
           ],
         ),
         actions: [

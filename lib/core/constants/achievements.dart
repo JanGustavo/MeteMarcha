@@ -159,9 +159,9 @@ const List<Achievement> achievements = [
   ),
   Achievement(
     id: 'week_streak',
-    title: 'Foco Inabalável',
+    title: 'Ritmo constante',
     shortTitle: 'Semanas',
-    description: 'Mantenha semanas ativas consecutivas',
+    description: 'Uma semana ativa com ao menos um treino concluído; dias de descanso fazem parte',
     type: AchievementType.weekStreak,
     emoji: '⚡',
     levels: [

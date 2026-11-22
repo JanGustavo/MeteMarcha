@@ -1,3 +1,4 @@
+import '../consistency/consistency_provider.dart';
 import '../services/story_audio_controller.dart';
 // lib/core/providers/progress_extended_provider.dart
 
@@ -98,57 +99,9 @@ final allCompletedLogsProvider = FutureProvider<List<ExerciseLog>>((ref) async {
   return rows.map((row) => row.readTable(db.exerciseLogs)).toList();
 });
 
-// Provedor para calcular a ofensiva (streak) de semanas consecutivas treinadas
-final streakProvider = Provider<int>((ref) {
-  final completedSessions = ref.watch(completedSessionsProvider).value ?? [];
-  final weeklySchedule = ref.watch(weeklyScheduleProvider).value ?? [];
-
-  // Alvo semanal de treinos (fallback para 1 se não houver agenda planejada)
-  final scheduledWorkoutsCount =
-      weeklySchedule.where((s) => s.dayId != null).length;
-  final weeklyTarget = scheduledWorkoutsCount > 0 ? scheduledWorkoutsCount : 1;
-
-  if (completedSessions.isEmpty) return 0;
-
-  // Agrupa sessões por semana ISO (ex: "2026-W23")
-  final Map<String, int> completedPerWeek = {};
-  for (final session in completedSessions) {
-    try {
-      final date = DateTime.parse(session.data);
-      final weekKey = WeekUtils.weekKeyFromDate(date);
-      completedPerWeek[weekKey] = (completedPerWeek[weekKey] ?? 0) + 1;
-    } catch (_) {}
-  }
-
-  int streak = 0;
-  int weekIndex = 0;
-
-  while (true) {
-    final targetDate = DateTime.now().subtract(Duration(days: weekIndex * 7));
-    final weekKey = WeekUtils.weekKeyFromDate(targetDate);
-    final completedCount = completedPerWeek[weekKey] ?? 0;
-
-    if (weekIndex == 0) {
-      // Semana atual: se bateu a meta, conta no streak e continua descendo
-      if (completedCount >= weeklyTarget) {
-        streak++;
-      } else {
-        // Se ainda não bateu mas é a semana atual, não quebra o streak ainda.
-        // Apenas continua para verificar as semanas passadas.
-      }
-    } else {
-      // Semanas passadas: precisa ter atingido a meta semanal, senão quebra o streak
-      if (completedCount >= weeklyTarget) {
-        streak++;
-      } else {
-        break; // Ofensiva quebrada
-      }
-    }
-    weekIndex++;
-  }
-
-  return streak;
-});
+// Compatibility provider for existing widgets: one completed workout activates a week.
+final streakProvider = Provider<int>((ref) =>
+    ref.watch(weeklyConsistencyProvider).valueOrNull?.current ?? 0);
 
 // Provedor para calcular a porcentagem de evolução de cargas
 final evolutionProvider = Provider<double>((ref) {
@@ -534,7 +487,7 @@ final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
   final logs = ref.watch(allCompletedLogsProvider).value ?? [];
   final completedSessions = ref.watch(completedSessionsProvider).value ?? [];
   final cardios = ref.watch(cardiosProvider).value ?? [];
-  final streak = ref.watch(streakProvider);
+  final streak = ref.watch(weeklyConsistencyProvider).valueOrNull?.best ?? 0;
 
   // Mapear exercícios por ID
   final Map<int, Exercise> exerciseMap = {for (final e in exercises) e.id: e};

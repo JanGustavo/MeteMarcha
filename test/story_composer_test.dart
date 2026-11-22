@@ -4,9 +4,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:gym_tracker/core/services/squad_service.dart';
 import 'package:gym_tracker/pages/squads/squads_page.dart';
 import 'package:gym_tracker/pages/squads/workout_report.dart';
+import 'package:gym_tracker/core/consistency/weekly_consistency.dart';
+import 'package:gym_tracker/core/consistency/reward_sharing.dart';
 
 class FakeStoryService extends SquadService {
   final keys = <String>[];
+  final captions = <String>[];
   @override
   Future<Map<String, dynamic>> request(String method, String path,
           [Map<String, dynamic>? body]) async =>
@@ -16,11 +19,41 @@ class FakeStoryService extends SquadService {
       XFile photo, String caption, Map<String, dynamic>? track, String key,
       {Map<String, dynamic>? report, String? videoUrl}) async {
     keys.add(key);
+    captions.add(caption);
     expect(await photo.length(), greaterThan(0));
   }
 }
 
 void main() {
+  testWidgets(
+      'conquista abre rascunho com imagem e legenda e só publica ao confirmar',
+      (tester) async {
+    final api = FakeStoryService();
+    final reward = EarnedReward(
+        id: 'weeks:10',
+        title: 'Ritmo constante',
+        detail: '10 semanas ativas consecutivas.',
+        kind: 'weeks',
+        value: '10',
+        earnedAt: DateTime(2026, 11, 22));
+    late XFile cover;
+    await tester.runAsync(() async {
+      cover = await rewardCover(reward);
+    });
+    await tester.pumpWidget(MaterialApp(
+        home: StoryComposer(
+            api: api,
+            initialPhoto: cover,
+            initialCaption: rewardCaption(reward))));
+    await tester.pumpAndSettle();
+    expect(api.keys, isEmpty);
+    await tester.scrollUntilVisible(find.text('Publicar no squad'), 400,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Publicar no squad'));
+    await tester.pumpAndSettle();
+    expect(api.keys.length, 1);
+    expect(api.captions.single, contains('10 semanas'));
+  });
   testWidgets(
       'cada rascunho cria chave própria e aceita só relatório sem foto adicional',
       (tester) async {
