@@ -32,8 +32,10 @@ class SquadService {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }
+    final timeout = Duration(seconds: path == '/v1/ai/workouts' ? 90 : 30);
     return decode(await http.Response.fromStream(
-        await client.send(request).timeout(const Duration(seconds: 30))));
+            await client.send(request).timeout(timeout))
+        .timeout(timeout));
   }
 
   Map<String, dynamic> decode(http.Response response) {

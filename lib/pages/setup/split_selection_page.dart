@@ -138,7 +138,9 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                               builder: (_) => MiniWorkoutPage(
                                   onboarding: isOnboarding, focus: mode))),
                       icon: const Icon(Icons.auto_awesome_outlined),
-                      label: const Text('Montar mini treino com IA'))),
+                      label: Text(isCalisthenics
+                          ? 'Montar mini treino com IA'
+                          : 'Montar treino de musculação com IA'))),
               Expanded(
                 child: GridView.count(
                   crossAxisCount: 1,

@@ -88,3 +88,102 @@ func TestCatalogReferencesAreAuthoritative(t *testing.T) {
 		t.Fatal("invented reference accepted")
 	}
 }
+
+func gymFixture(split string) Workout {
+	w := Workout{Name: "Academia", Type: "CUSTOM"}
+	for i := 0; i < splitDays(split); i++ {
+		w.Days = append(w.Days, Day{Letter: string(rune('A' + i)), Name: "Sessão", Exercises: []Exercise{
+			{Name: "Supino reto com halteres", Muscle: "Peito", Equipment: "Haltere", Rest: 90, Volume: "3x10"},
+			{Name: "Remada com halter", Muscle: "Costas", Equipment: "Haltere", Rest: 90, Volume: "3x10"},
+			{Name: "Leg press", Muscle: "Quadríceps", Equipment: "Máquina", Rest: 120, Volume: "3x10"},
+		}})
+	}
+	return w
+}
+func TestGymInputAndSplitValidation(t *testing.T) {
+	in := Input{Mode: "generate", Focus: "musculacao", Minutes: 60, Split: "ABC", Goal: "hipertrofia", Experience: "intermediario", Equipment: []string{"Haltere", "Máquina", "Barra", "Cabo"}, Text: "Academia cheia, priorizar costas"}
+	if !validInput(in) || !validWorkout(gymFixture("ABC"), in) {
+		t.Fatal("gym draft rejected")
+	}
+	for _, split := range []string{"FULL_BODY", "AB", "ABC", "ABCD", "ABCDE"} {
+		sample := in
+		sample.Split = split
+		if !validWorkout(gymFixture(split), sample) {
+			t.Fatal("split rejected", split)
+		}
+	}
+	if validWorkout(gymFixture("AB"), in) {
+		t.Fatal("incomplete split accepted")
+	}
+	w := gymFixture("ABC")
+	w.Days[1].Letter = "A"
+	if validWorkout(w, in) {
+		t.Fatal("duplicate day letter")
+	}
+	w = gymFixture("ABC")
+	w.Days[0].Exercises[1] = w.Days[0].Exercises[0]
+	if validWorkout(w, in) {
+		t.Fatal("duplicate exercise")
+	}
+	w = gymFixture("ABC")
+	w.Days[0].Exercises[0].Volume = "5x30"
+	if validWorkout(w, in) {
+		t.Fatal("excess volume")
+	}
+	in.Equipment = []string{"Peso Corporal"}
+	if validWorkout(gymFixture("ABC"), in) {
+		t.Fatal("unavailable equipment accepted")
+	}
+	for _, minutes := range []int{30, 45, 60, 75, 90} {
+		sample := in
+		sample.Minutes = minutes
+		if !validInput(sample) {
+			t.Fatal("duration rejected", minutes)
+		}
+	}
+	in.Minutes = 25
+	if validInput(in) {
+		t.Fatal("invalid duration accepted")
+	}
+	in.Minutes = 60
+	in.Text = strings.Repeat("a", 2001)
+	if validInput(in) {
+		t.Fatal("oversized preferences accepted")
+	}
+	calis := Input{Mode: "generate", Focus: "calistenia", Minutes: 15, Split: "ABC"}
+	if validInput(calis) {
+		t.Fatal("multi-day mini accepted")
+	}
+}
+func TestGymEndpoint(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var input struct {
+			Messages []struct {
+				Content string `json:"content"`
+			} `json:"messages"`
+		}
+		json.NewDecoder(r.Body).Decode(&input)
+		if !strings.Contains(input.Messages[0].Content, "EXATAMENTE 3 dias") || !strings.Contains(input.Messages[1].Content, "Academia cheia") || !strings.Contains(input.Messages[0].Content, "Leg press") {
+			t.Error("missing gym context")
+		}
+		draft, _ := json.Marshal(gymFixture("ABC"))
+		json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": string(draft)}}}})
+	}))
+	defer upstream.Close()
+	h := NewHandler()
+	h.key = "test-key"
+	h.endpoint = upstream.URL
+	h.client = upstream.Client()
+	out := httptest.NewRecorder()
+	h.generate(out, httptest.NewRequest("POST", "/v1/ai/workouts", strings.NewReader(`{"mode":"generate","focus":"musculacao","minutes":60,"split":"ABC","equipment":["Haltere","Máquina"],"text":"Academia cheia"}`)))
+	if out.Code != 200 {
+		t.Fatal(out.Code, out.Body.String())
+	}
+	var result struct {
+		Workout Workout `json:"workout"`
+	}
+	json.Unmarshal(out.Body.Bytes(), &result)
+	if len(result.Workout.Days) != 3 || result.Workout.Days[0].Exercises[0].Link == "" {
+		t.Fatal("split/reference missing")
+	}
+}

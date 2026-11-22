@@ -82,3 +82,22 @@ ABCD e ABCDE usam respectivamente três, quatro e cinco painéis. O personalizad
 inclui uma flexão na parede. Os arquivos WebP em `assets/images/workout_photos/`
 somam aproximadamente 100 KB; as quatro capas antigas foram removidas.
 São ilustrações de seleção, não fotografias de usuários nem instruções técnicas.
+
+## Geração para academia (2.12)
+
+A musculação deixa de usar o formulário de mini treino. Permite 30, 45, 60, 75 ou
+90 minutos por sessão, com 60 como padrão; divisão corpo inteiro, AB, ABC, ABCD
+ou ABCDE; objetivo, experiência, equipamentos e até 2.000 caracteres de contexto.
+O prompt organiza grupos por dia, considera pausas/troca de aparelhos e evita
+prometer duração exata. A duração é disponibilidade por sessão, não semanal.
+
+A API valida a quantidade exata de dias, letras consecutivas, equipamento
+permitido, exercícios distintos no mesmo dia, volume e descansos. O catálogo de
+musculação é mais amplo que as sete opções do mini treino, mantendo a associação
+de vídeos. Para 30/45 minutos há limites menores de quantidade de exercícios.
+O usuário revisa a rotina antes de salvar, e o texto pessoal não pode alterar o
+esquema nem as regras do servidor. A prévia identifica cada dia da divisão.
+
+Calistenia mantém a sessão curta de 10/15/20 minutos. Clientes anteriores com
+musculação curta permanecem compatíveis. Importação de texto usa o mesmo formato
+anterior. O tempo de resposta da IA tem limites próprios para rotinas maiores.

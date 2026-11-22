@@ -7,16 +7,32 @@ import '../../core/services/squad_service.dart';
 import '../home/home_page.dart';
 
 class MiniWorkoutPage extends ConsumerStatefulWidget {
-  const MiniWorkoutPage({super.key, this.onboarding = false, this.focus});
+  const MiniWorkoutPage(
+      {super.key, this.onboarding = false, this.focus, this.api});
   final bool onboarding;
   final String? focus;
+  final SquadService? api;
   @override
   ConsumerState<MiniWorkoutPage> createState() => _MiniWorkoutPageState();
 }
 
 class _MiniWorkoutPageState extends ConsumerState<MiniWorkoutPage> {
-  int minutes = 15;
-  bool dumbbells = false, busy = false;
+  int? minutes;
+  String split = 'ABC', goal = 'hipertrofia', experience = 'iniciante';
+  final equipment = <String>{'Barra', 'Haltere', 'Cabo', 'Máquina'};
+  final preferences = TextEditingController();
+  bool busy = false;
+  void change(VoidCallback update) => setState(() {
+        update();
+        workout = null;
+        error = null;
+      });
+  @override
+  void dispose() {
+    preferences.dispose();
+    super.dispose();
+  }
+
   String? error;
   Map<String, dynamic>? workout;
   Future<void> generate() async {
@@ -29,14 +45,17 @@ class _MiniWorkoutPageState extends ConsumerState<MiniWorkoutPage> {
       final focus = widget.focus ??
           ref.read(trainingFocusProvider).valueOrNull ??
           'musculacao';
-      final result = await SquadService().request('POST', '/v1/ai/workouts', {
+      final gym = focus == 'musculacao';
+      final result = await (widget.api ?? SquadService())
+          .request('POST', '/v1/ai/workouts', {
         'mode': 'generate',
         'focus': focus,
-        'minutes': minutes,
-        'equipment': [
-          'Peso Corporal',
-          if (dumbbells && focus == 'musculacao') 'Haltere'
-        ]
+        'minutes': minutes ?? (gym ? 60 : 15),
+        'split': gym ? split : 'FULL_BODY',
+        'goal': gym ? goal : 'condicionamento',
+        'experience': gym ? experience : 'iniciante',
+        'text': preferences.text.trim(),
+        'equipment': ['Peso Corporal', if (gym) ...equipment]
       });
       if (mounted)
         setState(() => workout = Map<String, dynamic>.from(result['workout']));
@@ -75,46 +94,139 @@ class _MiniWorkoutPageState extends ConsumerState<MiniWorkoutPage> {
     final focus = widget.focus ??
         ref.watch(trainingFocusProvider).valueOrNull ??
         'musculacao';
+    final gym = focus == 'musculacao';
     return PopScope(
         canPop: !busy,
         child: Scaffold(
-            appBar: AppBar(title: const Text('Mini treino com IA')),
+            appBar: AppBar(
+                title: Text(gym
+                    ? 'Treino de musculação com IA'
+                    : 'Mini treino com IA')),
             body: ListView(padding: const EdgeInsets.all(24), children: [
-              Text('Comece com o que você tem.',
+              Text(
+                  gym
+                      ? 'Um treino para sua rotina.'
+                      : 'Comece com o que você tem.',
                   style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 12),
-              Text(
-                  'Foco: ${focus == 'calistenia' ? 'calistenia' : 'musculação'}. A IA sugere um treino inicial simples. Revise os exercícios antes de salvar e adapte ao que consegue fazer confortavelmente.'),
+              Text(gym
+                  ? 'Escolha a divisão e o tempo por sessão. A IA prepara os dias para você revisar antes de salvar.'
+                  : 'Uma sessão inicial simples de calistenia, com peso corporal. Revise os exercícios antes de salvar.'),
               const SizedBox(height: 24),
-              const Text('Tempo disponível (aproximado)'),
+              const Text('Tempo por sessão (aproximado)'),
               const SizedBox(height: 8),
-              SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 10, label: Text('10 min')),
-                    ButtonSegment(value: 15, label: Text('15 min')),
-                    ButtonSegment(value: 20, label: Text('20 min'))
-                  ],
-                  selected: {
-                    minutes
-                  },
-                  onSelectionChanged:
-                      busy ? null : (v) => setState(() => minutes = v.first)),
-              const SizedBox(height: 20),
-              const ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.accessibility_new),
-                  title: Text('Peso corporal'),
-                  subtitle: Text(
-                      'Usar o chão e uma parede, sem inventar carga em quilos.')),
-              if (focus == 'musculacao')
-                SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: dumbbells,
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final value in gym ? [30, 45, 60, 75, 90] : [10, 15, 20])
+                  ChoiceChip(
+                      selectedColor: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: .2),
+                      label: Text('$value min'),
+                      selected: (minutes ?? (gym ? 60 : 15)) == value,
+                      onSelected:
+                          busy ? null : (_) => change(() => minutes = value)),
+              ]),
+              if (gym) ...[
+                const SizedBox(height: 20),
+                DropdownButtonFormField<String>(
+                    value: split,
+                    isExpanded: true,
+                    decoration:
+                        const InputDecoration(labelText: 'Divisão de treino'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'FULL_BODY',
+                          child: Text('Corpo inteiro · um dia')),
+                      DropdownMenuItem(
+                          value: 'AB',
+                          child: Text('AB · superiores / inferiores')),
+                      DropdownMenuItem(
+                          value: 'ABC',
+                          child: Text('ABC · empurrar / puxar / pernas')),
+                      DropdownMenuItem(
+                          value: 'ABCD', child: Text('ABCD · quatro dias')),
+                      DropdownMenuItem(
+                          value: 'ABCDE', child: Text('ABCDE · cinco dias')),
+                    ],
                     onChanged:
-                        busy ? null : (v) => setState(() => dumbbells = v),
-                    title: const Text('Tenho halteres'),
-                    subtitle: const Text(
-                        'Incluir somente se estiverem disponíveis.')),
+                        busy ? null : (value) => change(() => split = value!)),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                    value: goal,
+                    decoration: const InputDecoration(labelText: 'Objetivo'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'hipertrofia', child: Text('Hipertrofia')),
+                      DropdownMenuItem(value: 'forca', child: Text('Força')),
+                      DropdownMenuItem(
+                          value: 'condicionamento',
+                          child: Text('Condicionamento')),
+                    ],
+                    onChanged:
+                        busy ? null : (value) => change(() => goal = value!)),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                    value: experience,
+                    decoration: const InputDecoration(labelText: 'Experiência'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'iniciante', child: Text('Iniciante')),
+                      DropdownMenuItem(
+                          value: 'intermediario', child: Text('Intermediário')),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (value) => change(() => experience = value!)),
+                const SizedBox(height: 20),
+                const Text('Equipamentos disponíveis'),
+                const SizedBox(height: 8),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final value in ['Barra', 'Haltere', 'Cabo', 'Máquina'])
+                    FilterChip(
+                        selectedColor: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: .2),
+                        label: Text(value),
+                        selected: equipment.contains(value),
+                        onSelected: busy
+                            ? null
+                            : (selected) => change(() {
+                                  if (selected) {
+                                    equipment.add(value);
+                                  } else {
+                                    equipment.remove(value);
+                                  }
+                                })),
+                ]),
+                const SizedBox(height: 8),
+                const Text(
+                    'Peso corporal também pode ser incluído. O tempo considera pausas e troca de aparelhos; a espera na academia varia.'),
+              ] else ...[
+                const SizedBox(height: 20),
+                const ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.accessibility_new),
+                    title: Text('Peso corporal'),
+                    subtitle:
+                        Text('Chão e parede, sem inventar cargas em quilos.')),
+              ],
+              const SizedBox(height: 20),
+              TextField(
+                  controller: preferences,
+                  enabled: !busy,
+                  minLines: 3,
+                  maxLines: 5,
+                  maxLength: 2000,
+                  decoration: InputDecoration(
+                      labelText: 'Preferências e contexto',
+                      hintText: gym
+                          ? 'Ex.: academia cheia, prefiro halteres, quero priorizar costas e tenho 60 minutos por sessão.'
+                          : 'Ex.: estou começando e prefiro exercícios em pé.'),
+                  onChanged: (_) {
+                    if (workout != null) change(() {});
+                  }),
               const SizedBox(height: 16),
               FilledButton.icon(
                   onPressed: busy ? null : generate,
@@ -142,6 +254,9 @@ class _MiniWorkoutPageState extends ConsumerState<MiniWorkoutPage> {
                 const Text('Rascunho · ainda não salvo'),
                 for (final day in workout!['days']) ...[
                   const SizedBox(height: 16),
+                  Text('${day['letra']} · ${day['nome']}',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
                   for (final ex in day['exercises'])
                     Padding(
                         padding: const EdgeInsets.only(bottom: 16),
@@ -182,7 +297,7 @@ class _MiniWorkoutPageState extends ConsumerState<MiniWorkoutPage> {
                 const SizedBox(height: 16),
                 FilledButton(
                     onPressed: busy ? null : save,
-                    child: const Text('Salvar este treino')),
+                    child: const Text('Salvar rotina')),
               ],
             ])));
   }

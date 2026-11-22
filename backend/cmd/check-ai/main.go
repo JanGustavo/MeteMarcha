@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/JanGustavo/MeteMarcha/backend/internal/workoutai"
 	"net/http"
@@ -13,9 +14,30 @@ import (
 )
 
 func main() {
+	focus := flag.String("focus", "calistenia", "Foco")
+	split := flag.String("split", "FULL_BODY", "Divisão")
+	minutes := flag.Int("minutes", 15, "Minutos por sessão")
+	flag.Parse()
+	input := map[string]any{"mode": "generate", "focus": *focus, "minutes": *minutes, "split": *split, "equipment": []string{"Peso Corporal"}}
+	if *focus == "musculacao" {
+		input["equipment"] = []string{"Peso Corporal", "Barra", "Haltere", "Cabo", "Máquina"}
+		input["goal"] = "hipertrofia"
+		input["experience"] = "iniciante"
+		input["text"] = "Academia cheia, prefiro alternativas com halteres quando possível."
+	}
+	payload, _ := json.Marshal(input)
 	mux := http.NewServeMux()
-	workoutai.NewHandler().Register(mux, func(h http.HandlerFunc) http.HandlerFunc { return h })
-	req := httptest.NewRequest("POST", "/v1/ai/workouts", bytes.NewBufferString(`{"mode":"generate","focus":"calistenia","minutes":15,"equipment":["Peso Corporal"]}`))
+	handler := workoutai.NewHandler()
+	handler.OnInvalidDraft = func(workout workoutai.Workout) {
+		for _, day := range workout.Days {
+			fmt.Println("invalid_day", day.Letter, "exercise_count", len(day.Exercises))
+			for _, exercise := range day.Exercises {
+				fmt.Println("exercise", exercise.Name, "equipment", exercise.Equipment, "volume", exercise.Volume, "rest", exercise.Rest)
+			}
+		}
+	}
+	handler.Register(mux, func(h http.HandlerFunc) http.HandlerFunc { return h })
+	req := httptest.NewRequest("POST", "/v1/ai/workouts", bytes.NewReader(payload))
 	out := httptest.NewRecorder()
 	mux.ServeHTTP(out, req)
 	fmt.Println("ai_handler_status", out.Code)
@@ -36,6 +58,11 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("workout_days", len(result.Workout.Days))
-	fmt.Println("exercise_count", len(result.Workout.Days[0].Exercises))
+	for _, day := range result.Workout.Days {
+		fmt.Println("day", day.Letter, "exercise_count", len(day.Exercises))
+		for _, exercise := range day.Exercises {
+			fmt.Println("exercise", exercise.Name, "equipment", exercise.Equipment, "volume", exercise.Volume)
+		}
+	}
 	fmt.Println("validated_draft", true)
 }
