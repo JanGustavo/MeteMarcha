@@ -76,11 +76,15 @@ func TestCatalogReferencesAreAuthoritative(t *testing.T) {
 	w.Days[0].Exercises[0].Link = "https://malicious.example/video"
 	w.Days[0].Exercises[1].CatalogID = "wall-push-up"
 	w.Days[0].Exercises[1].Link = "https://malicious.example/video"
+	w.Days[0].Exercises = append(w.Days[0].Exercises, Exercise{Name: "Exercício desconhecido", CatalogID: "wall-push-up", Link: "https://malicious.example/video"})
 	enrichReferences(&w)
-	if w.Days[0].Exercises[0].CatalogID != "wall-push-up" || w.Days[0].Exercises[0].Link != "https://www.youtube.com/watch?v=t6wxV5jG0Vg" {
+	if w.Days[0].Exercises[3].CatalogID != "" || w.Days[0].Exercises[3].Link != "" {
+		t.Fatal("unknown exercise kept provider reference")
+	}
+	if w.Days[0].Exercises[0].CatalogID != "wall-push-up" || w.Days[0].Exercises[0].Link != "https://www.youtube.com/watch?v=UezGV10_wUA" {
 		t.Fatal("wall reference missing")
 	}
-	if w.Days[0].Exercises[1].CatalogID != "bodyweight-squat" || w.Days[0].Exercises[1].Link != "" {
+	if w.Days[0].Exercises[1].CatalogID != "bodyweight-squat" || w.Days[0].Exercises[1].Link != "https://www.youtube.com/watch?v=qrZs_1K1CFI" {
 		t.Fatal("invented reference accepted")
 	}
 }

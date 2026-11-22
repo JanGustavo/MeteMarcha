@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "exercises": [
     {
       "id": "wall-push-up",
@@ -12,12 +12,14 @@
       ],
       "mini_workout": true,
       "video": {
-        "url": "https://www.youtube.com/watch?v=t6wxV5jG0Vg",
+        "url": "https://www.youtube.com/watch?v=UezGV10_wUA",
         "language": "pt-BR",
-        "title": "Flexão na parede!",
-        "channel": "Aurélio Alfieri",
+        "channel": "CT Powerfit",
         "checked_at": "2026-11-22",
-        "check": "YouTube oEmbed; disponibilidade e título conferidos"
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Flexão de Braço na Parede (wall push up)",
+        "source_url": "https://www.youtube.com/watch?v=UezGV10_wUA",
+        "source_notes": "Página e transcrição confirmam demonstração específica; não foi possível verificar visualmente o instrutor nem duração exata."
       }
     },
     {
@@ -30,7 +32,16 @@
         "Agachamento com peso corporal"
       ],
       "mini_workout": true,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=qrZs_1K1CFI",
+        "language": "pt-BR",
+        "channel": "Tay Training",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "COMO FAZER AGACHAMENTO - Passo a passo do agachamento perfeito",
+        "source_url": "https://www.youtube.com/watch?v=qrZs_1K1CFI",
+        "source_notes": "Tutorial passo a passo; página informa dublagem automática. Instrutor homem não confirmado."
+      }
     },
     {
       "id": "standing-calf-raise",
@@ -41,7 +52,16 @@
         "Panturrilha em pé sem peso"
       ],
       "mini_workout": true,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=cklp_Xh5V8M",
+        "language": "pt-BR",
+        "channel": "Four Fit Academia",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Elevação de Panturrilha em Pé",
+        "source_url": "https://www.youtube.com/watch?v=cklp_Xh5V8M",
+        "source_notes": "Título, canal, duração e execução em pé sobre degrau conferidos; gênero do instrutor não verificado."
+      }
     },
     {
       "id": "glute-bridge",
@@ -53,7 +73,16 @@
         "Glute bridge"
       ],
       "mini_workout": true,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=le8ZN02BQCE",
+        "language": "pt-BR",
+        "channel": "Hora do Treino",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Como fazer o exercício elevação de quadril? (Exercício Ponte)",
+        "source_url": "https://www.youtube.com/watch?v=le8ZN02BQCE",
+        "source_notes": "Transcrição identifica Renato Santiago e mostra ponte/elevação de quadril e variações; não é Short."
+      }
     },
     {
       "id": "crunch",
@@ -65,7 +94,16 @@
         "Crunch"
       ],
       "mini_workout": true,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=36uDyiq2poc",
+        "language": "en",
+        "channel": "Otto Leone Personal",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "ABDOMINAL SUPRA CURTO (CRUNCH) | Otto",
+        "source_url": "https://www.youtube.com/watch?v=36uDyiq2poc",
+        "source_notes": "Título e canal conferidos; página bloqueou reprodução, técnica não inspecionada visualmente. 'Short' no título não confirma YouTube Shorts."
+      }
     },
     {
       "id": "knee-push-up",
@@ -76,7 +114,16 @@
         "Flexão de joelhos"
       ],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=oTmPth0J55E",
+        "language": "pt-BR",
+        "channel": "P4P Brasil",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Flexões com joelhos apoiados",
+        "source_url": "https://www.youtube.com/watch?v=oTmPth0J55E",
+        "source_notes": "Título, canal, duração e movimento conferidos; instrutor homem não confirmado."
+      }
     },
     {
       "id": "push-up",
@@ -88,7 +135,16 @@
         "Push-up"
       ],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=dzHLpuRMucs",
+        "language": "en",
+        "channel": "Calistenia Brasil",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Você NÃO sabe fazer flexão",
+        "source_url": "https://www.youtube.com/watch?v=dzHLpuRMucs",
+        "source_notes": "Transcrição identifica Luiz Otávio Mesquita explicando técnica, erros e correções; conteúdo em inglês e vídeo longo."
+      }
     },
     {
       "id": "plank",
@@ -99,7 +155,16 @@
         "Prancha abdominal"
       ],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=uUQKLqKMJSU",
+        "language": "pt-BR",
+        "channel": "BwizerTV",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Prancha Frontal: Como fazer e quais os erros mais comuns? | Bwizer",
+        "source_url": "https://www.youtube.com/watch?v=uUQKLqKMJSU",
+        "source_notes": "Página e descrição/transcrição confirmam prancha e correções; instrutor Mário Sá. Não é Short; áudio pode estar auto-dublado."
+      }
     },
     {
       "id": "side-plank",
@@ -108,7 +173,16 @@
       "equipment": "Peso Corporal",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=Yc_p9WHjRI0",
+        "language": "pt-BR",
+        "channel": "Fisic Academia",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Prancha Lateral",
+        "source_url": "https://www.youtube.com/watch?v=Yc_p9WHjRI0",
+        "source_notes": "Título, canal e descrição identificam professor Luis Felipe Sibioni; vídeo específico de prancha lateral."
+      }
     },
     {
       "id": "dead-bug",
@@ -117,7 +191,16 @@
       "equipment": "Peso Corporal",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=HvF6CoGcTfA",
+        "language": "pt-BR",
+        "channel": "Claudia Santos",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Dica de exercício - dead bug - cadeia cinética aberta",
+        "source_url": "https://www.youtube.com/watch?v=HvF6CoGcTfA",
+        "source_notes": "Título, canal e demonstração confirmados; instrutora mulher, não atende à preferência por instrutor homem."
+      }
     },
     {
       "id": "bird-dog",
@@ -128,7 +211,16 @@
         "Perdigueiro"
       ],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=GcIxfCvnLW8",
+        "language": "pt-BR",
+        "channel": "Strong Runner",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Bird Dog",
+        "source_url": "https://www.youtube.com/watch?v=GcIxfCvnLW8",
+        "source_notes": "Instruções em português identificadas; vídeo indisponível na página e instrutor não verificado."
+      }
     },
     {
       "id": "reverse-lunge",
@@ -139,7 +231,16 @@
         "Avanço para trás"
       ],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=p6S75W3TkDA",
+        "language": "pt-BR",
+        "channel": "Equipe Fun Sports",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "AFUNDO REVERSO",
+        "source_url": "https://www.youtube.com/watch?v=p6S75W3TkDA",
+        "source_notes": "Título e canal conferidos; página bloqueou reprodução sem login, sem duração ou instrutor verificáveis."
+      }
     },
     {
       "id": "split-squat",
@@ -148,7 +249,16 @@
       "equipment": "Peso Corporal",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=gY5m23Kgg0Q",
+        "language": "pt-BR",
+        "channel": "Treino JFIT",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "COMO FAZER AFUNDO, PASSADA OU AVANÇO | DICA DE TREINO | EXERCÍCIO AFUNDO | JFIT PERSONAL TRAINER",
+        "source_url": "https://www.youtube.com/watch?v=gY5m23Kgg0Q",
+        "source_notes": "Tutorial específico de afundo/passada; gênero do instrutor não verificado."
+      }
     },
     {
       "id": "pull-up",
@@ -159,7 +269,16 @@
         "Pull-up"
       ],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=jPWh-iJhp-8",
+        "language": "pt-BR",
+        "channel": "Rafa Leite | Corpo Mente",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Barra Pronada | Barra Fixa Pronada | Pull-Up | Overhand Grip Pull-Up",
+        "source_url": "https://www.youtube.com/shorts/jPWh-iJhp-8",
+        "source_notes": "URL de Shorts, título e descrição específicos conferidos; página mostra vídeo indisponível, sem confirmação visual do instrutor."
+      }
     },
     {
       "id": "chin-up",
@@ -170,7 +289,16 @@
         "Chin-up"
       ],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=WlerSQq51do",
+        "language": "pt-BR",
+        "channel": "CaliDojo",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "CHIN UP DESVENDADO (Barra Supinada)",
+        "source_url": "https://www.youtube.com/watch?v=WlerSQq51do",
+        "source_notes": "Transcrição aborda pegada supinada, técnica e erros; instrutor se identifica como professor/personal. Não é Short."
+      }
     },
     {
       "id": "scapular-pull-up",
@@ -179,7 +307,16 @@
       "equipment": "Barra",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=8FWdmFBUNP0",
+        "language": "en",
+        "channel": "Your House Fitness",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "How to Do Scapular Pull Ups",
+        "source_url": "https://www.youtube.com/watch?v=8FWdmFBUNP0",
+        "source_notes": "Transcrição descreve execução específica com cotovelos estendidos; página não expôs canal, duração ou identidade do instrutor."
+      }
     },
     {
       "id": "dumbbell-curl",
@@ -190,7 +327,16 @@
         "Rosca direta com halteres"
       ],
       "mini_workout": true,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=c__3LAiXYOk",
+        "language": "pt-BR",
+        "channel": "Miqueias Alves Personal",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "ROSCA DIRETA HALTERES - O JEITO CERTO DE FAZER",
+        "source_url": "https://www.youtube.com/watch?v=c__3LAiXYOk",
+        "source_notes": "Página, descrição e transcrição confirmam rosca direta em pé com halteres e instrutor homem; não é Short."
+      }
     },
     {
       "id": "dumbbell-row",
@@ -201,7 +347,16 @@
         "Remada unilateral com halter"
       ],
       "mini_workout": true,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=SUvZiVClLKw",
+        "language": "pt-BR",
+        "channel": "Treinador Morin",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "REMADA UNILATERAL COM HALTER - como executar de maneira correta!",
+        "source_url": "https://www.youtube.com/watch?v=SUvZiVClLKw",
+        "source_notes": "Página e fala demonstram remada unilateral com halter; duração/formato curto não confirmados."
+      }
     },
     {
       "id": "barbell-bench-press",
@@ -210,7 +365,16 @@
       "equipment": "Barra",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=ZINbHcRi3U8",
+        "language": "pt-BR",
+        "channel": "BlueFit",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Como Fazer Supino Reto com Barra? Técnica Correta Para Ganhar Massa no Peitoral | Leandro Twin",
+        "source_url": "https://www.youtube.com/shorts/ZINbHcRi3U8",
+        "source_notes": "URL de Shorts e descrição identificam demonstração de supino reto com barra por Leandro Twin."
+      }
     },
     {
       "id": "dumbbell-bench-press",
@@ -219,7 +383,16 @@
       "equipment": "Haltere",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=31j_Io3ncRg",
+        "language": "pt-BR",
+        "channel": "Guilherme Stellbrink I FisioPrev",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "COMO FAZER SUPINO RETO COM HALTERES - Fisioprev",
+        "source_url": "https://www.youtube.com/watch?v=31j_Io3ncRg",
+        "source_notes": "Transcrição descreve execução e pontos técnicos; duração/formato e gênero do instrutor não confirmados."
+      }
     },
     {
       "id": "incline-dumbbell-press",
@@ -228,7 +401,16 @@
       "equipment": "Haltere",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=akOsBDJifQQ",
+        "language": "pt-BR",
+        "channel": "Fernando Cantarelli",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Aprenda fazer o Supino inclinado com halteres",
+        "source_url": "https://www.youtube.com/shorts/akOsBDJifQQ",
+        "source_notes": "Título, canal e URL Shorts conferidos, mas vídeo aparece indisponível; demonstração e instrutor não puderam ser avaliados."
+      }
     },
     {
       "id": "lateral-raise",
@@ -237,7 +419,16 @@
       "equipment": "Haltere",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=nhQ4mdk0TmM",
+        "language": "pt-BR",
+        "channel": "Laércio Refundini",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "A Elevação Lateral PERFEITA (7 Passos)",
+        "source_url": "https://www.youtube.com/shorts/nhQ4mdk0TmM",
+        "source_notes": "Título e canal confirmados; página indicou vídeo indisponível, portanto não foi possível inspecionar a demonstração nem confirmar visualmente halteres."
+      }
     },
     {
       "id": "lat-pulldown",
@@ -255,7 +446,16 @@
       "equipment": "Máquina",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=6s9Q9XDT6to",
+        "language": "pt-BR",
+        "channel": "Personal Fábio Silva",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Maneira correta de fazer Leg Press",
+        "source_url": "https://www.youtube.com/watch?v=6s9Q9XDT6to",
+        "source_notes": "Título, canal, duração e assunto específicos conferidos; não é Short."
+      }
     },
     {
       "id": "leg-extension",
@@ -264,7 +464,16 @@
       "equipment": "Máquina",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=jfjUyhUWvH4",
+        "language": "pt-BR",
+        "channel": "Douglastronger Condicionamento Físico",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "como fazer cadeira extensora no treino de idosos #exercício #motivation #fitness #training",
+        "source_url": "https://www.youtube.com/shorts/jfjUyhUWvH4",
+        "source_notes": "URL, título e canal conferidos; vídeo indisponível para reprodução, instrutor não verificado."
+      }
     },
     {
       "id": "leg-curl",
@@ -273,7 +482,16 @@
       "equipment": "Máquina",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=twJ2are0-nA",
+        "language": "pt-BR",
+        "channel": "Academia Campinas Fit Moraes Sales",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Mesa Flexora: erros comuns e execução correta | Campinas Fit",
+        "source_url": "https://www.youtube.com/shorts/twJ2are0-nA",
+        "source_notes": "URL, título e canal conferidos; descrição aborda execução e erros, mas vídeo indisponível para verificação visual."
+      }
     },
     {
       "id": "cable-pushdown",
@@ -282,7 +500,16 @@
       "equipment": "Cabo",
       "aliases": [],
       "mini_workout": false,
-      "video": null
+      "video": {
+        "url": "https://www.youtube.com/watch?v=NE3cBDwdFL8",
+        "language": "pt-BR",
+        "channel": "Renato Silvano",
+        "checked_at": "2026-11-22",
+        "check": "YouTube oEmbed; metadados e disponibilidade confirmados, técnica não revisada visualmente",
+        "title": "Como Fazer Tríceps pulley com barra corretamente",
+        "source_url": "https://www.youtube.com/watch?v=NE3cBDwdFL8",
+        "source_notes": "Título, canal, duração e descrição/transcrição técnica conferidos; instrutor identificado como homem. Não é Short."
+      }
     }
   ]
 }

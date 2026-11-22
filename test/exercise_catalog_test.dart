@@ -15,12 +15,18 @@ void main() {
   test('catálogo resolve alias e equipamento sem misturar variações', () async {
     final catalog = await ExerciseCatalog.load();
     expect(catalog.entries.length, 27);
+    expect(catalog.entries.where((e) => e['video'] != null).length, 26);
+    expect(
+        catalog.entries
+            .where((e) => e['mini_workout'] == true)
+            .every((e) => e['video'] != null),
+        isTrue);
     final wall = catalog.enrich(
         {'nome': 'Flexao de bracos na parede', 'equipamento': 'Peso Corporal'});
     expect(wall['catalogId'], 'wall-push-up');
-    expect(wall['link'], contains('t6wxV5jG0Vg'));
-    expect(catalog.enrich({'nome': 'Flexão com joelhos apoiados'})['link'],
-        isNull);
+    expect(wall['link'], contains('UezGV10_wUA'));
+    expect(
+        catalog.enrich({'nome': 'Exercício sem referência'})['link'], isNull);
     expect(
         catalog.enrich(
             {'nome': 'Flexão na parede', 'equipamento': 'Máquina'})['link'],
@@ -54,7 +60,7 @@ void main() {
     });
     final exported = await db.workoutDao.exportWorkoutSplit(id);
     expect(
-        exported['days'][0]['exercises'][0]['link'], contains('t6wxV5jG0Vg'));
+        exported['days'][0]['exercises'][0]['link'], contains('UezGV10_wUA'));
     expect(
         (await (db.select(db.exercises)..where((e) => e.id.equals(old)))
                 .getSingle())

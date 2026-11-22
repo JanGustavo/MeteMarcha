@@ -2,10 +2,23 @@
 
 A fonte única é `backend/internal/exercisecatalog/catalog.json`, incorporada pelo
 servidor e incluída no aplicativo para importação offline. Há 27 exercícios,
-sete elegíveis para o mini treino e uma referência inicial de flexão na parede
-em português. A disponibilidade e o título desse vídeo foram conferidos pelo
-YouTube oEmbed em 22/11/2026; isso não é validação profissional da técnica.
-Os outros 26 vídeos aguardam mapeamento.
+sete elegíveis para o mini treino e 26 vídeos associados. Todas as sete opções
+do mini treino têm referência. Os metadados e a disponibilidade foram conferidos
+pelo YouTube oEmbed em 22/11/2026; isso não é validação profissional da técnica
+nem garantia de reprodução em cada dispositivo.
+
+O mapeamento fornecido em `exercise_youtube_map_ptbr.csv` foi normalizado em
+`docs/exercise-video-mapping.csv`. A pesquisa original, com uma vírgula escapada
+no título do afundo, está em `docs/exercise-video-research.csv`. Os resultados
+da consulta oficial estão em `docs/exercise-video-checks.json`. Títulos e canais
+do catálogo usam os metadados retornados pelo YouTube; o idioma informado pela
+pesquisa foi preservado, pois o oEmbed não informa idioma do áudio.
+
+Puxada frontal permanece sem referência: o link enviado (`YywSCu4Y360`) retornou
+HTTP 401 no oEmbed. O exercício continua disponível e o link foi preservado na
+pesquisa, sem ser associado automaticamente. Uma alternativa precisa ser
+confirmada antes de incluí-la. Anotações da pesquisa são proveniência, não
+instruções nem regras de seleção do aplicativo.
 
 A IA recebe os nomes permitidos e gera a prescrição. O servidor descarta links e
 IDs inventados pelo modelo e atribui `catalogId` e `link` pelo nome/alias e pelo
