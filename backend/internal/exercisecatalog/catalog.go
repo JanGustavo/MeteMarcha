@@ -4,6 +4,7 @@ package exercisecatalog
 import (
 	"embed"
 	"encoding/json"
+	"regexp"
 	"strings"
 )
 
@@ -38,16 +39,30 @@ var Entries = func() []Entry {
 	return catalog.Exercises
 }()
 
+var punctuation = regexp.MustCompile(`[^a-z0-9]+`)
+
 func Normalize(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	s = strings.NewReplacer("á", "a", "à", "a", "â", "a", "ã", "a", "é", "e", "ê", "e", "í", "i", "ó", "o", "ô", "o", "õ", "o", "ú", "u", "ü", "u", "ç", "c").Replace(s)
-	return strings.Join(strings.Fields(s), " ")
+	return strings.TrimSpace(punctuation.ReplaceAllString(s, " "))
+}
+
+func compatibleEquipment(equipment string, entry Entry) bool {
+	supplied, expected := Normalize(equipment), Normalize(entry.Equipment)
+	if supplied == "" || supplied == expected {
+		return true
+	}
+	bodyweight := map[string]bool{"peso corporal": true, "peso do corpo": true, "corporal": true, "sem equipamento": true, "nenhum": true, "solo": true, "colchonete": true, "bodyweight": true}
+	if expected == "peso corporal" && (supplied == "livre" || bodyweight[supplied]) {
+		return true
+	}
+	return (entry.ID == "pull-up" || entry.ID == "chin-up" || entry.ID == "scapular-pull-up") && bodyweight[supplied]
 }
 
 // Match requires a known name/alias and matching equipment, never fuzzy matching.
 func Match(name, equipment string) *Entry {
 	for _, entry := range Entries {
-		if equipment != "" && Normalize(equipment) != Normalize(entry.Equipment) {
+		if !compatibleEquipment(equipment, entry) {
 			continue
 		}
 		for _, alias := range append([]string{entry.Name}, entry.Aliases...) {

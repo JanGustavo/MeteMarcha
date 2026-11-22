@@ -2,7 +2,7 @@ name: gym_tracker
 description: Registro de treinos, progresso e squads do Mete Marcha.
 
 publish_to: "none"
-version: 2.11.2+43
+version: 2.11.3+44
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -69,6 +69,7 @@ flutter:
     - backend/internal/exercisecatalog/catalog.json
     - assets/sounds/
     - assets/images/
+    - assets/images/workout_photos/
     - assets/images/achievements/
     - assets/metemacha_standalone_icon.svg
     - assets/metemacha_app_icon.svg

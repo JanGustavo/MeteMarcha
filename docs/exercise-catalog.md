@@ -25,6 +25,19 @@ IDs inventados pelo modelo e atribui `catalogId` e `link` pelo nome/alias e pelo
 equipamento do catálogo. Nenhuma busca aproximada associa flexão na parede a
 flexão tradicional, ou um agachamento com barra à versão sem peso.
 
+Na versão 2.11.3, nomes comuns como Prancha e Flexão de braço também são aliases.
+Para movimentos reconhecidos de peso corporal, Livre é tratado como rótulo
+genérico da importação, assim como Sem equipamento ou Peso do corpo. Barra fixa
+aceita Peso Corporal quando a barra é o apoio. Equipamentos incompatíveis e
+variações não cadastradas continuam sem associação automática.
+
+Ao carregar os exercícios de um dia já salvo, referências ausentes reconhecidas
+são preenchidas no banco. A atualização altera apenas o link e protege uma
+referência manual adicionada entre a leitura e a gravação. Séries, descanso,
+equipamento e histórico permanecem intactos. A home indica quantos exercícios
+têm vídeo, e a lista do dia e o card durante o treino oferecem o botão do player.
+A importação informa a cobertura, inclusive quando há exercícios sem vídeo.
+
 Na importação JSON, uma referência explícita do arquivo tem prioridade. Se não
 houver link, o catálogo complementa o exercício reconhecido. Quando a referência
 difere de um exercício já salvo, a importação cria outro registro em vez de
@@ -60,3 +73,12 @@ A foto do dia não substitui os indicadores do calendário. A consistência na h
 continua com marcações de conclusão, e o calendário mensal com números e cores
 do treino e detalhes ao tocar. As letras A/B/C permanecem na identificação dos
 dias de treino. Não são usadas fotos dentro das células pequenas.
+
+## Capas das divisões (2.11.3)
+
+As capas abstratas foram substituídas por cenas fotográficas geradas para o app,
+em painéis quadrados de peito, costas, pernas, ombros e braços. As divisões ABC,
+ABCD e ABCDE usam respectivamente três, quatro e cinco painéis. O personalizado
+inclui uma flexão na parede. Os arquivos WebP em `assets/images/workout_photos/`
+somam aproximadamente 100 KB; as quatro capas antigas foram removidas.
+São ilustrações de seleção, não fotografias de usuários nem instruções técnicas.

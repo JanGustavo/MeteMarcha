@@ -67,4 +67,66 @@ void main() {
             .link,
         isNull);
   });
+  test('rótulos de calistenia importados resolvem sem misturar variações',
+      () async {
+    final catalog = await ExerciseCatalog.load();
+    for (final example in [
+      ['Prancha', 'Livre', 'plank'],
+      ['Flexão de braço', 'Peso do corpo', 'push-up'],
+      ['Flexão de braços com joelhos apoiados', 'Livre', 'knee-push-up'],
+      ['Barra fixa (pegada pronada)', 'Peso Corporal', 'pull-up'],
+      [
+        'Elevação de panturrilha em pé',
+        'Sem equipamento',
+        'standing-calf-raise'
+      ],
+    ]) {
+      final result =
+          catalog.enrich({'nome': example[0], 'equipamento': example[1]});
+      expect(result['catalogId'], example[2]);
+      expect(result['link'], isNotNull);
+    }
+    expect(catalog.match('Flexão inclinada', 'Livre'), isNull);
+    expect(catalog.match('Supino reto com barra', 'Haltere'), isNull);
+    expect(catalog.match('Agachamento com barra', 'Barra'), isNull);
+  });
+  test(
+      'treino antigo recebe vídeos ausentes sem reimportar ou alterar prescrição',
+      () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    final split = await db.workoutDao.insertSplit(
+        WorkoutSplitsCompanion.insert(nome: 'Importado', tipo: 'CUSTOM'));
+    final day = await db.workoutDao.insertDay(WorkoutDaysCompanion.insert(
+        splitId: split, letra: 'A', nome: 'Calistenia'));
+    final old = await db.exerciseDao.insertExercise(ExercisesCompanion.insert(
+        nome: 'Prancha',
+        grupoMuscular: 'Core',
+        equipamento: const Value('Livre'),
+        volume: const Value('3x30s'),
+        tempoDescansoSegundos: const Value(45)));
+    final manual = await db.exerciseDao.insertExercise(
+        ExercisesCompanion.insert(
+            nome: 'Flexão de braço',
+            grupoMuscular: 'Peito',
+            equipamento: const Value('Livre'),
+            link: const Value('https://youtu.be/jNo3GqP-d4I')));
+    for (final id in [old, manual]) {
+      await db.exerciseDao.linkExerciseToDay(
+          WorkoutDayExercisesCompanion.insert(
+              dayId: day, exerciseId: id, ordem: id));
+    }
+    final countBefore = (await db.exerciseDao.getAll()).length;
+    final resolved = await db.exerciseDao.getExercisesForDay(day);
+    expect(
+        resolved.firstWhere((e) => e.id == old).link, contains('uUQKLqKMJSU'));
+    final saved = await db.exerciseDao.getById(old);
+    expect(saved!.link, isNotNull);
+    expect(saved.volume, '3x30s');
+    expect(saved.tempoDescansoSegundos, 45);
+    expect(saved.equipamento, 'Livre');
+    expect((await db.exerciseDao.getById(manual))!.link,
+        'https://youtu.be/jNo3GqP-d4I');
+    expect((await db.exerciseDao.getAll()).length, countBefore);
+  });
 }

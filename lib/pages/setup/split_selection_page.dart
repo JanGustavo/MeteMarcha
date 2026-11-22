@@ -141,10 +141,10 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                       label: const Text('Montar mini treino com IA'))),
               Expanded(
                 child: GridView.count(
-                  crossAxisCount: 2,
+                  crossAxisCount: 1,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.85,
+                  childAspectRatio: 1.55,
                   children: [
                     if (!isCalisthenics)
                       _buildSplitCard(
@@ -173,7 +173,7 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                           ),
                         ),
                         subtitle: 'Básico - 3 dias/sem.',
-                        assetPath: 'assets/images/workout_abc.webp',
+                        assetPath: 'assets/images/workout_photos/abc.webp',
                         desc:
                             'Ideal para iniciantes ou quem tem tempo limitado. Foco em consistência.',
                         daysInfo: const [
@@ -213,7 +213,7 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                           ),
                         ),
                         subtitle: 'Intermediário - 4 dias/sem.',
-                        assetPath: 'assets/images/workout_abcd.webp',
+                        assetPath: 'assets/images/workout_photos/abcd.webp',
                         desc:
                             'Excelente para quem já treina e quer isolar grupos musculares específicos.',
                         daysInfo: const [
@@ -258,7 +258,7 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                           ),
                         ),
                         subtitle: 'Avançado - 5 dias/sem.',
-                        assetPath: 'assets/images/workout_abcde.webp',
+                        assetPath: 'assets/images/workout_photos/abcde.webp',
                         desc:
                             'Foco alto em volume e intensidade, treinando quase todos os dias da semana.',
                         daysInfo: const [
@@ -283,7 +283,7 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                         ),
                       ),
                       subtitle: 'Crie sua própria rotina',
-                      assetPath: 'assets/images/workout_custom.webp',
+                      assetPath: 'assets/images/workout_photos/custom.webp',
                       desc:
                           'Crie um treino do zero, adicionando dias e exercícios conforme sua necessidade.',
                       daysInfo: const [
@@ -470,12 +470,9 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                 // Imagem do Treino como Banner
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    assetPath,
-                    width: double.infinity,
-                    height: 120,
-                    fit: BoxFit.cover,
-                  ),
+                  child: AspectRatio(
+                      aspectRatio: _photoRatio(assetPath),
+                      child: Image.asset(assetPath, fit: BoxFit.cover)),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -590,28 +587,17 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
 
   // ─── DESENHO DOS ÍCONES CUSTOMIZADOS ──────────────────────────────────────────
 
-  Widget _buildWorkoutCardImage(String assetPath) {
-    return Container(
-      height: 70,
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.asset(
-          assetPath,
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
+  double _photoRatio(String assetPath) => assetPath.endsWith('/abcde.webp')
+      ? 5
+      : assetPath.endsWith('/abcd.webp')
+          ? 4
+          : 3;
+
+  Widget _buildWorkoutCardImage(String assetPath) => ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: AspectRatio(
+          aspectRatio: _photoRatio(assetPath),
+          child: Image.asset(assetPath, fit: BoxFit.cover)));
 
   Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
     try {
@@ -1180,6 +1166,7 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                             throw const FormatException(
                                 'O JSON deve ser um objeto.');
                           }
+                          final catalog = await ExerciseCatalog.load();
                           if (data['days'] is List) {
                             if (!data.containsKey('nome'))
                               throw const FormatException(
@@ -1192,6 +1179,11 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                                 .read(workoutDaoProvider)
                                 .setActiveSplit(splitId);
                             if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted)
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content:
+                                          Text(catalog.importSummary(data))));
                             ref.invalidate(splitsProvider);
                             ref.invalidate(activeSplitProvider);
                             ref.invalidate(activeSplitDaysProvider);
@@ -1218,7 +1210,6 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                           Navigator.pop(ctx);
 
                           final db = ref.read(databaseProvider);
-                          final catalog = await ExerciseCatalog.load();
                           await db.transaction(() async {
                             if (clearUnused) {
                               await ref
@@ -1257,7 +1248,8 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
 
                               for (int i = 0; i < exercisesList.length; i++) {
                                 final rawExercise = exercisesList[i];
-                                if (rawExercise is! Map<String, dynamic>) continue;
+                                if (rawExercise is! Map<String, dynamic>)
+                                  continue;
                                 final exObj = catalog.enrich(rawExercise);
 
                                 final exName =
@@ -1276,7 +1268,10 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                                 }
 
                                 int exId;
-                                if (foundEx != null && exObj['link'] != null && foundEx.link != exObj['link']) foundEx = null;
+                                if (foundEx != null &&
+                                    exObj['link'] != null &&
+                                    foundEx.link != exObj['link'])
+                                  foundEx = null;
                                 if (foundEx != null) {
                                   exId = foundEx.id;
                                   final jsonObs =
@@ -1350,10 +1345,8 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
 
                           if (rootContext != null && rootContext.mounted) {
                             ScaffoldMessenger.of(rootContext).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                    'Treino importado e ativado com sucesso! ✓'),
-                              ),
+                              SnackBar(
+                                  content: Text(catalog.importSummary(data))),
                             );
                           }
 

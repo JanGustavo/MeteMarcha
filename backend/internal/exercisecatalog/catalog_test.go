@@ -32,3 +32,15 @@ func TestCatalogIntegrity(t *testing.T) {
 		t.Fatal("wrong variant")
 	}
 }
+
+func TestImportedBodyweightNames(t *testing.T) {
+	for _, sample := range [][3]string{{"Prancha", "Livre", "plank"}, {"Flexão de braço", "Peso do corpo", "push-up"}, {"Barra fixa (pegada pronada)", "Peso Corporal", "pull-up"}} {
+		entry := Match(sample[0], sample[1])
+		if entry == nil || entry.ID != sample[2] || entry.Video == nil {
+			t.Fatal("missing reference", sample)
+		}
+	}
+	if Match("Flexão inclinada", "Livre") != nil || Match("Supino reto com barra", "Haltere") != nil {
+		t.Fatal("unsafe variant match")
+	}
+}

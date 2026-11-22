@@ -8,6 +8,7 @@ import 'package:gym_tracker/core/database/app_database.dart' hide isNull, isNotN
 import 'package:sqlite3/open.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   // Configura o carregamento do SQLite no Linux para usar a biblioteca de runtime
   // já instalada no sistema, evitando a dependência do pacote libsqlite3-dev
   open.overrideFor(OperatingSystem.linux, () {

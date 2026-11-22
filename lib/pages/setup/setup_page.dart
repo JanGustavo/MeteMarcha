@@ -1,8 +1,8 @@
+import '../../core/media/reference_video_page.dart';
 // lib/pages/setup/setup_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/constants/equipment_options.dart';
@@ -307,7 +307,9 @@ class _ExercisesSetupTabState extends ConsumerState<_ExercisesSetupTab> {
                                         ex.link!.isNotEmpty) ...[
                                       const SizedBox(height: 4),
                                       InkWell(
-                                        onTap: () => _openLink(ex.link!),
+                                        onTap: () => openReferenceVideo(
+                                            context, ex.link!,
+                                            title: ex.nome),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
@@ -836,7 +838,9 @@ class _RoutineExercisesListState extends ConsumerState<_RoutineExercisesList> {
                               if (ex.link != null && ex.link!.isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 InkWell(
-                                  onTap: () => _openLink(ex.link!),
+                                  onTap: () => openReferenceVideo(
+                                      context, ex.link!,
+                                      title: ex.nome),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -1407,16 +1411,6 @@ void _showAddExerciseSheet(
 }
 
 // \u2500\u2500\u2500 AUXILIAR PARA ABRIR LINKS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-
-Future<void> _openLink(String url) async {
-  final uri = Uri.tryParse(url.trim());
-  if (uri == null) return;
-  try {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  } catch (_) {
-    // Falha silenciosa ou log
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════
 // TAB DE PLANEJAMENTO SEMANAL (KANBAN / PAREAMENTO)

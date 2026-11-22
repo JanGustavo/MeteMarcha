@@ -1569,6 +1569,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                     ],
                                   ),
                                 ),
+                                if (ex.link?.isNotEmpty == true)
+                                  IconButton(
+                                      tooltip: 'Ver execução',
+                                      onPressed: () => _openLink(ex.link!),
+                                      icon: const Icon(
+                                          Icons.play_circle_outline,
+                                          color: AppColors.primaryLight)),
                                 Icon(
                                   Icons.arrow_forward_ios_rounded,
                                   size: 12,

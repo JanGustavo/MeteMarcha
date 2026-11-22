@@ -279,7 +279,23 @@ class ExerciseDao extends DatabaseAccessor<AppDatabase>
       ..orderBy([OrderingTerm.asc(workoutDayExercises.ordem)]);
 
     final rows = await query.get();
-    return rows.map((r) => r.readTable(exercises)).toList();
+    final catalog = await ExerciseCatalog.load();
+    final result = <Exercise>[];
+    for (final row in rows) {
+      final exercise = row.readTable(exercises);
+      if (exercise.link?.trim().isNotEmpty == true) {
+        result.add(exercise);
+        continue;
+      }
+      final reference = catalog.enrich({'nome': exercise.nome, 'equipamento': exercise.equipamento})['link'] as String?;
+      if (reference == null) { result.add(exercise); continue; }
+      final changed = await (update(exercises)..where((e) =>
+          e.id.equals(exercise.id) & (e.link.isNull() | e.link.equals(exercise.link ?? ''))))
+          .write(ExercisesCompanion(link: Value(reference)));
+      result.add(changed > 0 ? exercise.copyWith(link: Value(reference)) :
+          (await getById(exercise.id) ?? exercise));
+    }
+    return result;
   }
 
   // ── Writes ─────────────────────────────────────────────────────

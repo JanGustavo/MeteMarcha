@@ -1,3 +1,4 @@
+import '../../core/media/reference_video_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/providers.dart';
@@ -159,6 +160,16 @@ class _MiniWorkoutPageState extends ConsumerState<MiniWorkoutPage> {
                                       Text(
                                           '${ex['volume']} · descanso ${ex['tempoDescansoSegundos']} s'),
                                       Text(ex['equipamento']),
+                                      if ((ex['link'] ?? '')
+                                          .toString()
+                                          .isNotEmpty)
+                                        TextButton.icon(
+                                            onPressed: () => openReferenceVideo(
+                                                context, ex['link'],
+                                                title: ex['nome']),
+                                            icon: const Icon(
+                                                Icons.play_circle_outline),
+                                            label: const Text('Ver execução')),
                                       if ((ex['observacoes'] ?? '').isNotEmpty)
                                         Padding(
                                             padding:

@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "exercises": [
     {
       "id": "wall-push-up",
@@ -8,7 +8,9 @@
       "equipment": "Peso Corporal",
       "aliases": [
         "Flexão de braços na parede",
-        "Wall push-up"
+        "Wall push-up",
+        "Flexão contra a parede",
+        "Flexão na parede em pé"
       ],
       "mini_workout": true,
       "video": {
@@ -29,7 +31,9 @@
       "equipment": "Peso Corporal",
       "aliases": [
         "Agachamento sem peso",
-        "Agachamento com peso corporal"
+        "Agachamento com peso corporal",
+        "Agachamento corporal",
+        "Bodyweight squat"
       ],
       "mini_workout": true,
       "video": {
@@ -49,7 +53,11 @@
       "muscle": "Panturrilha",
       "equipment": "Peso Corporal",
       "aliases": [
-        "Panturrilha em pé sem peso"
+        "Panturrilha em pé sem peso",
+        "Elevação de panturrilha",
+        "Elevação de panturrilha em pé",
+        "Elevação de panturrilhas em pé",
+        "Panturrilha em pé"
       ],
       "mini_workout": true,
       "video": {
@@ -70,7 +78,10 @@
       "equipment": "Peso Corporal",
       "aliases": [
         "Ponte de glúteos no solo",
-        "Glute bridge"
+        "Glute bridge",
+        "Ponte de glúteo",
+        "Ponte de quadril",
+        "Elevação de quadril no solo"
       ],
       "mini_workout": true,
       "video": {
@@ -91,7 +102,9 @@
       "equipment": "Peso Corporal",
       "aliases": [
         "Abdominal supra no solo",
-        "Crunch"
+        "Crunch",
+        "Abdominal supra",
+        "Abdominal supra curto"
       ],
       "mini_workout": true,
       "video": {
@@ -111,7 +124,10 @@
       "muscle": "Peito",
       "equipment": "Peso Corporal",
       "aliases": [
-        "Flexão de joelhos"
+        "Flexão de joelhos",
+        "Flexão de braços com joelhos apoiados",
+        "Flexão com apoio dos joelhos",
+        "Flexão de joelho"
       ],
       "mini_workout": false,
       "video": {
@@ -132,7 +148,10 @@
       "equipment": "Peso Corporal",
       "aliases": [
         "Flexão tradicional",
-        "Push-up"
+        "Push-up",
+        "Flexão de braço",
+        "Flexão de braços no solo",
+        "Flexão de braços tradicional"
       ],
       "mini_workout": false,
       "video": {
@@ -152,7 +171,10 @@
       "muscle": "Core",
       "equipment": "Peso Corporal",
       "aliases": [
-        "Prancha abdominal"
+        "Prancha abdominal",
+        "Prancha",
+        "Prancha isométrica",
+        "Prancha de antebraços"
       ],
       "mini_workout": false,
       "video": {
@@ -171,7 +193,9 @@
       "name": "Prancha lateral",
       "muscle": "Core",
       "equipment": "Peso Corporal",
-      "aliases": [],
+      "aliases": [
+        "Prancha lateral isométrica"
+      ],
       "mini_workout": false,
       "video": {
         "url": "https://www.youtube.com/watch?v=Yc_p9WHjRI0",
@@ -247,7 +271,10 @@
       "name": "Agachamento afundo",
       "muscle": "Quadríceps",
       "equipment": "Peso Corporal",
-      "aliases": [],
+      "aliases": [
+        "Afundo estático",
+        "Afundo"
+      ],
       "mini_workout": false,
       "video": {
         "url": "https://www.youtube.com/watch?v=gY5m23Kgg0Q",
@@ -266,7 +293,9 @@
       "muscle": "Costas",
       "equipment": "Barra",
       "aliases": [
-        "Pull-up"
+        "Pull-up",
+        "Barra fixa",
+        "Barra fixa pegada pronada"
       ],
       "mini_workout": false,
       "video": {
@@ -286,7 +315,8 @@
       "muscle": "Costas",
       "equipment": "Barra",
       "aliases": [
-        "Chin-up"
+        "Chin-up",
+        "Barra fixa pegada supinada"
       ],
       "mini_workout": false,
       "video": {
@@ -305,7 +335,10 @@
       "name": "Retração escapular na barra",
       "muscle": "Costas",
       "equipment": "Barra",
-      "aliases": [],
+      "aliases": [
+        "Barra escapular",
+        "Scapular pull-up"
+      ],
       "mini_workout": false,
       "video": {
         "url": "https://www.youtube.com/watch?v=8FWdmFBUNP0",

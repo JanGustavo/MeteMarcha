@@ -1,3 +1,4 @@
+import '../../core/media/reference_video_page.dart';
 import 'widgets/workout_split_selector.dart';
 import '../../core/media/reference_image.dart';
 import '../../core/providers/training_focus_provider.dart';
@@ -840,7 +841,16 @@ class _TreinoTab extends ConsumerWidget {
                         children: [
                           ...splits.map((split) {
                             final isSelected = activeSplit?.id == split.id;
-                            return WorkoutSplitSelector(name:split.nome.isNotEmpty?split.nome:split.tipo,selected:isSelected,onSelect:()=>ref.read(workoutDaoProvider).setActiveSplit(split.id),onOptions:()=>_showSplitOptions(context,ref,split));
+                            return WorkoutSplitSelector(
+                                name: split.nome.isNotEmpty
+                                    ? split.nome
+                                    : split.tipo,
+                                selected: isSelected,
+                                onSelect: () => ref
+                                    .read(workoutDaoProvider)
+                                    .setActiveSplit(split.id),
+                                onOptions: () =>
+                                    _showSplitOptions(context, ref, split));
                           }),
                           ActionChip(
                             avatar: const Icon(Icons.add_rounded,
@@ -1126,12 +1136,25 @@ class _DayListTile extends ConsumerWidget {
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                preview,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: context.onSurface),
-              ),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(preview,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            TextStyle(fontSize: 12, color: context.onSurface)),
+                    if (exercises.any((e) => e.link?.isNotEmpty == true))
+                      Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Row(children: [
+                            const Icon(Icons.play_circle_outline, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                                '${exercises.where((e) => e.link?.isNotEmpty == true).length} vídeos de execução',
+                                style: const TextStyle(fontSize: 12)),
+                          ])),
+                  ]),
             ),
             trailing: PopupMenuButton<String>(
                 tooltip: 'Imagem do dia ${day.letra}',
@@ -1242,16 +1265,25 @@ class _DayListTile extends ConsumerWidget {
                                 color: AppColors.getWorkoutColor(day.letra)),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(
-                                ex.nome,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            Text(
-                              '${ex.grupoMuscular} \u00b7 ${ex.equipamento}${ex.volume != null && ex.volume!.isNotEmpty ? ' \u00b7 ${ex.volume}' : ''}',
-                              style: TextStyle(
-                                  color: context.onSurface, fontSize: 11),
-                            ),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                  Text(ex.nome,
+                                      style: const TextStyle(fontSize: 14)),
+                                  Text(
+                                      '${ex.grupoMuscular} · ${ex.equipamento}${ex.volume != null ? ' · ${ex.volume}' : ''}',
+                                      style: TextStyle(
+                                          color: context.onSurface,
+                                          fontSize: 11)),
+                                ])),
+                            if (ex.link?.isNotEmpty == true)
+                              IconButton(
+                                  tooltip: 'Ver execução de ${ex.nome}',
+                                  onPressed: () => openReferenceVideo(
+                                      context, ex.link!,
+                                      title: ex.nome),
+                                  icon: const Icon(Icons.play_circle_outline)),
                           ],
                         ),
                       );
