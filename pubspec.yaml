@@ -2,7 +2,7 @@ name: gym_tracker
 description: Registro de treinos, progresso e squads do Mete Marcha.
 
 publish_to: "none"
-version: 2.10.0+40
+version: 2.11.0+41
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -33,6 +33,7 @@ dependencies:
   shared_preferences: ^2.5.5
   http: ^1.6.0
   image_picker: ^1.2.2
+  webview_flutter: ^4.14.1
   path_provider: ^2.1.5
   package_info_plus: ^8.0.0
   ota_update: ^7.1.0

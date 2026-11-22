@@ -73,7 +73,8 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.music_note_rounded, color: AppColors.primaryLight),
+                    Icon(Icons.music_note_rounded,
+                        color: AppColors.primaryLight),
                     SizedBox(width: 8),
                     Text(
                       'Rádio de Treino',
@@ -112,11 +113,14 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                               padding: EdgeInsets.all(12.0),
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryLight),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.primaryLight),
                               ),
                             )
                           : Icon(
-                              musicState.isPlaying ? Icons.music_note_rounded : Icons.music_off_rounded,
+                              musicState.isPlaying
+                                  ? Icons.music_note_rounded
+                                  : Icons.music_off_rounded,
                               color: AppColors.primaryLight,
                             ),
                     ),
@@ -151,7 +155,9 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                   ),
                   IconButton(
                     icon: Icon(
-                      musicState.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      musicState.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                       color: context.onBackground,
                       size: 28,
                     ),
@@ -168,6 +174,20 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                 ],
               ),
             ),
+            Row(children: [
+              IconButton(
+                  tooltip: musicState.volume == 0 ? 'Ativar som' : 'Silenciar',
+                  onPressed: () => musicNotifier
+                      .setVolume(musicState.volume == 0 ? 0.5 : 0.0),
+                  icon: Icon(musicState.volume == 0
+                      ? Icons.volume_off
+                      : Icons.volume_up)),
+              Expanded(
+                  child: Slider(
+                      value: musicState.volume,
+                      label: '${(musicState.volume * 100).round()}%',
+                      onChanged: musicNotifier.setVolume))
+            ]),
             const SizedBox(height: 16),
             Text(
               'Estações de Foco / Energia',
@@ -192,12 +212,17 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                       onTap: () => musicNotifier.playChannel(index),
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 8),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : context.surfaceColor,
+                          color: isSelected
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : context.surfaceColor,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: isSelected ? AppColors.primary : context.divider,
+                            color: isSelected
+                                ? AppColors.primary
+                                : context.divider,
                             width: 1.5,
                           ),
                         ),
@@ -206,9 +231,11 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                             Text(
                               channel.name.split(' ').first,
                               style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? AppColors.primaryLight : context.onBackground,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected
+                                    ? AppColors.primaryLight
+                                    : context.onBackground,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -272,7 +299,8 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                     assetPath: 'assets/images/samsung_music.png',
                     packageName: 'com.sec.android.app.music',
                     url: 'android-music-player://',
-                    fallbackUrl: 'https://play.google.com/store/apps/details?id=com.sec.android.app.music',
+                    fallbackUrl:
+                        'https://play.google.com/store/apps/details?id=com.sec.android.app.music',
                   ),
                   const SizedBox(width: 8),
                   const MusicAppLinkButton(
@@ -280,7 +308,8 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                     assetPath: 'assets/images/mi_music.png',
                     packageName: 'com.miui.player',
                     url: 'miui-music://',
-                    fallbackUrl: 'https://play.google.com/store/apps/details?id=com.miui.player',
+                    fallbackUrl:
+                        'https://play.google.com/store/apps/details?id=com.miui.player',
                   ),
                   if (_customAppName != null && _customAppPackage != null) ...[
                     const SizedBox(width: 8),
@@ -291,7 +320,8 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                           assetPath: 'assets/images/generic_player.png',
                           packageName: _customAppPackage,
                           url: 'intent:#Intent;package=$_customAppPackage;end',
-                          fallbackUrl: 'https://play.google.com/store/apps/details?id=$_customAppPackage',
+                          fallbackUrl:
+                              'https://play.google.com/store/apps/details?id=$_customAppPackage',
                         ),
                         Positioned(
                           top: 0,
@@ -304,7 +334,8 @@ class _WorkoutMusicPanelState extends ConsumerState<WorkoutMusicPanel> {
                                 color: AppColors.primary,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close, size: 12, color: Colors.white),
+                              child: const Icon(Icons.close,
+                                  size: 12, color: Colors.white),
                             ),
                           ),
                         ),
@@ -337,7 +368,8 @@ class MusicAppLinkButton extends StatelessWidget {
     required this.fallbackUrl,
   });
 
-  static const _channel = MethodChannel('dev.jangustavo.metemarcha/app_launcher');
+  static const _channel =
+      MethodChannel('dev.jangustavo.metemarcha/app_launcher');
 
   Future<void> _launch() async {
     if (packageName != null) {

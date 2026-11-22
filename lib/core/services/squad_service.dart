@@ -69,7 +69,7 @@ class SquadService {
 
   Future<void> publish(
       XFile photo, String caption, Map<String, dynamic>? track, String key,
-      {Map<String, dynamic>? report}) async {
+      {Map<String, dynamic>? report, String? videoUrl}) async {
     if (report != null) {
       try {
         final capabilities = await request('GET', '/v1/story-capabilities');
@@ -84,6 +84,8 @@ class SquadService {
     upload.headers.addAll(await headers());
     upload.headers['Idempotency-Key'] = key;
     upload.fields['caption'] = caption;
+    if (videoUrl != null && videoUrl.isNotEmpty)
+      upload.fields['video_url'] = videoUrl;
     if (report != null) upload.fields['workout_report'] = jsonEncode(report);
     if (track != null) {
       upload.fields.addAll({

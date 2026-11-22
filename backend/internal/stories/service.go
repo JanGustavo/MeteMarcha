@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ import (
 )
 
 type Story struct {
+	VideoURL         string          `json:"video_url,omitempty"`
 	WorkoutReport    json.RawMessage `json:"workout_report,omitempty"`
 	ID               string          `json:"id"`
 	Author           Author          `json:"author"`
@@ -105,6 +107,7 @@ func (s *Service) visibleInFeed(created time.Time) bool {
 // ---- Publicar -----------------------------------------------------------------
 
 type PublishInput struct {
+	VideoURL        string
 	Report          string
 	AuthorID        string
 	RequestID       string // Idempotency-Key: o mesmo valor devolve o mesmo story
@@ -130,6 +133,14 @@ func (s *Service) Publish(ctx context.Context, in PublishInput) (Story, bool, er
 		return Story{}, false, groups.ErrNotInGroup
 	}
 
+	video := strings.TrimSpace(in.VideoURL)
+	if video != "" {
+		uri, err := url.Parse(video)
+		hosts := map[string]bool{"youtube.com": true, "www.youtube.com": true, "m.youtube.com": true, "youtu.be": true, "tiktok.com": true, "www.tiktok.com": true, "vm.tiktok.com": true, "vt.tiktok.com": true, "instagram.com": true, "www.instagram.com": true, "kwai.com": true, "www.kwai.com": true, "k.kwai.com": true, "s.kwai.app": true}
+		if err != nil || uri.Scheme != "https" || uri.User != nil || len(video) > 2000 || !hosts[strings.ToLower(uri.Hostname())] {
+			return Story{}, false, platform.NewError(422, "invalid_video", "Use um link HTTPS do YouTube, TikTok, Instagram ou Kwai.")
+		}
+	}
 	report, err := validateReport(in.Report)
 	if err != nil {
 		return Story{}, false, err
@@ -159,7 +170,7 @@ func (s *Service) Publish(ctx context.Context, in PublishInput) (Story, bool, er
 
 	err = s.store.insert(ctx, newStory{
 		ID: platform.NewID(), AuthorID: in.AuthorID, GroupID: membership.GroupID, MediaID: mediaID,
-		Report: report, Caption: caption, RequestID: in.RequestID, Clip: trackClip, CreatedAt: s.now().UTC(),
+		VideoURL: video, Report: report, Caption: caption, RequestID: in.RequestID, Clip: trackClip, CreatedAt: s.now().UTC(),
 	})
 	if err != nil {
 		s.media.DiscardPhoto(ctx, mediaID) // esta foto não será usada
@@ -369,6 +380,7 @@ func (s *Service) assemble(ctx context.Context, rows []storyRow, viewerID string
 			ID:               r.ID,
 			Author:           Author{ID: r.AuthorID, DisplayName: r.AuthorName},
 			Caption:          r.Caption,
+			VideoURL:         r.VideoURL,
 			WorkoutReport:    json.RawMessage(r.Report),
 			CreatedAt:        r.CreatedAt,
 			VisibleUntil:     r.CreatedAt.Add(s.visibleFor),

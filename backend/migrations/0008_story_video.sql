@@ -1,0 +1,1 @@
+ALTER TABLE stories ADD COLUMN video_url TEXT NOT NULL DEFAULT '';

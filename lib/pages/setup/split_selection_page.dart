@@ -24,13 +24,23 @@ import '../home/home_page.dart';
 
 const bool groqBeta = true;
 
-class SplitSelectionPage extends ConsumerWidget {
+class SplitSelectionPage extends ConsumerStatefulWidget {
   final bool isOnboarding;
   const SplitSelectionPage({super.key, this.isOnboarding = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isCalisthenics=ref.watch(trainingFocusProvider).valueOrNull=='calistenia';
+  ConsumerState<SplitSelectionPage> createState() => _SplitSelectionPageState();
+}
+
+class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
+  bool get isOnboarding => widget.isOnboarding;
+  String? selectedMode;
+  @override
+  Widget build(BuildContext context) {
+    final mode = selectedMode ??
+        ref.watch(trainingFocusProvider).valueOrNull ??
+        'musculacao';
+    final isCalisthenics = mode == 'calistenia';
     return Scaffold(
       appBar: isOnboarding
           ? null
@@ -101,8 +111,33 @@ class SplitSelectionPage extends ConsumerWidget {
                 const SizedBox(height: 20),
               ],
 
+              const Text(
+                  'Seu foco é uma preferência. Você pode adicionar treinos das duas modalidades.'),
+              const SizedBox(height: 12),
+              SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                        value: 'musculacao', label: Text('Musculação')),
+                    ButtonSegment(
+                        value: 'calistenia', label: Text('Calistenia'))
+                  ],
+                  selected: {
+                    mode
+                  },
+                  onSelectionChanged: (value) =>
+                      setState(() => selectedMode = value.first)),
+              const SizedBox(height: 8),
               // Grid 2x2 dos Cards de Treino
-              Padding(padding:const EdgeInsets.symmetric(vertical:12),child:FilledButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>MiniWorkoutPage(onboarding:isOnboarding))),icon:const Icon(Icons.auto_awesome_outlined),label:const Text('Montar mini treino com IA'))),
+              Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: FilledButton.icon(
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => MiniWorkoutPage(
+                                  onboarding: isOnboarding, focus: mode))),
+                      icon: const Icon(Icons.auto_awesome_outlined),
+                      label: const Text('Montar mini treino com IA'))),
               Expanded(
                 child: GridView.count(
                   crossAxisCount: 2,
@@ -110,93 +145,129 @@ class SplitSelectionPage extends ConsumerWidget {
                   mainAxisSpacing: 16,
                   childAspectRatio: 0.85,
                   children: [
-                    if(!isCalisthenics) _buildSplitCard(
-                      context,
-                      ref,
-                      tipo: 'ABC',
-                      richTitle: RichText(
-                        text: const TextSpan(
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2,
+                    if (!isCalisthenics)
+                      _buildSplitCard(
+                        context,
+                        ref,
+                        tipo: 'ABC',
+                        richTitle: RichText(
+                          text: const TextSpan(
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2,
+                            ),
+                            children: [
+                              TextSpan(
+                                  text: 'A',
+                                  style: TextStyle(color: Colors.white)),
+                              TextSpan(
+                                  text: 'B',
+                                  style:
+                                      TextStyle(color: AppColors.primaryLight)),
+                              TextSpan(
+                                  text: 'C',
+                                  style: TextStyle(color: Colors.white)),
+                            ],
                           ),
-                          children: [
-                            TextSpan(text: 'A', style: TextStyle(color: Colors.white)),
-                            TextSpan(text: 'B', style: TextStyle(color: AppColors.primaryLight)),
-                            TextSpan(text: 'C', style: TextStyle(color: Colors.white)),
-                          ],
                         ),
+                        subtitle: 'Básico - 3 dias/sem.',
+                        assetPath: 'assets/images/workout_abc.webp',
+                        desc:
+                            'Ideal para iniciantes ou quem tem tempo limitado. Foco em consistência.',
+                        daysInfo: const [
+                          'Dia A: Peito, Ombro e Tríceps',
+                          'Dia B: Costas e Bíceps',
+                          'Dia C: Perna e Core',
+                        ],
                       ),
-                      subtitle: 'Básico - 3 dias/sem.',
-                      assetPath: 'assets/images/workout_abc.webp',
-                      desc: 'Ideal para iniciantes ou quem tem tempo limitado. Foco em consistência.',
-                      daysInfo: const [
-                        'Dia A: Peito, Ombro e Tríceps',
-                        'Dia B: Costas e Bíceps',
-                        'Dia C: Perna e Core',
-                      ],
-                    ),
-                    if(!isCalisthenics) _buildSplitCard(
-                      context,
-                      ref,
-                      tipo: 'ABCD',
-                      richTitle: RichText(
-                        text: const TextSpan(
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2,
+                    if (!isCalisthenics)
+                      _buildSplitCard(
+                        context,
+                        ref,
+                        tipo: 'ABCD',
+                        richTitle: RichText(
+                          text: const TextSpan(
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2,
+                            ),
+                            children: [
+                              TextSpan(
+                                  text: 'A',
+                                  style: TextStyle(color: Colors.white)),
+                              TextSpan(
+                                  text: 'B',
+                                  style:
+                                      TextStyle(color: AppColors.primaryLight)),
+                              TextSpan(
+                                  text: 'C',
+                                  style: TextStyle(color: Colors.white)),
+                              TextSpan(
+                                  text: 'D',
+                                  style:
+                                      TextStyle(color: AppColors.primaryLight)),
+                            ],
                           ),
-                          children: [
-                            TextSpan(text: 'A', style: TextStyle(color: Colors.white)),
-                            TextSpan(text: 'B', style: TextStyle(color: AppColors.primaryLight)),
-                            TextSpan(text: 'C', style: TextStyle(color: Colors.white)),
-                            TextSpan(text: 'D', style: TextStyle(color: AppColors.primaryLight)),
-                          ],
                         ),
+                        subtitle: 'Intermediário - 4 dias/sem.',
+                        assetPath: 'assets/images/workout_abcd.webp',
+                        desc:
+                            'Excelente para quem já treina e quer isolar grupos musculares específicos.',
+                        daysInfo: const [
+                          'Dia A: Peito e Tríceps',
+                          'Dia B: Costas e Bíceps',
+                          'Dia C: Ombro e Core',
+                          'Dia D: Perna Completa',
+                        ],
                       ),
-                      subtitle: 'Intermediário - 4 dias/sem.',
-                      assetPath: 'assets/images/workout_abcd.webp',
-                      desc: 'Excelente para quem já treina e quer isolar grupos musculares específicos.',
-                      daysInfo: const [
-                        'Dia A: Peito e Tríceps',
-                        'Dia B: Costas e Bíceps',
-                        'Dia C: Ombro e Core',
-                        'Dia D: Perna Completa',
-                      ],
-                    ),
-                    if(!isCalisthenics) _buildSplitCard(
-                      context,
-                      ref,
-                      tipo: 'ABCDE',
-                      richTitle: RichText(
-                        text: const TextSpan(
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2,
+                    if (!isCalisthenics)
+                      _buildSplitCard(
+                        context,
+                        ref,
+                        tipo: 'ABCDE',
+                        richTitle: RichText(
+                          text: const TextSpan(
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2,
+                            ),
+                            children: [
+                              TextSpan(
+                                  text: 'A',
+                                  style: TextStyle(color: Colors.white)),
+                              TextSpan(
+                                  text: 'B',
+                                  style:
+                                      TextStyle(color: AppColors.primaryLight)),
+                              TextSpan(
+                                  text: 'C',
+                                  style: TextStyle(color: Colors.white)),
+                              TextSpan(
+                                  text: 'D',
+                                  style:
+                                      TextStyle(color: AppColors.primaryLight)),
+                              TextSpan(
+                                  text: 'E',
+                                  style:
+                                      TextStyle(color: AppColors.primaryLight)),
+                            ],
                           ),
-                          children: [
-                            TextSpan(text: 'A', style: TextStyle(color: Colors.white)),
-                            TextSpan(text: 'B', style: TextStyle(color: AppColors.primaryLight)),
-                            TextSpan(text: 'C', style: TextStyle(color: Colors.white)),
-                            TextSpan(text: 'D', style: TextStyle(color: AppColors.primaryLight)),
-                            TextSpan(text: 'E', style: TextStyle(color: AppColors.primaryLight)),
-                          ],
                         ),
+                        subtitle: 'Avançado - 5 dias/sem.',
+                        assetPath: 'assets/images/workout_abcde.webp',
+                        desc:
+                            'Foco alto em volume e intensidade, treinando quase todos os dias da semana.',
+                        daysInfo: const [
+                          'Dia A: Peito',
+                          'Dia B: Costas',
+                          'Dia C: Ombro',
+                          'Dia D: Perna',
+                          'Dia E: Braços (Bíceps e Tríceps)',
+                        ],
                       ),
-                      subtitle: 'Avançado - 5 dias/sem.',
-                      assetPath: 'assets/images/workout_abcde.webp',
-                      desc: 'Foco alto em volume e intensidade, treinando quase todos os dias da semana.',
-                      daysInfo: const [
-                        'Dia A: Peito',
-                        'Dia B: Costas',
-                        'Dia C: Ombro',
-                        'Dia D: Perna',
-                        'Dia E: Braços (Bíceps e Tríceps)',
-                      ],
-                    ),
                     _buildSplitCard(
                       context,
                       ref,
@@ -212,7 +283,8 @@ class SplitSelectionPage extends ConsumerWidget {
                       ),
                       subtitle: 'Crie sua própria rotina',
                       assetPath: 'assets/images/workout_custom.webp',
-                      desc: 'Crie um treino do zero, adicionando dias e exercícios conforme sua necessidade.',
+                      desc:
+                          'Crie um treino do zero, adicionando dias e exercícios conforme sua necessidade.',
                       daysInfo: const [
                         'Dia A: Meu Treino A (Personalizado)',
                       ],
@@ -229,12 +301,15 @@ class SplitSelectionPage extends ConsumerWidget {
                     Expanded(
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.primary, width: 1.2),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          side: const BorderSide(
+                              color: AppColors.primary, width: 1.2),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                         onPressed: () => _showImportJsonDialog(context, ref),
-                        icon: const Icon(Icons.code_rounded, color: AppColors.primaryLight),
+                        icon: const Icon(Icons.code_rounded,
+                            color: AppColors.primaryLight),
                         label: const Text(
                           'TREINO (JSON)',
                           textAlign: TextAlign.center,
@@ -251,12 +326,15 @@ class SplitSelectionPage extends ConsumerWidget {
                     Expanded(
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.primary, width: 1.2),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          side: const BorderSide(
+                              color: AppColors.primary, width: 1.2),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                         onPressed: () => _importBackup(context, ref),
-                        icon: const Icon(Icons.backup_rounded, color: AppColors.primaryLight),
+                        icon: const Icon(Icons.backup_rounded,
+                            color: AppColors.primaryLight),
                         label: const Text(
                           'BACKUP (SQLITE)',
                           textAlign: TextAlign.center,
@@ -282,10 +360,12 @@ class SplitSelectionPage extends ConsumerWidget {
                     children: [
                       Text(
                         'Toque para ver os detalhes',
-                        style: TextStyle(color: context.onSurface, fontSize: 13),
+                        style:
+                            TextStyle(color: context.onSurface, fontSize: 13),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.star_rounded, size: 14, color: AppColors.primaryLight),
+                      const Icon(Icons.star_rounded,
+                          size: 14, color: AppColors.primaryLight),
                     ],
                   ),
                 ),
@@ -407,7 +487,8 @@ class SplitSelectionPage extends ConsumerWidget {
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
-                          style: TextStyle(color: context.onSurface, fontSize: 13),
+                          style:
+                              TextStyle(color: context.onSurface, fontSize: 13),
                         ),
                       ],
                     ),
@@ -430,7 +511,8 @@ class SplitSelectionPage extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   desc,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 14, height: 1.4),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -453,7 +535,8 @@ class SplitSelectionPage extends ConsumerWidget {
                         const SizedBox(width: 8),
                         Text(
                           info,
-                          style: TextStyle(color: context.onBackground, fontSize: 13),
+                          style: TextStyle(
+                              color: context.onBackground, fontSize: 13),
                         ),
                       ],
                     ),
@@ -477,16 +560,20 @@ class SplitSelectionPage extends ConsumerWidget {
 
                       if (rootContext != null && rootContext.mounted) {
                         ScaffoldMessenger.of(rootContext).showSnackBar(
-                          const SnackBar(content: Text('Treino adicionado com sucesso! ✓')),
+                          const SnackBar(
+                              content:
+                                  Text('Treino adicionado com sucesso! ✓')),
                         );
                       }
 
                       if (!isOnboarding && context.mounted) {
-                        Navigator.pop(context); // Volta ao Dashboard se não estiver no onboarding
+                        Navigator.pop(
+                            context); // Volta ao Dashboard se não estiver no onboarding
                       }
 
                       nav?.push(
-                        MaterialPageRoute(builder: (_) => const SetupPage(initialTab: 2)),
+                        MaterialPageRoute(
+                            builder: (_) => const SetupPage(initialTab: 2)),
                       );
                     },
                     child: const Text('ATIVAR ESTE TREINO'),
@@ -545,7 +632,8 @@ class SplitSelectionPage extends ConsumerWidget {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: context.cardColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Restaurar Backup?'),
           content: const Text(
             'ATENÇÃO: Isso irá substituir todos os dados atuais do aplicativo pelo arquivo selecionado. Esta ação não pode ser desfeita.',
@@ -557,7 +645,8 @@ class SplitSelectionPage extends ConsumerWidget {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
               child: const Text('Restaurar'),
             ),
           ],
@@ -575,7 +664,9 @@ class SplitSelectionPage extends ConsumerWidget {
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Restaurando dados... O aplicativo será recarregado.')),
+            const SnackBar(
+                content: Text(
+                    'Restaurando dados... O aplicativo será recarregado.')),
           );
         }
         await Future.delayed(const Duration(milliseconds: 1000));
@@ -612,18 +703,19 @@ class SplitSelectionPage extends ConsumerWidget {
 
         // Verifica os treinos importados
         final splits = await ref.read(workoutDaoProvider).watchSplits().first;
-        final sessions = await ref.read(workoutDaoProvider).watchCompletedSessions().first;
+        final sessions =
+            await ref.read(workoutDaoProvider).watchCompletedSessions().first;
 
         // Se o backup contiver histórico mas nenhum split cadastrado (como no mock DB),
         // cria um split padrão para ir direto à tela principal.
         if (splits.isEmpty && sessions.isNotEmpty) {
           await ref.read(workoutDaoProvider).insertSplit(
-            WorkoutSplitsCompanion.insert(
-              nome: 'Meu Treino',
-              tipo: 'CUSTOM',
-              ativo: const Value(true),
-            ),
-          );
+                WorkoutSplitsCompanion.insert(
+                  nome: 'Meu Treino',
+                  tipo: 'CUSTOM',
+                  ativo: const Value(true),
+                ),
+              );
           ref.invalidate(splitsProvider);
         }
 
@@ -667,7 +759,8 @@ class SplitSelectionPage extends ConsumerWidget {
         builder: (context, setState) {
           return AlertDialog(
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
                 Icon(
@@ -677,9 +770,12 @@ class SplitSelectionPage extends ConsumerWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isAiView ? 'Formatar Treino com IA' : 'Importar Treino (JSON)',
+                    isAiView
+                        ? 'Formatar Treino com IA'
+                        : 'Importar Treino (JSON)',
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                 ),
               ],
@@ -689,7 +785,9 @@ class SplitSelectionPage extends ConsumerWidget {
               child: SingleChildScrollView(
                 child: AnimatedCrossFade(
                   duration: const Duration(milliseconds: 250),
-                  crossFadeState: isAiView ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                  crossFadeState: isAiView
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
                   firstChild: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -703,7 +801,10 @@ class SplitSelectionPage extends ConsumerWidget {
                         ),
                         child: Text(
                           'Cole o código JSON do seu treino abaixo. Se tiver apenas o texto simples (ex: do WhatsApp), clique em "Formatar com IA" no botão abaixo para organizá-lo automaticamente.',
-                          style: TextStyle(fontSize: 12, color: context.onSurface, height: 1.4),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: context.onSurface,
+                              height: 1.4),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -719,16 +820,22 @@ class SplitSelectionPage extends ConsumerWidget {
                                   });
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                                  backgroundColor:
+                                      AppColors.primary.withValues(alpha: 0.15),
                                   foregroundColor: AppColors.primaryLight,
                                   elevation: 0,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
                                 ),
-                                icon: const Icon(Icons.psychology_rounded, size: 18),
+                                icon: const Icon(Icons.psychology_rounded,
+                                    size: 18),
                                 label: const Text(
                                   'Formatar com IA',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -738,7 +845,8 @@ class SplitSelectionPage extends ConsumerWidget {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () async {
-                                const promptTemplate = 'Olá! Quero que formate o meu treino para que eu possa importá-lo em um aplicativo.\n'
+                                const promptTemplate =
+                                    'Olá! Quero que formate o meu treino para que eu possa importá-lo em um aplicativo.\n'
                                     'Por favor, analise a lista de exercícios a seguir e converta-a estritamente no formato estruturado (JSON) abaixo. Não escreva nenhuma conversa ou explicação na resposta, apenas o bloco de texto estruturado final.\n\n'
                                     'Estrutura esperada:\n'
                                     '{\n'
@@ -765,25 +873,31 @@ class SplitSelectionPage extends ConsumerWidget {
                                     'Aqui está a lista do meu treino para você formatar:\n'
                                     '[SUBSTITUA ESTE TEXTO PELO SEU TREINO DO WHATSAPP OU ANOTAÇÕES]';
 
-                                await Clipboard.setData(const ClipboardData(text: promptTemplate));
+                                await Clipboard.setData(
+                                    const ClipboardData(text: promptTemplate));
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Instruções para a IA copiadas! Cole no ChatGPT/Claude. ✓'),
+                                      content: Text(
+                                          'Instruções para a IA copiadas! Cole no ChatGPT/Claude. ✓'),
                                       duration: Duration(seconds: 3),
                                     ),
                                   );
                                 }
                               },
                               style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
                                 side: BorderSide(color: context.divider),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              icon: Icon(Icons.copy_all_rounded, size: 16, color: context.onSurface),
+                              icon: Icon(Icons.copy_all_rounded,
+                                  size: 16, color: context.onSurface),
                               label: Text(
                                 'Copiar Prompt',
-                                style: TextStyle(fontSize: 12, color: context.onSurface),
+                                style: TextStyle(
+                                    fontSize: 12, color: context.onSurface),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -794,7 +908,10 @@ class SplitSelectionPage extends ConsumerWidget {
                       TextField(
                         controller: textCtrl,
                         maxLines: 8,
-                        style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: context.onBackground),
+                        style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                            color: context.onBackground),
                         decoration: InputDecoration(
                           hintText: 'Cole o código JSON aqui...',
                           alignLabelWithHint: true,
@@ -816,7 +933,8 @@ class SplitSelectionPage extends ConsumerWidget {
                         },
                         borderRadius: BorderRadius.circular(8),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 4),
                           child: Row(
                             children: [
                               SizedBox(
@@ -836,7 +954,8 @@ class SplitSelectionPage extends ConsumerWidget {
                               Expanded(
                                 child: Text(
                                   'Limpar biblioteca (remove exercícios padrão não utilizados)',
-                                  style: TextStyle(fontSize: 11, color: context.onSurface),
+                                  style: TextStyle(
+                                      fontSize: 11, color: context.onSurface),
                                 ),
                               ),
                             ],
@@ -851,7 +970,10 @@ class SplitSelectionPage extends ConsumerWidget {
                     children: [
                       Text(
                         'Cole o texto bruto do treino (WhatsApp, Notas, etc.). A IA estruturará tudo no formato correto para o aplicativo de forma automática.',
-                        style: TextStyle(fontSize: 12, color: context.onSurface, height: 1.4),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: context.onSurface,
+                            height: 1.4),
                       ),
                       const SizedBox(height: 16),
                       TextField(
@@ -859,7 +981,8 @@ class SplitSelectionPage extends ConsumerWidget {
                         maxLines: 6,
                         enabled: !isLoading,
                         decoration: InputDecoration(
-                          hintText: 'Ex:\nTreino A - Peito e Tríceps\n- Supino reto com halteres 4 séries de 10 reps\n- Tríceps corda 3x12 descansa 1 min...',
+                          hintText:
+                              'Ex:\nTreino A - Peito e Tríceps\n- Supino reto com halteres 4 séries de 10 reps\n- Tríceps corda 3x12 descansa 1 min...',
                           alignLabelWithHint: true,
                           contentPadding: const EdgeInsets.all(12),
                           border: OutlineInputBorder(
@@ -877,17 +1000,22 @@ class SplitSelectionPage extends ConsumerWidget {
                           decoration: BoxDecoration(
                             color: Colors.redAccent.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                            border: Border.all(
+                                color: Colors.redAccent.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 16),
+                              const Icon(Icons.error_outline_rounded,
+                                  color: Colors.redAccent, size: 16),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   errorMessage,
-                                  style: const TextStyle(color: Colors.redAccent, fontSize: 11, height: 1.3),
+                                  style: const TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 11,
+                                      height: 1.3),
                                 ),
                               ),
                             ],
@@ -917,7 +1045,8 @@ class SplitSelectionPage extends ConsumerWidget {
                                     final rawText = rawTextCtrl.text.trim();
                                     if (rawText.isEmpty) {
                                       setState(() {
-                                        errorMessage = 'Insira o texto do treino.';
+                                        errorMessage =
+                                            'Insira o texto do treino.';
                                       });
                                       return;
                                     }
@@ -928,7 +1057,8 @@ class SplitSelectionPage extends ConsumerWidget {
                                     });
 
                                     try {
-                                      final jsonResult = await _processWorkoutWithAI(rawText);
+                                      final jsonResult =
+                                          await _processWorkoutWithAI(rawText);
 
                                       textCtrl.text = jsonResult;
 
@@ -939,14 +1069,17 @@ class SplitSelectionPage extends ConsumerWidget {
                                       });
 
                                       if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         const SnackBar(
-                                          content: Text('Treino formatado com sucesso! ✓'),
+                                          content: Text(
+                                              'Treino formatado com sucesso! ✓'),
                                         ),
                                       );
                                     } catch (e) {
                                       try {
-                                        final fallbackResult = _localParseWorkoutFallback(rawText);
+                                        final fallbackResult =
+                                            _localParseWorkoutFallback(rawText);
                                         textCtrl.text = fallbackResult;
                                         setState(() {
                                           isLoading = false;
@@ -954,9 +1087,11 @@ class SplitSelectionPage extends ConsumerWidget {
                                           errorMessage = '';
                                         });
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
                                             const SnackBar(
-                                              content: Text('IA indisponível. Treino importado localmente via Heurística! ⚡'),
+                                              content: Text(
+                                                  'IA indisponível. Treino importado localmente via Heurística! ⚡'),
                                             ),
                                           );
                                         }
@@ -964,12 +1099,16 @@ class SplitSelectionPage extends ConsumerWidget {
                                         String errorMsg =
                                             'Ocorreu um erro ao formatar com IA e Heurística. Verifique o texto e tente novamente.';
                                         final errStr = e.toString();
-                                        if (errStr.contains('SocketException') ||
-                                            errStr.contains('Failed host lookup') ||
+                                        if (errStr
+                                                .contains('SocketException') ||
+                                            errStr.contains(
+                                                'Failed host lookup') ||
                                             errStr.contains('Network') ||
                                             errStr.contains('errno = 7')) {
-                                          errorMsg = 'Sem conexão com a internet. Verifique sua rede e tente novamente.';
-                                        } else if (errStr.contains('rate_limit') ||
+                                          errorMsg =
+                                              'Sem conexão com a internet. Verifique sua rede e tente novamente.';
+                                        } else if (errStr
+                                                .contains('rate_limit') ||
                                             errStr.contains('rate limit') ||
                                             errStr.contains('Rate limit') ||
                                             errStr.contains('429') ||
@@ -978,7 +1117,8 @@ class SplitSelectionPage extends ConsumerWidget {
                                             errStr.contains('limit_exceeded')) {
                                           errorMsg =
                                               'O limite temporário de requisições da IA foi atingido. Por favor, aguarde 1 minuto e tente novamente.';
-                                        } else if (errStr.contains('invalid_api_key') ||
+                                        } else if (errStr
+                                                .contains('invalid_api_key') ||
                                             errStr.contains('401') ||
                                             errStr.contains('Unauthorized')) {
                                           errorMsg =
@@ -992,8 +1132,10 @@ class SplitSelectionPage extends ConsumerWidget {
                                     }
                                   },
                             style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
                             child: isLoading
                                 ? const SizedBox(
@@ -1005,7 +1147,8 @@ class SplitSelectionPage extends ConsumerWidget {
                                 : const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.auto_awesome_rounded, size: 14),
+                                      Icon(Icons.auto_awesome_rounded,
+                                          size: 14),
                                       SizedBox(width: 6),
                                       Text('Formatar Treino'),
                                     ],
@@ -1033,16 +1176,42 @@ class SplitSelectionPage extends ConsumerWidget {
                         try {
                           final data = jsonDecode(input);
                           if (data is! Map<String, dynamic>) {
-                            throw const FormatException('O JSON deve ser um objeto.');
+                            throw const FormatException(
+                                'O JSON deve ser um objeto.');
                           }
-                          if (!data.containsKey('nome') || !data.containsKey('dias')) {
+                          if (data['days'] is List) {
+                            if (!data.containsKey('nome'))
+                              throw const FormatException(
+                                  'O treino precisa de um nome.');
+                            final splitId = await ref
+                                .read(workoutDaoProvider)
+                                .importWorkoutSplit(data,
+                                    preservePrescription: true);
+                            await ref
+                                .read(workoutDaoProvider)
+                                .setActiveSplit(splitId);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            ref.invalidate(splitsProvider);
+                            ref.invalidate(activeSplitProvider);
+                            ref.invalidate(activeSplitDaysProvider);
+                            if (isOnboarding && context.mounted)
+                              Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const HomePage()),
+                                  (_) => false);
+                            return;
+                          }
+                          if (!data.containsKey('nome') ||
+                              !data.containsKey('dias')) {
                             throw const FormatException(
                                 'Campos obrigatórios ausentes ("nome" ou "dias").');
                           }
 
                           final dias = data['dias'];
                           if (dias is! List) {
-                            throw const FormatException('O campo "dias" deve ser uma lista.');
+                            throw const FormatException(
+                                'O campo "dias" deve ser uma lista.');
                           }
 
                           Navigator.pop(ctx);
@@ -1050,31 +1219,36 @@ class SplitSelectionPage extends ConsumerWidget {
                           final db = ref.read(databaseProvider);
                           await db.transaction(() async {
                             if (clearUnused) {
-                              await ref.read(exerciseDaoProvider).deleteUnusedExercises();
+                              await ref
+                                  .read(exerciseDaoProvider)
+                                  .deleteUnusedExercises();
                             }
 
-                            final splitId = await ref.read(workoutDaoProvider).insertSplit(
-                                  WorkoutSplitsCompanion.insert(
-                                    tipo: data['tipo'] ?? 'CUSTOM',
-                                    nome: data['nome'],
-                                    ativo: const Value(false),
-                                  ),
-                                );
+                            final splitId =
+                                await ref.read(workoutDaoProvider).insertSplit(
+                                      WorkoutSplitsCompanion.insert(
+                                        tipo: data['tipo'] ?? 'CUSTOM',
+                                        nome: data['nome'],
+                                        ativo: const Value(false),
+                                      ),
+                                    );
 
-                            final allExercises = await ref.read(exerciseDaoProvider).getAll();
+                            final allExercises =
+                                await ref.read(exerciseDaoProvider).getAll();
 
                             for (final dayObj in dias) {
                               if (dayObj is! Map<String, dynamic>) continue;
 
                               final letra = dayObj['letra'] ?? 'A';
                               final nomeDia = dayObj['nome'] ?? 'Treino';
-                              final dayId = await ref.read(workoutDaoProvider).insertDay(
-                                    WorkoutDaysCompanion.insert(
-                                      splitId: splitId,
-                                      letra: letra,
-                                      nome: nomeDia,
-                                    ),
-                                  );
+                              final dayId =
+                                  await ref.read(workoutDaoProvider).insertDay(
+                                        WorkoutDaysCompanion.insert(
+                                          splitId: splitId,
+                                          letra: letra,
+                                          nome: nomeDia,
+                                        ),
+                                      );
 
                               final exercisesList = dayObj['exercicios'];
                               if (exercisesList is! List) continue;
@@ -1083,13 +1257,16 @@ class SplitSelectionPage extends ConsumerWidget {
                                 final exObj = exercisesList[i];
                                 if (exObj is! Map<String, dynamic>) continue;
 
-                                final exName = exObj['nome']?.toString().trim() ?? '';
+                                final exName =
+                                    exObj['nome']?.toString().trim() ?? '';
                                 if (exName.isEmpty) continue;
 
-                                final normalizedSearchName = exName.toLowerCase();
+                                final normalizedSearchName =
+                                    exName.toLowerCase();
                                 Exercise? foundEx;
                                 for (final e in allExercises) {
-                                  if (e.nome.trim().toLowerCase() == normalizedSearchName) {
+                                  if (e.nome.trim().toLowerCase() ==
+                                      normalizedSearchName) {
                                     foundEx = e;
                                     break;
                                   }
@@ -1098,38 +1275,54 @@ class SplitSelectionPage extends ConsumerWidget {
                                 int exId;
                                 if (foundEx != null) {
                                   exId = foundEx.id;
-                                  final jsonObs = exObj['observacoes']?.toString().trim();
+                                  final jsonObs =
+                                      exObj['observacoes']?.toString().trim();
                                   if (jsonObs != null &&
                                       jsonObs.isNotEmpty &&
                                       (foundEx.observacoes == null ||
                                           foundEx.observacoes!.isEmpty)) {
-                                    await ref.read(exerciseDaoProvider).updateExercise(
+                                    await ref
+                                        .read(exerciseDaoProvider)
+                                        .updateExercise(
                                           foundEx.copyWith(
                                             observacoes: Value(jsonObs),
                                           ),
                                         );
                                   }
                                 } else {
-                                  exId = await ref.read(exerciseDaoProvider).insertExercise(
+                                  exId = await ref
+                                      .read(exerciseDaoProvider)
+                                      .insertExercise(
                                         ExercisesCompanion.insert(
                                           nome: exName,
-                                          grupoMuscular:
-                                              exObj['grupoMuscular']?.toString() ?? 'Peito',
+                                          grupoMuscular: exObj['grupoMuscular']
+                                                  ?.toString() ??
+                                              'Peito',
                                           equipamento: Value(
-                                              exObj['equipamento']?.toString() ?? 'Livre'),
+                                              exObj['equipamento']
+                                                      ?.toString() ??
+                                                  'Livre'),
                                           isUnilateral: Value(
-                                              exObj['isUnilateral'] as bool? ?? false),
+                                              exObj['isUnilateral'] as bool? ??
+                                                  false),
                                           tempoDescansoSegundos: Value(
-                                              exObj['tempoDescansoSegundos'] as int? ?? 90),
-                                          volume: Value(exObj['volume']?.toString()),
-                                          link: Value(exObj['link']?.toString()),
-                                          observacoes: Value(exObj['observacoes']?.toString()),
+                                              exObj['tempoDescansoSegundos']
+                                                      as int? ??
+                                                  90),
+                                          volume: Value(
+                                              exObj['volume']?.toString()),
+                                          link:
+                                              Value(exObj['link']?.toString()),
+                                          observacoes: Value(
+                                              exObj['observacoes']?.toString()),
                                           vezesFeito: const Value(0),
                                         ),
                                       );
                                 }
 
-                                await ref.read(exerciseDaoProvider).linkExerciseToDay(
+                                await ref
+                                    .read(exerciseDaoProvider)
+                                    .linkExerciseToDay(
                                       WorkoutDayExercisesCompanion.insert(
                                         dayId: dayId,
                                         exerciseId: exId,
@@ -1139,7 +1332,9 @@ class SplitSelectionPage extends ConsumerWidget {
                               }
                             }
 
-                            await ref.read(workoutDaoProvider).setActiveSplit(splitId);
+                            await ref
+                                .read(workoutDaoProvider)
+                                .setActiveSplit(splitId);
                           });
 
                           ref.invalidate(splitsProvider);
@@ -1152,7 +1347,8 @@ class SplitSelectionPage extends ConsumerWidget {
                           if (rootContext != null && rootContext.mounted) {
                             ScaffoldMessenger.of(rootContext).showSnackBar(
                               const SnackBar(
-                                content: Text('Treino importado e ativado com sucesso! ✓'),
+                                content: Text(
+                                    'Treino importado e ativado com sucesso! ✓'),
                               ),
                             );
                           }
@@ -1162,7 +1358,8 @@ class SplitSelectionPage extends ConsumerWidget {
                           }
 
                           nav?.push(
-                            MaterialPageRoute(builder: (_) => const SetupPage(initialTab: 2)),
+                            MaterialPageRoute(
+                                builder: (_) => const SetupPage(initialTab: 2)),
                           );
                         } catch (e) {
                           if (context.mounted) {
@@ -1171,8 +1368,8 @@ class SplitSelectionPage extends ConsumerWidget {
                               builder: (errCtx) => AlertDialog(
                                 backgroundColor: context.cardColor,
                                 title: const Text('Erro na Importação'),
-                                content:
-                                    Text('Não foi possível importar o treino. Detalhes:\n$e'),
+                                content: Text(
+                                    'Não foi possível importar o treino. Detalhes:\n$e'),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(errCtx),
@@ -1194,20 +1391,25 @@ class SplitSelectionPage extends ConsumerWidget {
   }
 
   Future<String> _processWorkoutWithAI(String rawText) async {
-    final result=await SquadService().request('POST','/v1/ai/workouts',{'mode':'parse','text':rawText});
-    final workout=Map<String,dynamic>.from(result['workout']);
-    workout['dias']=[for(final day in workout['days']) {...Map<String,dynamic>.from(day),'exercicios':day['exercises']}];
+    final result = await SquadService()
+        .request('POST', '/v1/ai/workouts', {'mode': 'parse', 'text': rawText});
+    final workout = Map<String, dynamic>.from(result['workout']);
+    workout['dias'] = [
+      for (final day in workout['days'])
+        {...Map<String, dynamic>.from(day), 'exercicios': day['exercises']}
+    ];
     return jsonEncode(workout);
   }
 
   String _localParseWorkoutFallback(String rawText) {
     final lines = rawText.split('\n');
     String workoutName = 'Treino Importado';
-    
+
     for (final line in lines) {
       final trimmed = line.trim();
       if (trimmed.isNotEmpty) {
-        if (!trimmed.toLowerCase().startsWith('dia') && !trimmed.toLowerCase().startsWith('treino ')) {
+        if (!trimmed.toLowerCase().startsWith('dia') &&
+            !trimmed.toLowerCase().startsWith('treino ')) {
           workoutName = trimmed;
           break;
         }
@@ -1217,7 +1419,7 @@ class SplitSelectionPage extends ConsumerWidget {
     final List<Map<String, dynamic>> dias = [];
     Map<String, dynamic>? currentDay;
     int dayCount = 0;
-    
+
     final dayRegExp = RegExp(
       r'^(?:dia|treino|rotina|grupo)\s+([a-eA-E])\b|^\b([a-eA-E])\s*[:-]',
       caseSensitive: false,
@@ -1236,10 +1438,14 @@ class SplitSelectionPage extends ConsumerWidget {
       if (match != null) {
         final letter = (match.group(1) ?? match.group(2) ?? '').toUpperCase();
         dayCount++;
-        final dayLetter = letter.isNotEmpty ? letter : String.fromCharCode(64 + dayCount);
-        
+        final dayLetter =
+            letter.isNotEmpty ? letter : String.fromCharCode(64 + dayCount);
+
         String dayName = trimmed
-            .replaceAll(RegExp(r'^(?:dia|treino|rotina|grupo)\s+[a-zA-Z]\s*[:-]?\s*', caseSensitive: false), '')
+            .replaceAll(
+                RegExp(r'^(?:dia|treino|rotina|grupo)\s+[a-zA-Z]\s*[:-]?\s*',
+                    caseSensitive: false),
+                '')
             .replaceAll(RegExp(r'^[a-zA-Z]\s*[:-]\s*'), '')
             .trim();
         if (dayName.isEmpty) {
@@ -1273,7 +1479,7 @@ class SplitSelectionPage extends ConsumerWidget {
         final sets = volMatch.group(1);
         final reps = volMatch.group(2);
         volume = '${sets}x$reps';
-        
+
         exerciseName = trimmed
             .replaceFirst(volumeRegExp, '')
             .replaceAll(RegExp(r'^[:-]\s*|\s*[:-]$'), '')
@@ -1285,44 +1491,111 @@ class SplitSelectionPage extends ConsumerWidget {
       final nameLower = exerciseName.toLowerCase();
 
       String grupoMuscular = 'Peito';
-      if (nameLower.contains('peito') || nameLower.contains('supino') || nameLower.contains('crucifixo') || nameLower.contains('fly') || nameLower.contains('flexao') || nameLower.contains('peitoral') || nameLower.contains('pull over')) {
+      if (nameLower.contains('peito') ||
+          nameLower.contains('supino') ||
+          nameLower.contains('crucifixo') ||
+          nameLower.contains('fly') ||
+          nameLower.contains('flexao') ||
+          nameLower.contains('peitoral') ||
+          nameLower.contains('pull over')) {
         grupoMuscular = 'Peito';
-      } else if (nameLower.contains('costas') || nameLower.contains('puxada') || nameLower.contains('remada') || nameLower.contains('pull') || nameLower.contains('barra fixa') || nameLower.contains('levantamento terra') || nameLower.contains('terra') || nameLower.contains('dorsal')) {
+      } else if (nameLower.contains('costas') ||
+          nameLower.contains('puxada') ||
+          nameLower.contains('remada') ||
+          nameLower.contains('pull') ||
+          nameLower.contains('barra fixa') ||
+          nameLower.contains('levantamento terra') ||
+          nameLower.contains('terra') ||
+          nameLower.contains('dorsal')) {
         grupoMuscular = 'Costas';
-      } else if (nameLower.contains('ombro') || nameLower.contains('desenvolvimento') || nameLower.contains('elevacao lateral') || nameLower.contains('lateral') || nameLower.contains('deltoide') || nameLower.contains('manguito') || nameLower.contains('crucifixo invertido')) {
+      } else if (nameLower.contains('ombro') ||
+          nameLower.contains('desenvolvimento') ||
+          nameLower.contains('elevacao lateral') ||
+          nameLower.contains('lateral') ||
+          nameLower.contains('deltoide') ||
+          nameLower.contains('manguito') ||
+          nameLower.contains('crucifixo invertido')) {
         grupoMuscular = 'Ombro';
-      } else if (nameLower.contains('triceps') || nameLower.contains('tríceps') || nameLower.contains('testa') || nameLower.contains('frances') || nameLower.contains('coice') || nameLower.contains('paralelas')) {
+      } else if (nameLower.contains('triceps') ||
+          nameLower.contains('tríceps') ||
+          nameLower.contains('testa') ||
+          nameLower.contains('frances') ||
+          nameLower.contains('coice') ||
+          nameLower.contains('paralelas')) {
         grupoMuscular = 'Tríceps';
-      } else if (nameLower.contains('biceps') || nameLower.contains('bíceps') || nameLower.contains('rosca') || nameLower.contains('scott') || nameLower.contains('martelo') || nameLower.contains('concentrada')) {
+      } else if (nameLower.contains('biceps') ||
+          nameLower.contains('bíceps') ||
+          nameLower.contains('rosca') ||
+          nameLower.contains('scott') ||
+          nameLower.contains('martelo') ||
+          nameLower.contains('concentrada')) {
         grupoMuscular = 'Bíceps';
-      } else if (nameLower.contains('agachamento') || nameLower.contains('leg press') || nameLower.contains('leg') || nameLower.contains('extensora') || nameLower.contains('quadriceps') || nameLower.contains('hack') || nameLower.contains('afundo') || nameLower.contains('passada')) {
+      } else if (nameLower.contains('agachamento') ||
+          nameLower.contains('leg press') ||
+          nameLower.contains('leg') ||
+          nameLower.contains('extensora') ||
+          nameLower.contains('quadriceps') ||
+          nameLower.contains('hack') ||
+          nameLower.contains('afundo') ||
+          nameLower.contains('passada')) {
         grupoMuscular = 'Quadríceps';
-      } else if (nameLower.contains('flexora') || nameLower.contains('stiff') || nameLower.contains('posterior') || nameLower.contains('hamstring')) {
+      } else if (nameLower.contains('flexora') ||
+          nameLower.contains('stiff') ||
+          nameLower.contains('posterior') ||
+          nameLower.contains('hamstring')) {
         grupoMuscular = 'Posterior';
-      } else if (nameLower.contains('panturrilha') || nameLower.contains('gemeos') || nameLower.contains('gêmeos') || nameLower.contains('soleo')) {
+      } else if (nameLower.contains('panturrilha') ||
+          nameLower.contains('gemeos') ||
+          nameLower.contains('gêmeos') ||
+          nameLower.contains('soleo')) {
         grupoMuscular = 'Panturrilha';
-      } else if (nameLower.contains('abdominal') || nameLower.contains('abs') || nameLower.contains('infra') || nameLower.contains('supra') || nameLower.contains('prancha') || nameLower.contains('core') || nameLower.contains('obliquo')) {
+      } else if (nameLower.contains('abdominal') ||
+          nameLower.contains('abs') ||
+          nameLower.contains('infra') ||
+          nameLower.contains('supra') ||
+          nameLower.contains('prancha') ||
+          nameLower.contains('core') ||
+          nameLower.contains('obliquo')) {
         grupoMuscular = 'Core';
-      } else if (nameLower.contains('elevacao pelvica') || nameLower.contains('gluteo') || nameLower.contains('glúteo') || nameLower.contains('abducao')) {
+      } else if (nameLower.contains('elevacao pelvica') ||
+          nameLower.contains('gluteo') ||
+          nameLower.contains('glúteo') ||
+          nameLower.contains('abducao')) {
         grupoMuscular = 'Glúteo';
       }
 
       String equipamento = 'Livre';
-      if (nameLower.contains('cabo') || nameLower.contains('polia') || nameLower.contains('crossover') || nameLower.contains('pulley')) {
+      if (nameLower.contains('cabo') ||
+          nameLower.contains('polia') ||
+          nameLower.contains('crossover') ||
+          nameLower.contains('pulley')) {
         equipamento = 'Cabo';
-      } else if (nameLower.contains('haltere') || nameLower.contains('halteres') || nameLower.contains('dumbell')) {
+      } else if (nameLower.contains('haltere') ||
+          nameLower.contains('halteres') ||
+          nameLower.contains('dumbell')) {
         equipamento = 'Haltere';
       } else if (nameLower.contains('barra') || nameLower.contains('barbell')) {
         equipamento = 'Barra';
       } else if (nameLower.contains('smith')) {
         equipamento = 'Smith';
-      } else if (nameLower.contains('maquina') || nameLower.contains('máquina') || nameLower.contains('extensora') || nameLower.contains('flexora') || nameLower.contains('hack') || nameLower.contains('peck')) {
+      } else if (nameLower.contains('maquina') ||
+          nameLower.contains('máquina') ||
+          nameLower.contains('extensora') ||
+          nameLower.contains('flexora') ||
+          nameLower.contains('hack') ||
+          nameLower.contains('peck')) {
         equipamento = 'Máquina';
-      } else if (nameLower.contains('flexao') || nameLower.contains('barra fixa') || nameLower.contains('abdominal') || nameLower.contains('prancha') || nameLower.contains('paralelas') || nameLower.contains('peso corporal')) {
+      } else if (nameLower.contains('flexao') ||
+          nameLower.contains('barra fixa') ||
+          nameLower.contains('abdominal') ||
+          nameLower.contains('prancha') ||
+          nameLower.contains('paralelas') ||
+          nameLower.contains('peso corporal')) {
         equipamento = 'Peso Corporal';
       }
 
-      final isUnilateral = nameLower.contains('unilateral') || nameLower.contains('alternado');
+      final isUnilateral =
+          nameLower.contains('unilateral') || nameLower.contains('alternado');
 
       (currentDay['exercicios'] as List).add({
         'nome': exerciseName,

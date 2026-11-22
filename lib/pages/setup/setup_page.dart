@@ -158,7 +158,10 @@ class _ExercisesSetupTabState extends ConsumerState<_ExercisesSetupTab> {
                 // Filtro de Músculo
                 const Text(
                   'GRUPO MUSCULAR',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1),
                 ),
                 const SizedBox(height: 4),
                 SingleChildScrollView(
@@ -169,7 +172,8 @@ class _ExercisesSetupTabState extends ConsumerState<_ExercisesSetupTab> {
                       return Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: ChoiceChip(
-                          label: Text(muscle, style: const TextStyle(fontSize: 11)),
+                          label: Text(muscle,
+                              style: const TextStyle(fontSize: 11)),
                           selected: isSelected,
                           onSelected: (selected) {
                             if (selected) {
@@ -188,7 +192,10 @@ class _ExercisesSetupTabState extends ConsumerState<_ExercisesSetupTab> {
                 // Filtro de Equipamento
                 const Text(
                   'EQUIPAMENTO',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1),
                 ),
                 const SizedBox(height: 4),
                 SingleChildScrollView(
@@ -239,9 +246,9 @@ class _ExercisesSetupTabState extends ConsumerState<_ExercisesSetupTab> {
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: Text(
-                        exercises.isEmpty 
-                          ? 'Nenhum exercício cadastrado.'
-                          : 'Nenhum exercício encontrado para os filtros selecionados.',
+                        exercises.isEmpty
+                            ? 'Nenhum exercício cadastrado.'
+                            : 'Nenhum exercício encontrado para os filtros selecionados.',
                         style: TextStyle(color: context.onSurface),
                         textAlign: TextAlign.center,
                       ),
@@ -264,101 +271,106 @@ class _ExercisesSetupTabState extends ConsumerState<_ExercisesSetupTab> {
                     final group = groups[index];
                     final list = grouped[group]!;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                    child: Text(
-                      group.toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.primaryLight,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ),
-                  ...list.map((ex) => Card(
-                        child: ListTile(
-                          onTap: () =>
-                              _showAddExerciseSheet(context, ref, exercise: ex),
-                          title: Text(ex.nome,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${ex.equipamento}${ex.volume != null && ex.volume!.isNotEmpty ? ' \u00b7 ${ex.volume}' : ''} \u00b7 ${ex.tempoDescansoSegundos}s descanso${ex.isUnilateral ? ' \u00b7 Unilateral' : ''}',
-                                style: TextStyle(
-                                    fontSize: 12, color: context.onSurface),
-                              ),
-                              if (ex.link != null && ex.link!.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                InkWell(
-                                  onTap: () => _openLink(ex.link!),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.link_rounded,
-                                          size: 12,
-                                          color: AppColors.primaryLight),
-                                      const SizedBox(width: 4),
-                                      Flexible(
-                                        child: Text(
-                                          ex.link!,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: AppColors.primaryLight,
-                                            decoration:
-                                                TextDecoration.underline,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 4),
+                          child: Text(
+                            group.toUpperCase(),
+                            style: const TextStyle(
+                              color: AppColors.primaryLight,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ),
+                        ...list.map((ex) => Card(
+                              child: ListTile(
+                                onTap: () => _showAddExerciseSheet(context, ref,
+                                    exercise: ex),
+                                title: Text(ex.nome,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600)),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${ex.equipamento}${ex.volume != null && ex.volume!.isNotEmpty ? ' \u00b7 ${ex.volume}' : ''} \u00b7 ${ex.tempoDescansoSegundos}s descanso${ex.isUnilateral ? ' \u00b7 Unilateral' : ''}',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: context.onSurface),
+                                    ),
+                                    if (ex.link != null &&
+                                        ex.link!.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      InkWell(
+                                        onTap: () => _openLink(ex.link!),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.link_rounded,
+                                                size: 12,
+                                                color: AppColors.primaryLight),
+                                            const SizedBox(width: 4),
+                                            Flexible(
+                                              child: Text(
+                                                ex.link!,
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: AppColors.primaryLight,
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
-                                  ),
+                                  ],
                                 ),
-                              ],
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit_rounded,
-                                    color: AppColors.primaryLight, size: 20),
-                                onPressed: () => _showAddExerciseSheet(
-                                    context, ref,
-                                    exercise: ex),
-                                tooltip: 'Editar',
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_rounded,
+                                          color: AppColors.primaryLight,
+                                          size: 20),
+                                      onPressed: () => _showAddExerciseSheet(
+                                          context, ref,
+                                          exercise: ex),
+                                      tooltip: 'Editar',
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          color: AppColors.primaryLight,
+                                          size: 20),
+                                      onPressed: () =>
+                                          _confirmDelete(context, ref, ex),
+                                      tooltip: 'Excluir',
+                                    ),
+                                  ],
+                                ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded,
-                                    color: AppColors.primaryLight, size: 20),
-                                onPressed: () =>
-                                    _confirmDelete(context, ref, ex),
-                                tooltip: 'Excluir',
-                              ),
-                            ],
-                          ),
-                        ),
-                      )),
-                  const SizedBox(height: 12),
-                ],
-              );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Erro: $e')),
+                            )),
+                        const SizedBox(height: 12),
+                      ],
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Erro: $e')),
+            ),
+          ),
+        ],
       ),
-    ),
-  ],
-),
     );
   }
 
@@ -786,7 +798,8 @@ class _RoutineExercisesListState extends ConsumerState<_RoutineExercisesList> {
           : Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   child: Text(
                     'Arraste e solte para reordenar os exerc\u00edcios do treino (toque para editar)',
                     style: TextStyle(fontSize: 11, color: context.onSurface),
@@ -969,7 +982,8 @@ class _LinkExerciseDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_LinkExerciseDialog> createState() => _LinkExerciseDialogState();
+  ConsumerState<_LinkExerciseDialog> createState() =>
+      _LinkExerciseDialogState();
 }
 
 class _LinkExerciseDialogState extends ConsumerState<_LinkExerciseDialog> {
@@ -1027,7 +1041,8 @@ class _LinkExerciseDialogState extends ConsumerState<_LinkExerciseDialog> {
     }
 
     final linkedIds = widget.currentExercises.map((e) => e.id).toSet();
-    final unlinked = _allExercises.where((e) => !linkedIds.contains(e.id)).toList();
+    final unlinked =
+        _allExercises.where((e) => !linkedIds.contains(e.id)).toList();
 
     // Filtragem local
     final query = _searchController.text.trim().toLowerCase();
@@ -1035,7 +1050,8 @@ class _LinkExerciseDialogState extends ConsumerState<_LinkExerciseDialog> {
       final matchesQuery = query.isEmpty ||
           ex.nome.toLowerCase().contains(query) ||
           (ex.observacoes?.toLowerCase().contains(query) ?? false);
-      final matchesMuscle = _selectedMuscle == 'Todos' || ex.grupoMuscular == _selectedMuscle;
+      final matchesMuscle =
+          _selectedMuscle == 'Todos' || ex.grupoMuscular == _selectedMuscle;
       return matchesQuery && matchesMuscle;
     }).toList();
 
@@ -1114,9 +1130,11 @@ class _LinkExerciseDialogState extends ConsumerState<_LinkExerciseDialog> {
                       itemBuilder: (_, index) {
                         final ex = filtered[index];
                         return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 4),
                           title: Text(ex.nome,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 14)),
                           subtitle: Text(
                             '${ex.grupoMuscular} · ${ex.equipamento}${ex.volume != null && ex.volume!.isNotEmpty ? ' · ${ex.volume}' : ''}',
                             style: const TextStyle(fontSize: 11),
@@ -1126,7 +1144,9 @@ class _LinkExerciseDialogState extends ConsumerState<_LinkExerciseDialog> {
                                   color: AppColors.warning, size: 18)
                               : null,
                           onTap: () async {
-                            await ref.read(exerciseDaoProvider).linkExerciseToDay(
+                            await ref
+                                .read(exerciseDaoProvider)
+                                .linkExerciseToDay(
                                   WorkoutDayExercisesCompanion.insert(
                                     dayId: widget.day.id,
                                     exerciseId: ex.id,
@@ -1145,7 +1165,8 @@ class _LinkExerciseDialogState extends ConsumerState<_LinkExerciseDialog> {
               onPressed: () {
                 widget.onCreateAndLink();
               },
-              icon: const Icon(Icons.add, color: AppColors.primaryLight, size: 16),
+              icon: const Icon(Icons.add,
+                  color: AppColors.primaryLight, size: 16),
               label: const Text(
                 'CRIAR NOVO E VINCULAR',
                 style: TextStyle(
@@ -1632,7 +1653,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       color: isHovered
-                                          ? AppColors.primary.withValues(alpha: 0.15)
+                                          ? AppColors.primary
+                                              .withValues(alpha: 0.15)
                                           : context.cardColor,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
@@ -1642,7 +1664,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                                 ? AppColors.getWorkoutColor(
                                                         assignedDay.letra)
                                                     .withValues(alpha: 0.3)
-                                                : Colors.grey.withValues(alpha: 0.2)),
+                                                : Colors.grey
+                                                    .withValues(alpha: 0.2)),
                                         width: isHovered ? 2 : 1,
                                       ),
                                     ),
@@ -1701,7 +1724,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                                               .getWorkoutColor(
                                                                   assignedDay
                                                                       .letra)
-                                                          .withValues(alpha: 0.2),
+                                                          .withValues(
+                                                              alpha: 0.2),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               8),
@@ -1772,7 +1796,8 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
                                                       vertical: 6),
                                                   decoration: BoxDecoration(
                                                     color: Colors.grey
-                                                        .withValues(alpha: 0.15),
+                                                        .withValues(
+                                                            alpha: 0.15),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             8),
@@ -1844,7 +1869,9 @@ class _WeeklyScheduleTabState extends ConsumerState<_WeeklyScheduleTab> {
         ),
         boxShadow: [
           BoxShadow(
-            color: isSelected ? color.withValues(alpha: 0.6) : color.withValues(alpha: 0.3),
+            color: isSelected
+                ? color.withValues(alpha: 0.6)
+                : color.withValues(alpha: 0.3),
             blurRadius: isSelected ? 10 : 6,
             spreadRadius: isSelected ? 1 : 0,
             offset: const Offset(0, 3),

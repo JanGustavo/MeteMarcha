@@ -1,3 +1,7 @@
+import '../../core/media/video_cover.dart';
+import '../../core/services/story_audio_controller.dart';
+import '../../core/media/social_video_card.dart';
+import '../../core/media/social_video.dart';
 import 'dart:math';
 import 'package:file_picker/file_picker.dart';
 import '../../core/services/squad_invite_service.dart';
@@ -477,50 +481,82 @@ class _StoryCard extends StatefulWidget {
       {super.key,
       required this.api,
       required this.story,
-      required this.headers});
+      required this.headers,
+      this.active = false});
   final SquadService api;
   final dynamic story;
+  final bool active;
   final Map<String, String> headers;
   @override
   State<_StoryCard> createState() => _StoryCardState();
 }
 
 class _StoryCardState extends State<_StoryCard> {
-  final player = AudioPlayer();
-  Timer? stopTimer;
-  bool busy = false, playing = false;
+  StoryAudioController? audio;
+  bool busy = false;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.active)
+      WidgetsBinding.instance.addPostFrameCallback((_) => startMusic());
+  }
+
+  @override
+  void didUpdateWidget(covariant _StoryCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.active) {
+      audio?.stop();
+    } else if (!oldWidget.active) {
+      startMusic();
+    }
+  }
+
+  Future<void> startMusic() async {
+    final track = widget.story['track'];
+    if (track == null || !mounted) return;
+    audio ??= StoryAudioController(
+        loadBytes: () async {
+          final response = await widget.api.client
+              .get(widget.api.url(track['audio_url']), headers: widget.headers)
+              .timeout(const Duration(seconds: 30));
+          if (response.statusCode != 200) throw Exception('audio');
+          return response.bodyBytes;
+        },
+        start: Duration(milliseconds: track['start_ms']),
+        duration: Duration(milliseconds: track['duration_ms']));
+    if (mounted) setState(() {});
+    await audio!.activate();
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
-    stopTimer?.cancel();
-    player.dispose();
+    audio?.dispose();
     super.dispose();
   }
 
-  Future<void> music() async {
-    try {
-      if (playing) {
-        await player.stop();
-      } else {
-        final track = widget.story['track'];
-        final audio = await widget.api.client
-            .get(widget.api.url(track['audio_url']), headers: widget.headers)
-            .timeout(const Duration(seconds: 30));
-        if (audio.statusCode != 200) throw Exception('Áudio indisponível');
-        await player.play(BytesSource(audio.bodyBytes),
-            position: Duration(milliseconds: track['start_ms']));
-        stopTimer?.cancel();
-        stopTimer =
-            Timer(Duration(milliseconds: track['duration_ms']), () async {
-          await player.stop();
-          if (mounted) setState(() => playing = false);
-        });
-      }
-      if (mounted) setState(() => playing = !playing);
-    } catch (_) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Não foi possível reproduzir a música.')));
-    }
+  Future<void> openViewer() async {
+    await audio?.stop();
+    if (!mounted) return;
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => StoryViewer(
+                api: widget.api,
+                stories: [widget.story],
+                headers: widget.headers)));
+  }
+
+  Future<void> openReport() async {
+    await audio?.stop();
+    if (!mounted) return;
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => WorkoutReportPage(
+                report: Map<String, dynamic>.from(
+                    widget.story['workout_report']))));
+    if (mounted && widget.active) await startMusic();
   }
 
   Future<void> react(String kind) async {
@@ -555,13 +591,8 @@ class _StoryCardState extends State<_StoryCard> {
                   'Até ${DateTime.parse(s['visible_until']).toLocal().toString().substring(0, 16)}')),
           InkWell(
               onTap: s['workout_report'] == null
-                  ? null
-                  : () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => WorkoutReportPage(
-                              report: Map<String, dynamic>.from(
-                                  s['workout_report'])))),
+                  ? (widget.active ? null : openViewer)
+                  : openReport,
               child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: AspectRatio(
@@ -574,12 +605,7 @@ class _StoryCardState extends State<_StoryCard> {
                               child: Text('Foto indisponível')))))),
           if (s['workout_report'] != null)
             TextButton.icon(
-                onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => WorkoutReportPage(
-                            report: Map<String, dynamic>.from(
-                                s['workout_report'])))),
+                onPressed: openReport,
                 icon: const Icon(Icons.description_outlined),
                 label: const Text('Ver treino completo')),
           if ((s['caption'] as String).isNotEmpty)
@@ -587,11 +613,51 @@ class _StoryCardState extends State<_StoryCard> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(s['caption'])),
           if (s['track'] != null)
-            TextButton.icon(
-                onPressed: music,
-                icon: Icon(playing ? Icons.stop : Icons.play_arrow),
-                label:
-                    Text('${s['track']['title']} · ${s['track']['artist']}')),
+            ListenableBuilder(
+                listenable: audio ?? const AlwaysStoppedAnimation(0),
+                builder: (context, _) => Column(children: [
+                      Row(children: [
+                        IconButton(
+                            tooltip:
+                                (audio?.muted == true || audio?.volume == 0)
+                                    ? 'Ativar som'
+                                    : 'Silenciar',
+                            onPressed: () async {
+                              if (!widget.active) {
+                                await openViewer();
+                                return;
+                              }
+                              if (audio == null)
+                                await startMusic();
+                              else
+                                await audio!.toggleMute();
+                              if (mounted) setState(() {});
+                            },
+                            icon: Icon(
+                                (audio?.muted == true || audio?.volume == 0)
+                                    ? Icons.volume_off
+                                    : Icons.volume_up)),
+                        Expanded(
+                            child: Text(
+                                '${s['track']['title']} · ${s['track']['artist']}')),
+                        IconButton(
+                            tooltip: 'Reproduzir música',
+                            onPressed: widget.active ? startMusic : openViewer,
+                            icon: Icon(audio?.loading == true
+                                ? Icons.hourglass_top
+                                : Icons.replay))
+                      ]),
+                      if (audio != null)
+                        Slider(
+                            value: audio!.volume,
+                            label: '${(audio!.volume * 100).round()}%',
+                            onChanged: audio!.setVolume),
+                      if (audio?.error != null) Text(audio!.error!)
+                    ])),
+          if (s['video_url'] != null && s['video_url'] != '')
+            SocialVideoCard(
+                url: s['video_url'],
+                beforePlay: () => audio?.stop() ?? Future.value()),
           Wrap(children: [
             for (final entry in {
               'fire': '🔥',
@@ -672,6 +738,7 @@ class _StoryViewerState extends State<StoryViewer> {
                     padding: const EdgeInsets.all(16),
                     child: _StoryCard(
                         key: ValueKey(widget.stories[i]['id']),
+                        active: i == index,
                         api: widget.api,
                         story: widget.stories[i],
                         headers: widget.headers)))),
@@ -690,6 +757,7 @@ class StoryComposer extends StatefulWidget {
 
 class StoryComposerState extends State<StoryComposer> {
   final caption = TextEditingController();
+  final video = TextEditingController();
   final keyValue =
       'story-${List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
   XFile? photo;
@@ -721,6 +789,7 @@ class StoryComposerState extends State<StoryComposer> {
   @override
   void dispose() {
     caption.dispose();
+    video.dispose();
     super.dispose();
   }
 
@@ -793,8 +862,17 @@ class StoryComposerState extends State<StoryComposer> {
   Future<void> publish() async {
     setState(() => busy = true);
     try {
-      await widget.api.publish(photo!, caption.text.trim(), track, keyValue,
-          report: widget.report);
+      final reference =
+          video.text.trim().isEmpty ? null : SocialVideo.parse(video.text);
+      if (video.text.trim().isNotEmpty && reference == null)
+        throw const AccountException(
+            'Use um link válido do YouTube, TikTok, Instagram ou Kwai.');
+      final image = photo ??
+          (widget.report != null
+              ? await reportCover(widget.report!)
+              : await videoCover(reference!));
+      await widget.api.publish(image, caption.text.trim(), track, keyValue,
+          report: widget.report, videoUrl: reference?.original.toString());
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -862,6 +940,16 @@ class StoryComposerState extends State<StoryComposer> {
                               height: 260, fit: BoxFit.contain))
                       : const LinearProgressIndicator()),
             TextField(
+                controller: video,
+                enabled: !busy,
+                decoration: const InputDecoration(
+                    labelText: 'Vídeo de referência (opcional)',
+                    hintText:
+                        'Cole um link do YouTube, TikTok, Instagram ou Kwai',
+                    prefixIcon: Icon(Icons.video_library_outlined)),
+                onChanged: (_) => setState(() {})),
+            const SizedBox(height: 16),
+            TextField(
                 controller: caption,
                 enabled: !busy,
                 maxLength: 300,
@@ -890,7 +978,12 @@ class StoryComposerState extends State<StoryComposer> {
                   child: Text('$catalogError Tentar novamente')),
             const SizedBox(height: 24),
             FilledButton(
-                onPressed: busy || photo == null ? null : publish,
+                onPressed: busy ||
+                        (photo == null &&
+                            video.text.trim().isEmpty &&
+                            widget.report == null)
+                    ? null
+                    : publish,
                 child: Text(busy ? 'Publicando…' : 'Publicar no squad')),
           ])));
 }
@@ -937,7 +1030,8 @@ class _MusicPickerState extends State<_MusicPicker> {
           .timeout(const Duration(seconds: 30));
       if (!mounted || current != sequence) return;
       if (response.statusCode != 200) throw Exception('Áudio indisponível');
-      await player.play(BytesSource(response.bodyBytes));
+      await player.setAudioContext(mediaAudioContext());
+      await player.play(BytesSource(response.bodyBytes), volume: .25);
       if (!mounted || current != sequence) return;
       setState(() {
         playing = track['id'];

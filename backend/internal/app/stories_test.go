@@ -527,3 +527,23 @@ func TestSecondStoryDoesNotReplaceFirst(t *testing.T) {
 		t.Fatal("first story photo was overwritten")
 	}
 }
+
+func TestStoryVideoLink(t *testing.T) {
+	e := newEnv(t)
+	owner, member := e.register("videoowner"), e.register("videomember")
+	e.newGroup("Vídeos", owner, member)
+	link := "https://www.youtube.com/watch?v=jNo3GqP-d4I"
+	status, _, body := e.publish(owner.token, keyN("video", 1), map[string]string{"video_url": link}, jpegBytes(20, 20))
+	if status != 201 || str(body, "story", "video_url") != link {
+		t.Fatalf("video: %d %v", status, body)
+	}
+	_, items := e.feed(member)
+	if len(items) != 1 || items[0].(map[string]any)["video_url"] != link {
+		t.Fatal("video not shared with member")
+	}
+	for i, link := range []string{"javascript:alert(1)", "https://youtube.com.attacker.test/watch?v=x", "https://example.com/video"} {
+		if status, _, _ := e.publish(owner.token, keyN("invalid-video", i), map[string]string{"video_url": link}, jpegBytes(20, 20)); status != 422 {
+			t.Fatal("invalid video accepted", status)
+		}
+	}
+}

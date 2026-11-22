@@ -1,3 +1,6 @@
+import '../../core/media/social_video_card.dart';
+import '../../core/media/social_video.dart';
+import '../../core/media/reference_image.dart';
 import '../squads/workout_report.dart';
 import '../squads/squads_page.dart';
 import '../../core/services/squad_service.dart';
@@ -2629,6 +2632,35 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                           icon: Icons.analytics_rounded,
                         ),
                       ),
+                      if (ex.referenceImage != null)
+                        Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ReferenceImage(encoded: ex.referenceImage!)),
+                      TextButton.icon(
+                          onPressed: () async {
+                            try {
+                              final image = await pickReferenceImage();
+                              if (image == null) return;
+                              final updated = ex.copyWith(
+                                  referenceImage: drift.Value(image));
+                              await ref
+                                  .read(exerciseDaoProvider)
+                                  .updateExercise(updated);
+                              if (mounted) {
+                                setState(() {
+                                  final index = _exercises
+                                      .indexWhere((e) => e.id == ex.id);
+                                  if (index >= 0) _exercises[index] = updated;
+                                });
+                              }
+                            } catch (e) {
+                              if (mounted)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString())));
+                            }
+                          },
+                          icon: const Icon(Icons.add_photo_alternate_outlined),
+                          label: const Text('Imagem de referência')),
                       if (ex.link != null && ex.link!.isNotEmpty)
                         GestureDetector(
                           onTap: () => _openLink(ex.link!),
@@ -2965,7 +2997,20 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final uri = Uri.tryParse(url.trim());
     if (uri == null) return;
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (SocialVideo.parse(url) != null) {
+        await ref.read(workoutMusicProvider.notifier).stop();
+        if (!mounted) return;
+        await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('Vídeo de referência')),
+                    body: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: SocialVideoCard(url: url)))));
+      } else {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     } catch (_) {
       // Falha silenciosa ou log
     }

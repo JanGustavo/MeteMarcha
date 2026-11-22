@@ -16,11 +16,11 @@ class AudioService {
     loadSettings();
   }
 
-  void _configureAudioContext() {
+  Future<void> _configureAudioContext() async {
     try {
-      AudioPlayer.global.setAudioContext(AudioContext(
+      await _player.setAudioContext(AudioContext(
         android: const AudioContextAndroid(
-          isSpeakerphoneOn: true,
+          isSpeakerphoneOn: false,
           stayAwake: true,
           contentType: AndroidContentType.sonification,
           usageType: AndroidUsageType.assistanceSonification,

@@ -23,6 +23,7 @@ part 'app_database.g.dart';
 /// O peso e as repetições ficam no ExerciseLog para preservar histórico.
 @DataClassName('Exercise')
 class Exercises extends Table {
+  TextColumn get referenceImage => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
 
   TextColumn get nome => text()();
@@ -71,6 +72,7 @@ class WorkoutSplits extends Table {
 /// Dia dentro de uma divisão: A, B, C…
 @DataClassName('WorkoutDay')
 class WorkoutDays extends Table {
+  TextColumn get coverImage => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
 
   IntColumn get splitId => integer().references(WorkoutSplits, #id)();
@@ -737,12 +739,14 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
           'tempoDescansoSegundos': ex.tempoDescansoSegundos,
           'volume': ex.volume,
           'observacoes': ex.observacoes,
+          'referenceImage': ex.referenceImage,
         });
       }
       daysJson.add({
         'letra': day.letra,
         'nome': day.nome,
         'exercises': listExsJson,
+        'coverImage': day.coverImage,
       });
     }
 
@@ -778,6 +782,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
             splitId: splitId,
             letra: letra,
             nome: nomeDia,
+            coverImage: Value(dayData['coverImage'] as String?),
           ),
         );
 
@@ -796,6 +801,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
           if(preservePrescription && existingEx!=null && (existingEx.volume!=exData['volume'] || existingEx.tempoDescansoSegundos!=(exData['tempoDescansoSegundos'] ?? 90) || existingEx.equipamento!=(exData['equipamento'] ?? 'Livre') || existingEx.observacoes!=exData['observacoes'])) {
             existingEx=null;
           }
+          if(existingEx!=null && exData['referenceImage']!=null && existingEx.referenceImage!=exData['referenceImage']) existingEx=null;
           int exId;
           if (existingEx != null) {
             exId = existingEx.id;
@@ -805,6 +811,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
                 nome: exNome,
                 grupoMuscular: exData['grupoMuscular'] ?? 'Geral',
                 link: Value(exData['link']),
+                referenceImage: Value(exData['referenceImage'] as String?),
                 isUnilateral: Value(exData['isUnilateral'] ?? false),
                 equipamento: Value(exData['equipamento'] ?? 'Livre'),
                 tempoDescansoSegundos: Value(exData['tempoDescansoSegundos'] ?? 90),
@@ -1113,7 +1120,7 @@ class AppDatabase extends _$AppDatabase {
   late final ProfileDao profileDao = ProfileDao(this);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1122,6 +1129,8 @@ class AppDatabase extends _$AppDatabase {
           await _seedDatabase(this);
         },
         onUpgrade: (m, from, to) async {
+          if(from < 15) {await m.addColumn(exercises,exercises.referenceImage);await m.addColumn(workoutDays,workoutDays.coverImage);}
+
           if (from < 3) {
             // Recria todas as tabelas para garantir compatibilidade com as novas colunas e nomes de tabelas
             await customStatement('PRAGMA foreign_keys = OFF;');

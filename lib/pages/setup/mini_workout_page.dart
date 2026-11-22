@@ -6,8 +6,9 @@ import '../../core/services/squad_service.dart';
 import '../home/home_page.dart';
 
 class MiniWorkoutPage extends ConsumerStatefulWidget {
-  const MiniWorkoutPage({super.key, this.onboarding = false});
+  const MiniWorkoutPage({super.key, this.onboarding = false, this.focus});
   final bool onboarding;
+  final String? focus;
   @override
   ConsumerState<MiniWorkoutPage> createState() => _MiniWorkoutPageState();
 }
@@ -24,7 +25,9 @@ class _MiniWorkoutPageState extends ConsumerState<MiniWorkoutPage> {
       workout = null;
     });
     try {
-      final focus = ref.read(trainingFocusProvider).valueOrNull ?? 'musculacao';
+      final focus = widget.focus ??
+          ref.read(trainingFocusProvider).valueOrNull ??
+          'musculacao';
       final result = await SquadService().request('POST', '/v1/ai/workouts', {
         'mode': 'generate',
         'focus': focus,
@@ -68,7 +71,9 @@ class _MiniWorkoutPageState extends ConsumerState<MiniWorkoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final focus = ref.watch(trainingFocusProvider).valueOrNull ?? 'musculacao';
+    final focus = widget.focus ??
+        ref.watch(trainingFocusProvider).valueOrNull ??
+        'musculacao';
     return PopScope(
         canPop: !busy,
         child: Scaffold(

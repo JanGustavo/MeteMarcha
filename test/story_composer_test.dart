@@ -14,7 +14,7 @@ class FakeStoryService extends SquadService {
   @override
   Future<void> publish(
       XFile photo, String caption, Map<String, dynamic>? track, String key,
-      {Map<String, dynamic>? report}) async {
+      {Map<String, dynamic>? report, String? videoUrl}) async {
     keys.add(key);
     expect(await photo.length(), greaterThan(0));
   }

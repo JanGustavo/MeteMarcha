@@ -1,3 +1,4 @@
+import '../services/story_audio_controller.dart';
 // lib/core/providers/progress_extended_provider.dart
 
 import 'dart:async';
@@ -35,7 +36,8 @@ class GoalsNotifier extends StateNotifier<List<Goal>> {
             await db.into(db.goals).insert(goal);
           }
         } catch (e) {
-          debugPrint('Erro ao migrar metas do SharedPreferences para o SQLite: $e');
+          debugPrint(
+              'Erro ao migrar metas do SharedPreferences para o SQLite: $e');
         }
       }
       await prefs.setBool('goals_migrated_to_db', true);
@@ -58,7 +60,8 @@ class GoalsNotifier extends StateNotifier<List<Goal>> {
   }
 
   Future<void> toggleGoal(String id) async {
-    final goal = await (db.select(db.goals)..where((g) => g.id.equals(id))).getSingleOrNull();
+    final goal = await (db.select(db.goals)..where((g) => g.id.equals(id)))
+        .getSingleOrNull();
     if (goal != null) {
       await (db.update(db.goals)..where((g) => g.id.equals(id))).write(
         GoalsCompanion(
@@ -84,10 +87,12 @@ final goalsProvider = StateNotifierProvider<GoalsNotifier, List<Goal>>((ref) {
 final allCompletedLogsProvider = FutureProvider<List<ExerciseLog>>((ref) async {
   final db = ref.watch(databaseProvider);
   final query = db.select(db.exerciseLogs).join([
-    drift.innerJoin(db.workoutSessions, db.workoutSessions.id.equalsExp(db.exerciseLogs.sessionId))
+    drift.innerJoin(db.workoutSessions,
+        db.workoutSessions.id.equalsExp(db.exerciseLogs.sessionId))
   ])
-  ..where(db.exerciseLogs.concluido.equals(true) & db.workoutSessions.status.equals('concluido'))
-  ..orderBy([drift.OrderingTerm.asc(db.exerciseLogs.data)]);
+    ..where(db.exerciseLogs.concluido.equals(true) &
+        db.workoutSessions.status.equals('concluido'))
+    ..orderBy([drift.OrderingTerm.asc(db.exerciseLogs.data)]);
 
   final rows = await query.get();
   return rows.map((row) => row.readTable(db.exerciseLogs)).toList();
@@ -99,7 +104,8 @@ final streakProvider = Provider<int>((ref) {
   final weeklySchedule = ref.watch(weeklyScheduleProvider).value ?? [];
 
   // Alvo semanal de treinos (fallback para 1 se não houver agenda planejada)
-  final scheduledWorkoutsCount = weeklySchedule.where((s) => s.dayId != null).length;
+  final scheduledWorkoutsCount =
+      weeklySchedule.where((s) => s.dayId != null).length;
   final weeklyTarget = scheduledWorkoutsCount > 0 ? scheduledWorkoutsCount : 1;
 
   if (completedSessions.isEmpty) return 0;
@@ -162,9 +168,11 @@ final evolutionProvider = Provider<double>((ref) {
     if (exerciseLogs.length < 2) return;
 
     // Acha o primeiro log com carga > 0
-    final firstLog = exerciseLogs.firstWhere((l) => l.peso > 0, orElse: () => exerciseLogs.first);
+    final firstLog = exerciseLogs.firstWhere((l) => l.peso > 0,
+        orElse: () => exerciseLogs.first);
     // Acha o último log com carga > 0
-    final lastLog = exerciseLogs.lastWhere((l) => l.peso > 0, orElse: () => exerciseLogs.last);
+    final lastLog = exerciseLogs.lastWhere((l) => l.peso > 0,
+        orElse: () => exerciseLogs.last);
 
     if (firstLog.peso > 0 && lastLog.peso > 0 && firstLog.id != lastLog.id) {
       final diff = lastLog.peso - firstLog.peso;
@@ -183,7 +191,8 @@ final firstUseDateProvider = Provider<String>((ref) {
   final completedSessions = ref.watch(completedSessionsProvider).value ?? [];
   if (completedSessions.isEmpty) return 'Hoje';
 
-  final sorted = [...completedSessions]..sort((a, b) => a.data.compareTo(b.data));
+  final sorted = [...completedSessions]
+    ..sort((a, b) => a.data.compareTo(b.data));
   try {
     final firstDate = DateTime.parse(sorted.first.data);
     return '${firstDate.day.toString().padLeft(2, '0')}/${firstDate.month.toString().padLeft(2, '0')}/${firstDate.year}';
@@ -219,23 +228,27 @@ final musicChannels = [
 
 class WorkoutMusicState {
   final bool isPlaying;
+  final double volume;
   final int currentChannelIndex;
   final bool isLoading;
   WorkoutMusicState({
     required this.isPlaying,
     required this.currentChannelIndex,
     this.isLoading = false,
+    this.volume = .5,
   });
 
   WorkoutMusicState copyWith({
     bool? isPlaying,
     int? currentChannelIndex,
     bool? isLoading,
+    double? volume,
   }) {
     return WorkoutMusicState(
       isPlaying: isPlaying ?? this.isPlaying,
       currentChannelIndex: currentChannelIndex ?? this.currentChannelIndex,
       isLoading: isLoading ?? this.isLoading,
+      volume: volume ?? this.volume,
     );
   }
 }
@@ -243,8 +256,18 @@ class WorkoutMusicState {
 class WorkoutMusicNotifier extends StateNotifier<WorkoutMusicState> {
   final AudioPlayer _player = AudioPlayer();
 
-  WorkoutMusicNotifier() : super(WorkoutMusicState(isPlaying: false, currentChannelIndex: 0)) {
+  WorkoutMusicNotifier()
+      : super(WorkoutMusicState(isPlaying: false, currentChannelIndex: 0)) {
     _player.setReleaseMode(ReleaseMode.loop);
+    _player.setAudioContext(mediaAudioContext());
+    _loadVolume();
+  }
+
+  Future<void> _loadVolume() async {
+    final prefs = await SharedPreferences.getInstance();
+    final volume = (prefs.getDouble('mm.workout.volume') ?? .5).clamp(0.0, 1.0);
+    if (mounted) state = state.copyWith(volume: volume);
+    await _player.setVolume(volume * volume);
   }
 
   Future<void> playChannel(int index) async {
@@ -253,7 +276,8 @@ class WorkoutMusicNotifier extends StateNotifier<WorkoutMusicState> {
     try {
       await _player.stop();
       final url = musicChannels[index].url;
-      await _player.play(AssetSource(url));
+      await _player.setAudioContext(mediaAudioContext());
+      await _player.play(AssetSource(url), volume: state.volume * state.volume);
       state = state.copyWith(isPlaying: true, isLoading: false);
       _updateNotification();
     } catch (_) {
@@ -272,7 +296,8 @@ class WorkoutMusicNotifier extends StateNotifier<WorkoutMusicState> {
       _updateNotification();
       try {
         final url = musicChannels[state.currentChannelIndex].url;
-        await _player.play(AssetSource(url));
+        await _player.play(AssetSource(url),
+            volume: state.volume * state.volume);
         state = state.copyWith(isPlaying: true, isLoading: false);
         _updateNotification();
       } catch (_) {
@@ -280,6 +305,14 @@ class WorkoutMusicNotifier extends StateNotifier<WorkoutMusicState> {
         _updateNotification();
       }
     }
+  }
+
+  Future<void> setVolume(double value) async {
+    final volume = value.clamp(0.0, 1.0);
+    await _player.setVolume(volume * volume);
+    if (mounted) state = state.copyWith(volume: volume);
+    await (await SharedPreferences.getInstance())
+        .setDouble('mm.workout.volume', volume);
   }
 
   Future<void> stop() async {
@@ -301,7 +334,8 @@ class WorkoutMusicNotifier extends StateNotifier<WorkoutMusicState> {
   }
 }
 
-final workoutMusicProvider = StateNotifierProvider<WorkoutMusicNotifier, WorkoutMusicState>((ref) {
+final workoutMusicProvider =
+    StateNotifierProvider<WorkoutMusicNotifier, WorkoutMusicState>((ref) {
   return WorkoutMusicNotifier();
 });
 
@@ -332,7 +366,8 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
 
   if (completedSessions == 0) {
     insights.add(WorkoutInsight(
-      text: 'Bem-vindo ao Mete Marcha! Inicie e conclua seu primeiro treino para começar a gerar insights automáticos de volume, recordes e consistência. 🚀',
+      text:
+          'Bem-vindo ao Mete Marcha! Inicie e conclua seu primeiro treino para começar a gerar insights automáticos de volume, recordes e consistência. 🚀',
       icon: Icons.rocket_launch_rounded,
       color: Colors.cyanAccent,
       type: 'neutral',
@@ -340,7 +375,8 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
     return insights;
   } else if (completedSessions == 1) {
     insights.add(WorkoutInsight(
-      text: 'Primeiro treino concluído! Excelente começo. Continue treinando para liberar as análises comparativas e recordes históricos. ⚡',
+      text:
+          'Primeiro treino concluído! Excelente começo. Continue treinando para liberar as análises comparativas e recordes históricos. ⚡',
       icon: Icons.celebration_rounded,
       color: Colors.amberAccent,
       type: 'positive',
@@ -370,7 +406,8 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
         final days = now.difference(lastDate).inDays;
         if (days >= 8) {
           insights.add(WorkoutInsight(
-            text: 'Você não treina $muscle há $days dias. Que tal treinar hoje?',
+            text:
+                'Você não treina $muscle há $days dias. Que tal treinar hoje?',
             icon: Icons.calendar_today_rounded,
             color: Colors.orangeAccent,
             type: 'warning',
@@ -409,7 +446,8 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
       if (ex != null) {
         final diff = recentMax - historicMax;
         insights.add(WorkoutInsight(
-          text: 'Novo recorde no ${ex.nome}! +${diff.toStringAsFixed(0)} kg (atingiu ${recentMax.toStringAsFixed(0)} kg).',
+          text:
+              'Novo recorde no ${ex.nome}! +${diff.toStringAsFixed(0)} kg (atingiu ${recentMax.toStringAsFixed(0)} kg).',
           icon: Icons.emoji_events_rounded,
           color: Colors.amber,
           type: 'positive',
@@ -420,7 +458,8 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
 
   // 4. Comparação de Volume Semanal por Grupo Muscular (Semana Atual vs Anterior)
   final currentWeek = WeekUtils.currentWeekKey();
-  final lastWeek = WeekUtils.weekKeyFromDate(now.subtract(const Duration(days: 7)));
+  final lastWeek =
+      WeekUtils.weekKeyFromDate(now.subtract(const Duration(days: 7)));
 
   final Map<String, double> currentVolume = {};
   final Map<String, double> lastWeekVolume = {};
@@ -432,12 +471,16 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
     try {
       final logDate = DateTime.parse(log.data);
       final weekKey = WeekUtils.weekKeyFromDate(logDate);
-      final vol = log.peso * log.repeticoes * (ex.isUnilateral && log.lado == 'ambos' ? 2 : 1);
+      final vol = log.peso *
+          log.repeticoes *
+          (ex.isUnilateral && log.lado == 'ambos' ? 2 : 1);
 
       if (weekKey == currentWeek) {
-        currentVolume[ex.grupoMuscular] = (currentVolume[ex.grupoMuscular] ?? 0.0) + vol;
+        currentVolume[ex.grupoMuscular] =
+            (currentVolume[ex.grupoMuscular] ?? 0.0) + vol;
       } else if (weekKey == lastWeek) {
-        lastWeekVolume[ex.grupoMuscular] = (lastWeekVolume[ex.grupoMuscular] ?? 0.0) + vol;
+        lastWeekVolume[ex.grupoMuscular] =
+            (lastWeekVolume[ex.grupoMuscular] ?? 0.0) + vol;
       }
     } catch (_) {}
   }
@@ -448,14 +491,16 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
       final diffPercent = ((curVol - prevVol) / prevVol) * 100;
       if (diffPercent >= 5) {
         insights.add(WorkoutInsight(
-          text: 'Evolução no volume de $muscle: +${diffPercent.toStringAsFixed(0)}% esta semana!',
+          text:
+              'Evolução no volume de $muscle: +${diffPercent.toStringAsFixed(0)}% esta semana!',
           icon: Icons.trending_up_rounded,
           color: Colors.greenAccent,
           type: 'positive',
         ));
       } else if (diffPercent <= -20) {
         insights.add(WorkoutInsight(
-          text: 'Queda no volume de $muscle: ${diffPercent.toStringAsFixed(0)}% esta semana.',
+          text:
+              'Queda no volume de $muscle: ${diffPercent.toStringAsFixed(0)}% esta semana.',
           icon: Icons.trending_down_rounded,
           color: Colors.redAccent,
           type: 'warning',
@@ -470,7 +515,8 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
 class AchievementStatus {
   final Achievement achievement;
   final double currentValue;
-  final int unlockedLevelIndex; // -1 = bloqueado, 0 = bronze, 1 = prata, 2 = ouro
+  final int
+      unlockedLevelIndex; // -1 = bloqueado, 0 = bronze, 1 = prata, 2 = ouro
   final double progress; // 0.0 a 1.0 para o próximo nível
   final String nextTargetLabel;
 
@@ -508,9 +554,8 @@ final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
   // 2. Calcular 1RM máxima de cada exercício
   final Map<int, double> max1RMPerExercise = {};
   for (final log in logs) {
-    final oneRM = log.repeticoes == 1
-        ? log.peso
-        : log.peso * (1 + log.repeticoes / 30.0);
+    final oneRM =
+        log.repeticoes == 1 ? log.peso : log.peso * (1 + log.repeticoes / 30.0);
     final currentMax = max1RMPerExercise[log.exerciseId] ?? 0.0;
     if (oneRM > currentMax) {
       max1RMPerExercise[log.exerciseId] = oneRM;
@@ -526,7 +571,9 @@ final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
         max1RMPerExercise.forEach((exId, max1RM) {
           final ex = exerciseMap[exId];
           if (ex != null) {
-            final matches = ach.keywords?.any((kw) => ex.nome.toLowerCase().contains(kw.toLowerCase())) ?? false;
+            final matches = ach.keywords?.any(
+                    (kw) => ex.nome.toLowerCase().contains(kw.toLowerCase())) ??
+                false;
             if (matches && max1RM > best1RM) {
               best1RM = max1RM;
             }
@@ -540,7 +587,9 @@ final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
         for (final log in logs) {
           final ex = exerciseMap[log.exerciseId];
           if (ex != null) {
-            final matches = ach.keywords?.any((kw) => ex.nome.toLowerCase().contains(kw.toLowerCase())) ?? false;
+            final matches = ach.keywords?.any(
+                    (kw) => ex.nome.toLowerCase().contains(kw.toLowerCase())) ??
+                false;
             if (matches) {
               setsCount++;
             }
@@ -599,14 +648,15 @@ final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
     } else {
       final nextLevelIndex = unlockedLevelIndex + 1;
       final nextLevel = ach.levels[nextLevelIndex];
-      final prevLevelValue = unlockedLevelIndex == -1 ? 0.0 : ach.levels[unlockedLevelIndex].value;
+      final prevLevelValue =
+          unlockedLevelIndex == -1 ? 0.0 : ach.levels[unlockedLevelIndex].value;
 
       final range = nextLevel.value - prevLevelValue;
       final currentInRange = currentValue - prevLevelValue;
       progress = range > 0 ? (currentInRange / range).clamp(0.0, 1.0) : 0.0;
 
       final needed = nextLevel.value - currentValue;
-      
+
       final String unit;
       switch (ach.type) {
         case AchievementType.exercise1rm:
@@ -634,7 +684,9 @@ final achievementsStatusProvider = Provider<List<AchievementStatus>>((ref) {
           unit = ' séries';
       }
 
-      final neededStr = needed % 1 == 0 ? needed.toInt().toString() : needed.toStringAsFixed(1);
+      final neededStr = needed % 1 == 0
+          ? needed.toInt().toString()
+          : needed.toStringAsFixed(1);
       nextTargetLabel = 'Faltam $neededStr$unit para ${nextLevel.name}';
     }
 
