@@ -26,6 +26,7 @@ List<PlateauInfo> detectPlateaus(
 
   final Map<int, List<ExerciseLog>> logsByExercise = {};
   for (final log in logs) {
+    if (log.trainingMetrics != null) continue;
     logsByExercise.putIfAbsent(log.exerciseId, () => []).add(log);
   }
 
@@ -51,9 +52,8 @@ List<PlateauInfo> detectPlateaus(
       double getMax1RM(List<ExerciseLog> sessionLogs) {
         double maxVal = 0.0;
         for (final l in sessionLogs) {
-          final oneRM = l.repeticoes == 1
-              ? l.peso
-              : l.peso * (1 + l.repeticoes / 30.0);
+          final oneRM =
+              l.repeticoes == 1 ? l.peso : l.peso * (1 + l.repeticoes / 30.0);
           if (oneRM > maxVal) {
             maxVal = oneRM;
           }

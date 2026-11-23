@@ -67,6 +67,25 @@ programa, então reinicie depois de alterá-lo. Se algo estiver errado (arquivo 
 vazio, id repetido), o programa **não inicia** e lista todos os problemas.
 Formatos aceitos: `.mp3`, `.m4a`, `.ogg`, `.wav`.
 
+Para importar um lote de músicas abertas, instale `ffmpeg` (inclui `ffprobe`) e rode:
+
+```sh
+python3 tools/import_open_music.py --output ./data/music --limit 50
+```
+
+O importador busca faixas CC0 no Openverse, confirma a licença na página original
+do Freesound, baixa o áudio, confere a duração com `ffprobe` e grava `catalog.json`
+de forma atômica. Cada entrada guarda a fonte, a licença e o SHA-256 do áudio.
+Arquivos que excedam 15 MB ou cuja licença não seja confirmada são descartados.
+Reinicie a API depois de publicar o catálogo. Use `--queries` para escolher as buscas.
+
+O app também pode enviar áudio do celular por `POST /v1/tracks/upload`: MP3, M4A,
+OGG ou WAV de até 15 MB e dez minutos. O servidor precisa de `ffprobe` no PATH.
+Esses arquivos ficam associados à conta que os enviou e não entram no catálogo
+compartilhado; outros membros só os acessam através de stories ainda visíveis.
+A sincronização do catálogo preserva as faixas pessoais. Há um limite de 20
+arquivos por conta, e o reenvio do mesmo arquivo reutiliza a faixa existente.
+
 ## Configuração
 
 Tudo por variáveis de ambiente `MM_*`, todas opcionais (veja [`.env.example`](.env.example)).
@@ -135,3 +154,23 @@ adapte domínio e caminhos. **Não foram testados em uma VPS real** nesta entreg
 - Uma instância apenas (SQLite). Sem recuperação de senha, sem verificação de e-mail.
 - O servidor remove os metadados EXIF das fotos, **inclusive a orientação**. O app precisa enviar
   a imagem já rotacionada (veja `docs/api.md`).
+
+### IA de treinos
+
+Configure `MM_AI_API_KEY` e `MM_AI_MODEL` no ambiente do serviço (não no app).
+`POST /v1/ai/workouts` exige sessão e aceita `mode: generate` para um mini treino
+ou `mode: parse` para organizar texto de treino. O rascunho é validado no servidor
+antes de voltar ao app e só é salvo depois da revisão pelo usuário.
+
+A geração usa foco, tempo aproximado (10, 15 ou 20 minutos) e equipamentos
+explicitamente disponíveis. O catálogo inicial de movimentos é limitado e não
+recomenda cargas em kg. Isto configura instruções e validação para o modelo;
+não é treinamento ou ajuste dos pesos do modelo.
+
+Para validar o fluxo com o provedor, carregue as variáveis do serviço e execute
+`go run ./cmd/check-ai`. O comando faz uma chamada real, valida o rascunho e não
+cria conta, sessão ou treino no banco. Nunca registre a chave em logs ou no Git.
+
+O modelo é configurável. Nesta implantação, `openai/gpt-oss-20b` foi validado
+com geração real de um rascunho. O servidor valida o conteúdo além de pedir JSON,
+pois [JSON Object Mode não garante o esquema da resposta](https://console.groq.com/docs/structured-outputs).

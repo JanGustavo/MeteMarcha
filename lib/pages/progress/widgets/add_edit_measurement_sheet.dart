@@ -1,3 +1,4 @@
+import '../../../core/media/photo_capture.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -44,7 +45,6 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
 
   File? _selectedImage;
   String? _existingPhotoPath;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -88,7 +88,7 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(source: source, imageQuality: 85);
+      final picked = await pickAppPhoto(context, source: source);
       if (picked != null) {
         setState(() {
           _selectedImage = File(picked.path);
@@ -211,7 +211,6 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
               ),
             ),
             const SizedBox(height: 16),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -229,7 +228,6 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
               ],
             ),
             const SizedBox(height: 16),
-
             Card(
               child: ListTile(
                 leading: const Icon(
@@ -264,10 +262,8 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
               ),
             ),
             const SizedBox(height: 16),
-
             const ProgressSectionLabel('COMPOSIÇÃO CORPORAL'),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
@@ -350,10 +346,8 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
               ],
             ),
             const SizedBox(height: 20),
-
             const ProgressSectionLabel('CIRCUNFERÊNCIAS (cm)'),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(child: _buildMeasurementField(_peitoCtrl, 'Peito')),
@@ -364,7 +358,6 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
               ],
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
@@ -377,7 +370,6 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
               ],
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
@@ -390,7 +382,6 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
               ],
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
@@ -409,12 +400,10 @@ class _AddEditMeasurementSheetState extends State<AddEditMeasurementSheet> {
               ],
             ),
             const SizedBox(height: 24),
-
             const ProgressSectionLabel('FOTO DE PROGRESSO'),
             const SizedBox(height: 12),
             _buildPhotoPickerSection(isDark),
             const SizedBox(height: 32),
-
             Row(
               children: [
                 Expanded(

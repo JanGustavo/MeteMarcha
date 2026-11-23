@@ -20,6 +20,9 @@ func NewHandler(svc *Service, cfg platform.Config) *Handler {
 }
 
 func (h *Handler) Register(mux *http.ServeMux, require func(http.HandlerFunc) http.HandlerFunc) {
+	mux.HandleFunc("GET /v1/story-capabilities", require(func(w http.ResponseWriter, r *http.Request) {
+		platform.WriteJSON(w, 200, map[string]any{"workout_report_version": 1, "video_url": true})
+	}))
 	mux.HandleFunc("POST /v1/stories", require(h.publish))
 	mux.HandleFunc("GET /v1/feed", require(h.feed))
 	mux.HandleFunc("PUT /v1/stories/{id}/reaction", require(h.react))
@@ -70,7 +73,7 @@ func (h *Handler) publish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	story, created, err := h.svc.Publish(r.Context(), PublishInput{
-		AuthorID: user.ID, RequestID: requestID, Caption: r.FormValue("caption"),
+		VideoURL: r.FormValue("video_url"), Report: r.FormValue("workout_report"), AuthorID: user.ID, RequestID: requestID, Caption: r.FormValue("caption"),
 		TrackID: r.FormValue("track_id"), TrackStartMS: start, TrackDurationMS: dur, Photo: photo,
 	})
 	if err != nil {

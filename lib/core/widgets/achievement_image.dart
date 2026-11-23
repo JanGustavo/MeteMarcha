@@ -1,3 +1,4 @@
+import '../constants/achievement_asset_aliases.dart';
 import 'package:flutter/material.dart';
 
 const Set<String> _supported3dAssets = {
@@ -95,7 +96,8 @@ class AchievementImage extends StatelessWidget {
     final assetKey = '$achievementId${levelName != null ? '_${levelName!.toLowerCase()}' : ''}';
 
     if (_supported3dAssets.contains(assetKey)) {
-      final assetPath = 'assets/images/achievements/$achievementId$suffix.png';
+      final filename='$achievementId$suffix.png';
+      final assetPath = 'assets/images/achievements/${achievementAssetAliases[filename] ?? filename}';
       return Image.asset(
         assetPath,
         width: size,

@@ -69,7 +69,7 @@ func (s *Store) group(ctx context.Context, groupID string) (Group, error) {
 	var g Group
 	var created int64
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, name, created_at FROM groups WHERE id = ?`, groupID).Scan(&g.ID, &g.Name, &created)
+		`SELECT id, name, created_at, color, theme, avatar FROM groups WHERE id = ?`, groupID).Scan(&g.ID, &g.Name, &created, &g.Color, &g.Theme, &g.Avatar)
 	g.CreatedAt = platform.FromUnix(created)
 	return g, err
 }

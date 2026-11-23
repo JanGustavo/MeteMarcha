@@ -8,6 +8,7 @@
 
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import '../media/exercise_catalog.dart';
 import 'database_helper.dart'
     if (dart.library.js_interop) 'database_helper_web.dart';
 
@@ -23,6 +24,9 @@ part 'app_database.g.dart';
 /// O peso e as repetições ficam no ExerciseLog para preservar histórico.
 @DataClassName('Exercise')
 class Exercises extends Table {
+  TextColumn get trainingMode => text().withDefault(const Constant('musculacao'))();
+  TextColumn get measurementType => text().withDefault(const Constant('reps'))();
+  TextColumn get referenceImage => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
 
   TextColumn get nome => text()();
@@ -71,6 +75,7 @@ class WorkoutSplits extends Table {
 /// Dia dentro de uma divisão: A, B, C…
 @DataClassName('WorkoutDay')
 class WorkoutDays extends Table {
+  TextColumn get coverImage => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
 
   IntColumn get splitId => integer().references(WorkoutSplits, #id)();
@@ -120,6 +125,7 @@ class WorkoutSessions extends Table {
 /// O usuário escolhe no momento da execução.
 @DataClassName('ExerciseLog')
 class ExerciseLogs extends Table {
+  TextColumn get trainingMetrics => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
 
   IntColumn get exerciseId => integer().references(Exercises, #id)();
@@ -276,7 +282,23 @@ class ExerciseDao extends DatabaseAccessor<AppDatabase>
       ..orderBy([OrderingTerm.asc(workoutDayExercises.ordem)]);
 
     final rows = await query.get();
-    return rows.map((r) => r.readTable(exercises)).toList();
+    final catalog = await ExerciseCatalog.load();
+    final result = <Exercise>[];
+    for (final row in rows) {
+      final exercise = row.readTable(exercises);
+      if (exercise.link?.trim().isNotEmpty == true) {
+        result.add(exercise);
+        continue;
+      }
+      final reference = catalog.enrich({'nome': exercise.nome, 'equipamento': exercise.equipamento})['link'] as String?;
+      if (reference == null) { result.add(exercise); continue; }
+      final changed = await (update(exercises)..where((e) =>
+          e.id.equals(exercise.id) & (e.link.isNull() | e.link.equals(exercise.link ?? ''))))
+          .write(ExercisesCompanion(link: Value(reference)));
+      result.add(changed > 0 ? exercise.copyWith(link: Value(reference)) :
+          (await getById(exercise.id) ?? exercise));
+    }
+    return result;
   }
 
   // ── Writes ─────────────────────────────────────────────────────
@@ -737,12 +759,16 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
           'tempoDescansoSegundos': ex.tempoDescansoSegundos,
           'volume': ex.volume,
           'observacoes': ex.observacoes,
+          'referenceImage': ex.referenceImage,
+          'trainingMode': ex.trainingMode,
+          'measurementType': ex.measurementType,
         });
       }
       daysJson.add({
         'letra': day.letra,
         'nome': day.nome,
         'exercises': listExsJson,
+        'coverImage': day.coverImage,
       });
     }
 
@@ -754,7 +780,8 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
     };
   }
 
-  Future<int> importWorkoutSplit(Map<String, dynamic> data) async {
+  Future<int> importWorkoutSplit(Map<String, dynamic> data, {bool preservePrescription = false}) async {
+    final catalog = await ExerciseCatalog.load();
     return await transaction(() async {
       final nome = data['nome'] ?? 'Treino Importado';
       final tipo = data['tipo'] ?? 'CUSTOM';
@@ -778,13 +805,16 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
             splitId: splitId,
             letra: letra,
             nome: nomeDia,
+            coverImage: Value(dayData['coverImage'] as String?),
           ),
         );
 
         final exercises = dayData['exercises'] as List<dynamic>? ?? [];
         for (var i = 0; i < exercises.length; i++) {
-          final exData = exercises[i];
+          final exData = catalog.enrich(Map<String, dynamic>.from(exercises[i]));
           final exNome = exData['nome'] ?? '';
+          final requestedMode = exData['trainingMode']=='calistenia' || (exData['trainingMode']==null && (data['focus']=='calistenia' || data['modalidade']=='calistenia')) ? 'calistenia' : 'musculacao';
+          final requestedMeasure = ['reps','seconds','meters'].contains(exData['measurementType']) ? exData['measurementType'] as String : 'reps';
           if (exNome.isEmpty) continue;
 
           // Verificar se o exercício já existe pelo nome exato (case insensitive)
@@ -793,6 +823,12 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
                 ..limit(1))
               .getSingleOrNull();
 
+          if(preservePrescription && existingEx!=null && (existingEx.volume!=exData['volume'] || existingEx.tempoDescansoSegundos!=(exData['tempoDescansoSegundos'] ?? 90) || existingEx.equipamento!=(exData['equipamento'] ?? 'Livre') || existingEx.observacoes!=exData['observacoes'])) {
+            existingEx=null;
+          }
+          if(existingEx!=null && exData['referenceImage']!=null && existingEx.referenceImage!=exData['referenceImage']) existingEx=null;
+          if(existingEx!=null && (existingEx.trainingMode!=requestedMode || existingEx.measurementType!=requestedMeasure))existingEx=null;
+          if(existingEx!=null && exData['link']!=null && existingEx.link!=exData['link']) existingEx=null;
           int exId;
           if (existingEx != null) {
             exId = existingEx.id;
@@ -800,8 +836,11 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
             exId = await into(db.exercises).insert(
               ExercisesCompanion.insert(
                 nome: exNome,
+                trainingMode: Value(requestedMode),
+                measurementType: Value(requestedMeasure),
                 grupoMuscular: exData['grupoMuscular'] ?? 'Geral',
                 link: Value(exData['link']),
+                referenceImage: Value(exData['referenceImage'] as String?),
                 isUnilateral: Value(exData['isUnilateral'] ?? false),
                 equipamento: Value(exData['equipamento'] ?? 'Livre'),
                 tempoDescansoSegundos: Value(exData['tempoDescansoSegundos'] ?? 90),
@@ -940,6 +979,7 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
     double max1RM = 0.0;
     for (final row in rows) {
       final log = row.readTable(exerciseLogs);
+      if(log.trainingMetrics!=null)continue;
       final oneRM = log.repeticoes == 1
           ? log.peso
           : log.peso * (1 + log.repeticoes / 30.0);
@@ -967,6 +1007,7 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
     ExerciseLog? bestLog;
     for (final row in rows) {
       final log = row.readTable(exerciseLogs);
+      if(log.trainingMetrics!=null)continue;
       final oneRM = log.repeticoes == 1
           ? log.peso
           : log.peso * (1 + log.repeticoes / 30.0);
@@ -987,6 +1028,7 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
     ExerciseLog log, {
     bool isUnilateral = false,
   }) {
+    if(log.trainingMetrics!=null)return 0;
     final base = log.peso * log.repeticoes;
     return (isUnilateral && log.lado == 'ambos') ? base * 2 : base;
   }
@@ -1110,7 +1152,7 @@ class AppDatabase extends _$AppDatabase {
   late final ProfileDao profileDao = ProfileDao(this);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1119,6 +1161,9 @@ class AppDatabase extends _$AppDatabase {
           await _seedDatabase(this);
         },
         onUpgrade: (m, from, to) async {
+          if(from < 16) {await m.addColumn(exercises,exercises.trainingMode);await m.addColumn(exercises,exercises.measurementType);await m.addColumn(exerciseLogs,exerciseLogs.trainingMetrics);}
+          if(from < 15) {await m.addColumn(exercises,exercises.referenceImage);await m.addColumn(workoutDays,workoutDays.coverImage);}
+
           if (from < 3) {
             // Recria todas as tabelas para garantir compatibilidade com as novas colunas e nomes de tabelas
             await customStatement('PRAGMA foreign_keys = OFF;');

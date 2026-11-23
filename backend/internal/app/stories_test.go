@@ -476,3 +476,74 @@ func TestFeedPagination(t *testing.T) {
 		t.Errorf("cursor inválido: %d %v", s, b)
 	}
 }
+
+func TestWorkoutReportSnapshotInFeed(t *testing.T) {
+	e := newEnv(t)
+	a, b := e.register("reporta"), e.register("reportb")
+	outsider := e.register("reportoutside")
+	e.newGroup("Reports", a, b)
+	e.newGroup("Other", outsider)
+	raw := `{"version":1,"title":"Treino A","date":"2026-11-20","duration_seconds":60,"sets":[{"exercise":"Supino","number":1,"weight_kg":20,"reps":10,"side":"ambos","completed":true,"equipment":"barra","notes":"","at":"2026-11-20"}]}`
+	status, _, body := e.publish(a.token, keyN("report", 1), map[string]string{"workout_report": raw}, jpegBytes(20, 20))
+	if status != 201 {
+		t.Fatalf("publish: %d %v", status, body)
+	}
+	_, items := e.feed(b)
+	if len(items) != 1 {
+		t.Fatal(items)
+	}
+	report := items[0].(map[string]any)["workout_report"].(map[string]any)
+	if report["title"] != "Treino A" || len(report["sets"].([]any)) != 1 {
+		t.Fatal(report)
+	}
+	_, outside := e.feed(outsider)
+	if len(outside) != 0 {
+		t.Fatal("report leaked")
+	}
+	e.clock.Advance(25 * time.Hour)
+	_, items = e.feed(b)
+	if len(items) != 0 {
+		t.Fatal("expired report in feed")
+	}
+}
+
+func TestSecondStoryDoesNotReplaceFirst(t *testing.T) {
+	e := newEnv(t)
+	author, viewer := e.register("listauthor"), e.register("listviewer")
+	e.newGroup("Publicações", author, viewer)
+	_, _, first := e.publish(author.token, keyN("separate", 1), map[string]string{"caption": "Primeiro"}, jpegBytes(20, 20))
+	firstID := str(first, "story", "id")
+	_, before, _ := e.getBytes("/v1/stories/"+firstID+"/photo", viewer.token)
+	status, _, second := e.publish(author.token, keyN("separate", 2), map[string]string{"caption": "Segundo"}, jpegBytes(30, 30))
+	if status != 201 || str(second, "story", "id") == firstID {
+		t.Fatalf("second not created: %d %v", status, second)
+	}
+	_, items := e.feed(viewer)
+	if len(items) != 2 {
+		t.Fatalf("wanted 2 separate posts, got %d", len(items))
+	}
+	_, after, _ := e.getBytes("/v1/stories/"+firstID+"/photo", viewer.token)
+	if !bytes.Equal(before, after) {
+		t.Fatal("first story photo was overwritten")
+	}
+}
+
+func TestStoryVideoLink(t *testing.T) {
+	e := newEnv(t)
+	owner, member := e.register("videoowner"), e.register("videomember")
+	e.newGroup("Vídeos", owner, member)
+	link := "https://www.youtube.com/watch?v=jNo3GqP-d4I"
+	status, _, body := e.publish(owner.token, keyN("video", 1), map[string]string{"video_url": link}, jpegBytes(20, 20))
+	if status != 201 || str(body, "story", "video_url") != link {
+		t.Fatalf("video: %d %v", status, body)
+	}
+	_, items := e.feed(member)
+	if len(items) != 1 || items[0].(map[string]any)["video_url"] != link {
+		t.Fatal("video not shared with member")
+	}
+	for i, link := range []string{"javascript:alert(1)", "https://youtube.com.attacker.test/watch?v=x", "https://example.com/video"} {
+		if status, _, _ := e.publish(owner.token, keyN("invalid-video", i), map[string]string{"video_url": link}, jpegBytes(20, 20)); status != 422 {
+			t.Fatal("invalid video accepted", status)
+		}
+	}
+}

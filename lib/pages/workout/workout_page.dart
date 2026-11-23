@@ -1,3 +1,10 @@
+import 'widgets/calisthenics_panel.dart';
+import '../../core/media/social_video_card.dart';
+import '../../core/media/social_video.dart';
+import '../../core/media/reference_image.dart';
+import '../squads/workout_report.dart';
+import '../squads/squads_page.dart';
+import '../../core/services/squad_service.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -21,7 +28,9 @@ import 'package:gym_tracker/core/database/app_database.dart';
 import 'package:gym_tracker/core/constants/equipment_options.dart';
 import 'package:gym_tracker/core/providers/providers.dart';
 import 'package:gym_tracker/core/providers/progress_extended_provider.dart';
-import 'package:gym_tracker/core/widgets/achievement_unlock_overlay.dart';
+import '../../core/consistency/weekly_consistency.dart';
+import '../../core/consistency/consistency_provider.dart';
+import '../consistency/reward_celebration.dart';
 import 'package:gym_tracker/core/providers/rest_timer_provider.dart';
 import 'package:gym_tracker/core/services/audio_service.dart';
 import 'package:gym_tracker/core/services/notification_service.dart';
@@ -74,7 +83,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   List<ExerciseLog> _prevLogs = []; // último treino deste exercício
   double _max1RM = 0.0; // recorde máximo 1RM histórico do exercício
   ExerciseLog?
-  _max1RMLog; // registro do recorde máximo 1RM histórico do exercício
+      _max1RMLog; // registro do recorde máximo 1RM histórico do exercício
 
   // ── Inputs ──────────────────────────────────────────────────────
   final _pesoCtrl = TextEditingController(text: '0');
@@ -143,8 +152,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       });
 
       if (_globalOverlayStream == null) {
-        _globalOverlayStream = FlutterOverlayWindow.overlayListener
-            .asBroadcastStream();
+        _globalOverlayStream =
+            FlutterOverlayWindow.overlayListener.asBroadcastStream();
         _globalOverlayStream!.listen(
           (_) {},
         ); // Dummy listener to keep underlying subscription alive
@@ -209,7 +218,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       final db = ref.read(databaseProvider);
       final session = await (db.select(
         db.workoutSessions,
-      )..where((s) => s.id.equals(widget.sessionId))).getSingleOrNull();
+      )..where((s) => s.id.equals(widget.sessionId)))
+          .getSingleOrNull();
       if (session != null) {
         final startTime = DateTime.tryParse(session.data);
         if (startTime != null) {
@@ -301,15 +311,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       if (!isOverlayActive) return;
 
       final timerState = ref.read(restTimerProvider);
-      final completedLogs = await ref
-          .read(logDaoProvider)
-          .getLogsForSession(widget.sessionId);
+      final completedLogs =
+          await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
       final completedIds = completedLogs.map((l) => l.exerciseId).toSet();
 
       final exercisesList = _exercises.map((e) => e.nome).toList();
-      final exercisesCompleted = _exercises
-          .map((e) => completedIds.contains(e.id))
-          .toList();
+      final exercisesCompleted =
+          _exercises.map((e) => completedIds.contains(e.id)).toList();
 
       final data = {
         'type': 'state_update',
@@ -355,16 +363,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   // ── Data loading ────────────────────────────────────────────────
 
   Future<void> _loadExercises() async {
-    final exs = await ref
-        .read(exerciseDaoProvider)
-        .getExercisesForDay(widget.dayId);
+    final exs =
+        await ref.read(exerciseDaoProvider).getExercisesForDay(widget.dayId);
     if (!mounted) return;
 
     int initialIndex = 0;
     try {
-      final currentLogs = await ref
-          .read(logDaoProvider)
-          .getLogsForSession(widget.sessionId);
+      final currentLogs =
+          await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
       if (!mounted) return;
       if (currentLogs.isNotEmpty) {
         final sortedLogs = List<ExerciseLog>.from(currentLogs)
@@ -388,9 +394,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
           .getPreviousCompletedSession(widget.dayId, widget.sessionId);
       if (!mounted) return;
       if (prevSession != null) {
-        final prevLogs = await ref
-            .read(logDaoProvider)
-            .getLogsForSession(prevSession.id);
+        final prevLogs =
+            await ref.read(logDaoProvider).getLogsForSession(prevSession.id);
         if (!mounted) return;
         prevVol = prevLogs.fold<double>(
           0.0,
@@ -421,29 +426,26 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     if (!mounted) return;
 
     // Busca recorde máximo 1RM histórico
-    final prevMax1RM = await ref
-        .read(logDaoProvider)
-        .getMax1RMForExercise(ex.id);
+    final prevMax1RM =
+        await ref.read(logDaoProvider).getMax1RMForExercise(ex.id);
     if (!mounted) return;
-    final prevMax1RMLog = await ref
-        .read(logDaoProvider)
-        .getMax1RMLogForExercise(ex.id);
+    final prevMax1RMLog =
+        await ref.read(logDaoProvider).getMax1RMLogForExercise(ex.id);
     if (!mounted) return;
 
     // Busca logs já realizados na sessão atual para este exercício
-    final currentLogs = await ref
-        .read(logDaoProvider)
-        .getLogsForSession(widget.sessionId);
+    final currentLogs =
+        await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
     if (!mounted) return;
-    final exerciseSessionLogs = currentLogs
-        .where((l) => l.exerciseId == ex.id)
-        .toList();
+    final exerciseSessionLogs =
+        currentLogs.where((l) => l.exerciseId == ex.id).toList();
 
     final completedIds = currentLogs.map((l) => l.exerciseId).toSet();
     final hasOtherUncompleted = _exercises.asMap().entries.any(
-      (entry) =>
-          entry.key != _currentIndex && !completedIds.contains(entry.value.id),
-    );
+          (entry) =>
+              entry.key != _currentIndex &&
+              !completedIds.contains(entry.value.id),
+        );
 
     final isBodyWeight = ex.equipamento.trim().toLowerCase() == 'peso corporal';
 
@@ -464,10 +466,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         0.0,
         (sum, log) => sum + (log.peso * log.repeticoes),
       );
-      final numUniqueSeries = exerciseSessionLogs
-          .map((l) => l.serie)
-          .toSet()
-          .length;
+      final numUniqueSeries =
+          exerciseSessionLogs.map((l) => l.serie).toSet().length;
       _currentSerie = numUniqueSeries + 1;
       _currentRpe = null;
       _currentRir = null;
@@ -509,12 +509,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             : lastPeso.toString();
         _repsCtrl.text = exerciseSessionLogs.last.repeticoes.toString();
       } else if (prev.isNotEmpty) {
-        final totalPeso = prev
-            .map((l) => l.peso)
-            .fold<double>(0.0, (a, b) => a + b);
-        final totalReps = prev
-            .map((l) => l.repeticoes)
-            .fold<int>(0, (a, b) => a + b);
+        final totalPeso =
+            prev.map((l) => l.peso).fold<double>(0.0, (a, b) => a + b);
+        final totalReps =
+            prev.map((l) => l.repeticoes).fold<int>(0, (a, b) => a + b);
         double avgPeso = ((totalPeso / prev.length) * 2).round() / 2.0;
         final avgReps = (totalReps / prev.length).round();
 
@@ -647,9 +645,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   }
 
   void _startRestTimer(int seconds) {
-    ref
-        .read(restTimerProvider.notifier)
-        .startRest(
+    ref.read(restTimerProvider.notifier).startRest(
           seconds,
           dayId: widget.dayId,
           dayName: widget.dayName,
@@ -669,14 +665,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   double _getWeightStep() {
     if (_exercises.isEmpty) return 0.5;
     final ex = _current;
-    final equip = (_equipamentoSelecionado ?? ex.equipamento)
-        .trim()
-        .toLowerCase();
+    final equip =
+        (_equipamentoSelecionado ?? ex.equipamento).trim().toLowerCase();
     final muscle = ex.grupoMuscular.trim().toLowerCase();
     final isUnilateral = _executandoUnilateral;
 
-    final isLegs =
-        muscle.contains('perna') ||
+    final isLegs = muscle.contains('perna') ||
         muscle.contains('coxa') ||
         muscle.contains('gluteo') ||
         muscle.contains('quadriceps') ||
@@ -684,8 +678,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         muscle.contains('panturrilha') ||
         muscle.contains('leg');
 
-    final isLargeUpper =
-        muscle.contains('costas') ||
+    final isLargeUpper = muscle.contains('costas') ||
         muscle.contains('dorsal') ||
         muscle.contains('back') ||
         muscle.contains('peito') ||
@@ -725,67 +718,28 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     return null;
   }
 
-  void _showPrCelebration(
-    double peso,
-    int reps,
-    double new1RM,
-    double prevMax1RM,
-  ) {
+  Future<void> _showPrCelebration(
+      double peso, int reps, double new1RM, double prevMax1RM) async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.amber[900],
-        duration: const Duration(seconds: 4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        content: Row(
-          children: [
-            const Icon(
-              Icons.emoji_events_rounded,
-              color: Colors.yellowAccent,
-              size: 36,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'RECORDE PESSOAL! 🏆',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Você superou seu recorde anterior neste exercício!',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Novo 1RM Estimado: ${new1RM.toStringAsFixed(1)} kg (era ${prevMax1RM.toStringAsFixed(1)} kg)',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.yellowAccent,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    final exercise = _exercises[_currentIndex];
+    final reward = EarnedReward(
+        id:
+            'pr:${widget.sessionId}:${exercise.id}:${DateTime.now().microsecondsSinceEpoch}',
+        title: 'Recorde pessoal · ${exercise.nome}',
+        detail:
+            '${peso.toStringAsFixed(1)} kg × $reps repetições. 1RM estimado: ${new1RM.toStringAsFixed(1)} kg (anterior: ${prevMax1RM.toStringAsFixed(1)} kg).',
+        kind: 'pr',
+        value: '${new1RM.toStringAsFixed(1)} kg',
+        earnedAt: DateTime.now());
+    try {
+      await ref.read(rewardProvider.notifier).add(reward);
+      await ref.read(rewardProvider.notifier).viewed(reward.id);
+      if (mounted) await showRewardCelebration(context, reward);
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Não foi possível salvar a conquista.')));
+    }
   }
 
   void _showPlateCalculator() {
@@ -839,9 +793,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final obs = _obsCtrl.text.trim();
     final logDao = ref.read(logDaoProvider);
     final now = DateTime.now().toIso8601String();
-    final Value<String?> valueObs = obs.isNotEmpty
-        ? Value<String?>(obs)
-        : const Value<String?>.absent();
+    final Value<String?> valueObs =
+        obs.isNotEmpty ? Value<String?>(obs) : const Value<String?>.absent();
 
     final double new1RM = reps == 1 ? peso : peso * (1 + reps / 30.0);
     final double prevMax1RM = _max1RM;
@@ -885,12 +838,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             lado: Value(_lado),
             equipamento: Value(_equipamentoSelecionado),
             observacoes: valueObs,
-            rpe: _currentRpe != null
-                ? Value(_currentRpe)
-                : const Value.absent(),
-            rir: _currentRir != null
-                ? Value(_currentRir)
-                : const Value.absent(),
+            rpe:
+                _currentRpe != null ? Value(_currentRpe) : const Value.absent(),
+            rir:
+                _currentRir != null ? Value(_currentRir) : const Value.absent(),
           ),
         );
         insertedIds.add(id);
@@ -1049,9 +1000,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final logDao = ref.read(logDaoProvider);
 
     // Encontra todos os logs desta série para o exercício atual na sessão atual
-    final entriesToDelete = _setsLogged
-        .where((e) => e.serie == serieNum)
-        .toList();
+    final entriesToDelete =
+        _setsLogged.where((e) => e.serie == serieNum).toList();
 
     for (final entry in entriesToDelete) {
       if (entry.id != null) {
@@ -1061,9 +1011,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
     // Re-sequenciar as séries seguintes no banco
     final dbLogs = await logDao.getLogsForSession(widget.sessionId);
-    final exerciseLogs = dbLogs
-        .where((l) => l.exerciseId == _current.id)
-        .toList();
+    final exerciseLogs =
+        dbLogs.where((l) => l.exerciseId == _current.id).toList();
     for (final log in exerciseLogs) {
       if (log.serie > serieNum) {
         await logDao.updateLogSerie(log.id, log.serie - 1);
@@ -1119,9 +1068,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     child: Icon(
                       Icons.edit_note_rounded,
                       size: 24,
-                      color: isDark
-                          ? AppColors.primaryLight
-                          : AppColors.primary,
+                      color:
+                          isDark ? AppColors.primaryLight : AppColors.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1131,9 +1079,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
-                        color: isDark
-                            ? AppColors.primaryLight
-                            : AppColors.primary,
+                        color:
+                            isDark ? AppColors.primaryLight : AppColors.primary,
                       ),
                     ),
                   ),
@@ -1174,11 +1121,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color:
-                                          (isEsquerdo
-                                                  ? AppColors.info
-                                                  : AppColors.success)
-                                              .withValues(alpha: 0.12),
+                                      color: (isEsquerdo
+                                              ? AppColors.info
+                                              : AppColors.success)
+                                          .withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Row(
@@ -1187,9 +1133,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                         Icon(
                                           isEsquerdo
                                               ? Icons
-                                                    .keyboard_arrow_left_rounded
+                                                  .keyboard_arrow_left_rounded
                                               : Icons
-                                                    .keyboard_arrow_right_rounded,
+                                                  .keyboard_arrow_right_rounded,
                                           size: 14,
                                           color: isEsquerdo
                                               ? AppColors.info
@@ -1242,27 +1188,26 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                 ),
                               ),
                               dropdownColor: context.cardColor,
-                              items:
-                                  {
-                                        if (c.equipamento != null &&
-                                            !equipmentOptions.contains(
-                                              c.equipamento,
-                                            ))
-                                          c.equipamento!,
-                                        ...equipmentOptions,
-                                      }
-                                      .map(
-                                        (option) => DropdownMenuItem(
-                                          value: option,
-                                          child: Text(
-                                            option,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                            ),
-                                          ),
+                              items: {
+                                if (c.equipamento != null &&
+                                    !equipmentOptions.contains(
+                                      c.equipamento,
+                                    ))
+                                  c.equipamento!,
+                                ...equipmentOptions,
+                              }
+                                  .map(
+                                    (option) => DropdownMenuItem(
+                                      value: option,
+                                      child: Text(
+                                        option,
+                                        style: const TextStyle(
+                                          fontSize: 14,
                                         ),
-                                      )
-                                      .toList(),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
                               onChanged: (val) {
                                 dialogState(() {
                                   c.equipamento = val;
@@ -1360,8 +1305,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                             // Validação e Salvamento
                             final logDao = ref.read(logDaoProvider);
                             for (final c in controllers) {
-                              final peso =
-                                  double.tryParse(
+                              final peso = double.tryParse(
                                     c.pesoCtrl.text.replaceAll(',', '.'),
                                   ) ??
                                   0.0;
@@ -1589,6 +1533,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                     ],
                                   ),
                                 ),
+                                if (ex.link?.isNotEmpty == true)
+                                  IconButton(
+                                      tooltip: 'Ver execução',
+                                      onPressed: () => _openLink(ex.link!),
+                                      icon: const Icon(
+                                          Icons.play_circle_outline,
+                                          color: AppColors.primaryLight)),
                                 Icon(
                                   Icons.arrow_forward_ios_rounded,
                                   size: 12,
@@ -1662,17 +1613,14 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     int totalSetsCount = 0;
 
     try {
-      final allSessionLogs = await ref
-          .read(logDaoProvider)
-          .getLogsForSession(widget.sessionId);
+      final allSessionLogs =
+          await ref.read(logDaoProvider).getLogsForSession(widget.sessionId);
       totalVolume = allSessionLogs.fold<double>(
         0.0,
         (sum, log) => sum + (log.peso * log.repeticoes),
       );
-      uniqueExercisesCount = allSessionLogs
-          .map((log) => log.exerciseId)
-          .toSet()
-          .length;
+      uniqueExercisesCount =
+          allSessionLogs.map((log) => log.exerciseId).toSet().length;
       totalSetsCount = allSessionLogs
           .map((log) => '${log.exerciseId}_${log.serie}')
           .toSet()
@@ -1688,8 +1636,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         .read(workoutDaoProvider)
         .finishSession(widget.sessionId, _sessionSecs);
 
-    // Aguarda atualização assíncrona nos streams do Riverpod
-    await Future.delayed(const Duration(milliseconds: 250));
+    // Read the completed state deterministically before comparing achievements.
+    ref.invalidate(completedSessionsProvider);
+    ref.invalidate(allCompletedLogsProvider);
+    await ref.read(completedSessionsProvider.future);
+    await ref.read(allCompletedLogsProvider.future);
+    if (!mounted) return;
     final nextAchievements = ref.read(achievementsStatusProvider);
 
     final newlyUnlocked = <AchievementStatus>[];
@@ -1723,25 +1675,31 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       final db = ref.read(databaseProvider);
       completedSession = await (db.select(
         db.workoutSessions,
-      )..where((s) => s.id.equals(widget.sessionId))).getSingleOrNull();
+      )..where((s) => s.id.equals(widget.sessionId)))
+          .getSingleOrNull();
     } catch (e) {
       debugPrint('Erro ao recuperar sessao finalizada: $e');
     }
 
     if (!mounted) return;
 
-    // Dispara animações sequenciais de conquistas desbloqueadas
-    if (newlyUnlocked.isNotEmpty) {
-      int delayMs = 500;
-      for (final status in newlyUnlocked) {
-        Future.delayed(Duration(milliseconds: delayMs), () {
-          if (mounted) {
-            AchievementUnlockOverlay.show(context, status);
-          }
-        });
-        delayMs += 5000;
+    // Persist rewards; the home host presents them after the finish dialog closes.
+    for (final status in newlyUnlocked) {
+      if (status.achievement.id == 'week_streak') continue;
+      final level = status.achievement.levels[status.unlockedLevelIndex];
+      try {
+        await ref.read(rewardProvider.notifier).add(EarnedReward(
+            id: 'achievement:${status.achievement.id}:${status.unlockedLevelIndex}',
+            title: status.achievement.title,
+            detail: 'Nível ${level.name} · ${status.achievement.description}',
+            kind: 'achievement',
+            value: level.name,
+            earnedAt: DateTime.now()));
+      } catch (_) {
+        /* Keep the workout saved if reward storage is unavailable. */
       }
     }
+    if (!mounted) return;
 
     _showFinishDialog(
       totalVolume: totalVolume,
@@ -1753,9 +1711,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
 
   Future<void> _shareWorkoutAsImage() async {
     try {
-      final boundary =
-          _shareCardKey.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
+      final boundary = _shareCardKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
       if (boundary == null) return;
 
       final image = await boundary.toImage(pixelRatio: 3.0);
@@ -1981,8 +1938,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                     icon: Icons.flash_on_rounded,
                                     iconColor: Colors.greenAccent,
                                     label: 'Volume Total',
-                                    value:
-                                        '${totalVolume.toStringAsFixed(0)} kg',
+                                    value: (totalVolume > 0
+                                        ? '${totalVolume.toStringAsFixed(0)} kg'
+                                        : '—'),
                                     extra: volumeCompareWidget,
                                   ),
                                 ),
@@ -1994,6 +1952,35 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     ),
                     const SizedBox(height: 20),
 
+                    if (completedSession != null)
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: FilledButton.icon(
+                              icon: const Icon(Icons.groups_outlined),
+                              label: const Text('Publicar relatório no squad'),
+                              onPressed: () async {
+                                try {
+                                  final report = await snapshotWorkout(
+                                      ref.read(databaseProvider),
+                                      completedSession);
+                                  if ((report['sets'] as List).isEmpty)
+                                    throw Exception(
+                                        'Não há execuções para compartilhar.');
+                                  final cover = await reportCover(report);
+                                  if (!mounted) return;
+                                  await Navigator.of(this.context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) => StoryComposer(
+                                              api: SquadService(),
+                                              initialPhoto: cover,
+                                              report: report)));
+                                } catch (e) {
+                                  if (mounted)
+                                    ScaffoldMessenger.of(this.context)
+                                        .showSnackBar(SnackBar(
+                                            content: Text(e.toString())));
+                                }
+                              })),
                     // Buttons Area
                     // 1. Compartilhar Imagem
                     SizedBox(
@@ -2050,8 +2037,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         onPressed: () {
                           final dayNameClean =
                               widget.dayName.toLowerCase().contains('treino')
-                              ? widget.dayName
-                              : 'Treino de ${widget.dayName}';
+                                  ? widget.dayName
+                                  : 'Treino de ${widget.dayName}';
                           final durationMin = (_sessionSecs / 60).round();
                           final formattedVolume = _formatVolume(totalVolume);
                           final shareText =
@@ -2469,7 +2456,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                 setState(() {
                                   _currentIndex =
                                       (_currentIndex - 1 + _exercises.length) %
-                                      _exercises.length;
+                                          _exercises.length;
                                 });
                                 await _loadExerciseContext();
                               }
@@ -2578,7 +2565,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                   // ── Nome do exercício ──────────────────────────
                   Text(
                     ex.nome,
-                    style: Theme.of(context).textTheme.headlineLarge
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineLarge
                         ?.copyWith(fontSize: 26, letterSpacing: -0.5),
                   ),
 
@@ -2598,7 +2587,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         icon: Icons.timer_rounded,
                         color: AppColors.info,
                       ),
-                      if (_max1RM > 0)
+                      if (_max1RM > 0 && ex.trainingMode != 'calistenia')
                         GestureDetector(
                           onTap: () => _showPrDetailsDialog(context),
                           child: WorkoutBadgeTag(
@@ -2624,6 +2613,35 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                           icon: Icons.analytics_rounded,
                         ),
                       ),
+                      if (ex.referenceImage != null)
+                        Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ReferenceImage(encoded: ex.referenceImage!)),
+                      TextButton.icon(
+                          onPressed: () async {
+                            try {
+                              final image = await pickReferenceImage();
+                              if (image == null) return;
+                              final updated = ex.copyWith(
+                                  referenceImage: drift.Value(image));
+                              await ref
+                                  .read(exerciseDaoProvider)
+                                  .updateExercise(updated);
+                              if (mounted) {
+                                setState(() {
+                                  final index = _exercises
+                                      .indexWhere((e) => e.id == ex.id);
+                                  if (index >= 0) _exercises[index] = updated;
+                                });
+                              }
+                            } catch (e) {
+                              if (mounted)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString())));
+                            }
+                          },
+                          icon: const Icon(Icons.add_photo_alternate_outlined),
+                          label: const Text('Imagem de referência')),
                       if (ex.link != null && ex.link!.isNotEmpty)
                         GestureDetector(
                           onTap: () => _openLink(ex.link!),
@@ -2697,180 +2715,172 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     ),
                   ],
 
-                  // ── Desempenho anterior ────────────────────────
-                  if (_prevLogs.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    WorkoutPreviousPerformance(logs: _prevLogs, exercise: ex),
-                  ],
-
-                  // ── Séries já salvas nesta sessão ──────────────
-                  if (_setsLogged.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    WorkoutSetsList(
-                      sets: _setsLogged,
-                      exercise: ex,
-                      onTapSeries: _showEditDeleteSeriesDialog,
-                    ),
-                  ],
-
-                  // ── Inputs ────────────────────────────────────
-                  const SizedBox(height: 20),
-                  WorkoutSetInput(
-                    serie: _currentSerie,
-                    pesoCtrl: _pesoCtrl,
-                    repsCtrl: _repsCtrl,
-                    obsCtrl: _obsCtrl,
-                    pesoStep: _getWeightStep(),
-                    onOpenCalculator: _showPlateCalculator,
+                  TextButton.icon(
+                    onPressed: () async {
+                      final updated = ex.copyWith(
+                          trainingMode: ex.trainingMode == 'calistenia'
+                              ? 'musculacao'
+                              : 'calistenia');
+                      await ref
+                          .read(exerciseDaoProvider)
+                          .updateExercise(updated);
+                      if (!mounted) return;
+                      setState(() => _exercises[_currentIndex] = updated);
+                      await _loadExerciseContext();
+                    },
+                    icon: const Icon(Icons.tune),
+                    label: Text(ex.trainingMode == 'calistenia'
+                        ? 'Usar carga e repetições de musculação'
+                        : 'Usar métricas de calistenia'),
                   ),
-                  if (ref.watch(rpeEnabledProvider)) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<double?>(
-                            key: ValueKey('rpe_${ex.id}_$_currentRpe'),
-                            initialValue: _currentRpe,
-                            decoration: const InputDecoration(
-                              labelText: 'RPE (Esforço 1-10)',
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                            dropdownColor: context.cardColor,
-                            style: TextStyle(
-                              color: context.onBackground,
-                              fontSize: 14,
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('Nulo'),
-                              ),
-                              ...[
-                                10.0,
-                                9.5,
-                                9.0,
-                                8.5,
-                                8.0,
-                                7.5,
-                                7.0,
-                                6.5,
-                                6.0,
-                                5.5,
-                                5.0,
-                              ].map(
-                                (val) => DropdownMenuItem(
-                                  value: val,
-                                  child: Text(
-                                    val % 1 == 0
-                                        ? val.toInt().toString()
-                                        : val.toString(),
-                                  ),
-                                ),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              setState(() {
-                                _currentRpe = val;
-                                if (val != null) {
-                                  final calculatedRir = (10.0 - val).round();
-                                  if (calculatedRir >= 0 &&
-                                      calculatedRir <= 5) {
-                                    _currentRir = calculatedRir;
-                                  }
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<int?>(
-                            key: ValueKey('rir_${ex.id}_$_currentRir'),
-                            initialValue: _currentRir,
-                            decoration: const InputDecoration(
-                              labelText: 'RIR (Repetições de Reserva)',
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                            dropdownColor: context.cardColor,
-                            style: TextStyle(
-                              color: context.onBackground,
-                              fontSize: 14,
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('Nulo'),
-                              ),
-                              ...[0, 1, 2, 3, 4, 5].map(
-                                (val) => DropdownMenuItem(
-                                  value: val,
-                                  child: Text(
-                                    val == 0 ? 'Falha (0 RIR)' : '$val RIR',
-                                  ),
-                                ),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              setState(() {
-                                _currentRir = val;
-                                if (val != null) {
-                                  _currentRpe = 10.0 - val;
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  if (ex.trainingMode == 'calistenia')
+                    CalisthenicsPanel(
+                        key: ValueKey('calis-${ex.id}'),
+                        db: ref.read(databaseProvider),
+                        exercise: ex,
+                        sessionId: widget.sessionId,
+                        onSaved: () async {
+                          await _loadExerciseContext();
+                          _startRestTimer(ex.tempoDescansoSegundos);
+                        })
+                  else ...[
+                    // ── Desempenho anterior ────────────────────────
+                    if (_prevLogs.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      WorkoutPreviousPerformance(logs: _prevLogs, exercise: ex),
+                    ],
 
-                  // ── Modo de Execução ──
-                  const SizedBox(height: 16),
-                  Text(
-                    'MODO DE EXECUÇÃO',
-                    style: TextStyle(
-                      color: context.onSurface,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(
-                        value: false,
-                        label: Text('Bilateral'),
-                        icon: Icon(Icons.people_rounded),
-                      ),
-                      ButtonSegment(
-                        value: true,
-                        label: Text('Unilateral'),
-                        icon: Icon(Icons.person_rounded),
+                    // ── Séries já salvas nesta sessão ──────────────
+                    if (_setsLogged.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      WorkoutSetsList(
+                        sets: _setsLogged,
+                        exercise: ex,
+                        onTapSeries: _showEditDeleteSeriesDialog,
                       ),
                     ],
-                    selected: {_executandoUnilateral},
-                    onSelectionChanged: (v) {
-                      setState(() {
-                        _executandoUnilateral = v.first;
-                        if (!_executandoUnilateral) {
-                          _lado = 'ambos'; // Reseta para ambos
-                        }
-                      });
-                    },
-                  ),
 
-                  // ── Lado (apenas se unilateral) ───────────────────
-                  if (_executandoUnilateral) ...[
+                    // ── Inputs ────────────────────────────────────
+                    const SizedBox(height: 20),
+                    WorkoutSetInput(
+                      serie: _currentSerie,
+                      pesoCtrl: _pesoCtrl,
+                      repsCtrl: _repsCtrl,
+                      obsCtrl: _obsCtrl,
+                      pesoStep: _getWeightStep(),
+                      onOpenCalculator: _showPlateCalculator,
+                    ),
+                    if (ref.watch(rpeEnabledProvider)) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<double?>(
+                              key: ValueKey('rpe_${ex.id}_$_currentRpe'),
+                              initialValue: _currentRpe,
+                              decoration: const InputDecoration(
+                                labelText: 'RPE (Esforço 1-10)',
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              dropdownColor: context.cardColor,
+                              style: TextStyle(
+                                color: context.onBackground,
+                                fontSize: 14,
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Nulo'),
+                                ),
+                                ...[
+                                  10.0,
+                                  9.5,
+                                  9.0,
+                                  8.5,
+                                  8.0,
+                                  7.5,
+                                  7.0,
+                                  6.5,
+                                  6.0,
+                                  5.5,
+                                  5.0,
+                                ].map(
+                                  (val) => DropdownMenuItem(
+                                    value: val,
+                                    child: Text(
+                                      val % 1 == 0
+                                          ? val.toInt().toString()
+                                          : val.toString(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                setState(() {
+                                  _currentRpe = val;
+                                  if (val != null) {
+                                    final calculatedRir = (10.0 - val).round();
+                                    if (calculatedRir >= 0 &&
+                                        calculatedRir <= 5) {
+                                      _currentRir = calculatedRir;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<int?>(
+                              key: ValueKey('rir_${ex.id}_$_currentRir'),
+                              initialValue: _currentRir,
+                              decoration: const InputDecoration(
+                                labelText: 'RIR (Repetições de Reserva)',
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              dropdownColor: context.cardColor,
+                              style: TextStyle(
+                                color: context.onBackground,
+                                fontSize: 14,
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Nulo'),
+                                ),
+                                ...[0, 1, 2, 3, 4, 5].map(
+                                  (val) => DropdownMenuItem(
+                                    value: val,
+                                    child: Text(
+                                      val == 0 ? 'Falha (0 RIR)' : '$val RIR',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                setState(() {
+                                  _currentRir = val;
+                                  if (val != null) {
+                                    _currentRpe = 10.0 - val;
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    // ── Modo de Execução ──
                     const SizedBox(height: 16),
                     Text(
-                      'LADO EM EXECUÇÃO',
+                      'MODO DE EXECUÇÃO',
                       style: TextStyle(
                         color: context.onSurface,
                         fontSize: 11,
@@ -2879,78 +2889,133 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SegmentedButton<String>(
+                    SegmentedButton<bool>(
                       segments: const [
-                        ButtonSegment(value: 'ambos', label: Text('Ambos')),
-                        ButtonSegment(value: 'esquerdo', label: Text('Esq.')),
-                        ButtonSegment(value: 'direito', label: Text('Dir.')),
+                        ButtonSegment(
+                          value: false,
+                          label: Text('Bilateral'),
+                          icon: Icon(Icons.people_rounded),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          label: Text('Unilateral'),
+                          icon: Icon(Icons.person_rounded),
+                        ),
                       ],
-                      selected: {_lado},
-                      onSelectionChanged: (v) =>
-                          setState(() => _lado = v.first),
+                      selected: {_executandoUnilateral},
+                      onSelectionChanged: (v) {
+                        setState(() {
+                          _executandoUnilateral = v.first;
+                          if (!_executandoUnilateral) {
+                            _lado = 'ambos'; // Reseta para ambos
+                          }
+                        });
+                      },
                     ),
-                  ],
 
-                  // ── Equipamento Utilizado (Sobrescrever Recomendação) ──
-                  const SizedBox(height: 16),
-                  Text(
-                    'EQUIPAMENTO UTILIZADO',
-                    style: TextStyle(
-                      color: context.onSurface,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('equip_${ex.id}_$_equipamentoSelecionado'),
-                    isExpanded: true,
-                    initialValue: _equipamentoSelecionado,
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                    // ── Lado (apenas se unilateral) ───────────────────
+                    if (_executandoUnilateral) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'LADO EM EXECUÇÃO',
+                        style: TextStyle(
+                          color: context.onSurface,
+                          fontSize: 11,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: 'ambos', label: Text('Ambos')),
+                          ButtonSegment(value: 'esquerdo', label: Text('Esq.')),
+                          ButtonSegment(value: 'direito', label: Text('Dir.')),
+                        ],
+                        selected: {_lado},
+                        onSelectionChanged: (v) =>
+                            setState(() => _lado = v.first),
+                      ),
+                    ],
+
+                    // ── Equipamento Utilizado (Sobrescrever Recomendação) ──
+                    const SizedBox(height: 16),
+                    Text(
+                      'EQUIPAMENTO UTILIZADO',
+                      style: TextStyle(
+                        color: context.onSurface,
+                        fontSize: 11,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    dropdownColor: context.cardColor,
-                    items:
-                        {
-                              if (_equipamentoSelecionado != null &&
-                                  !equipmentOptions.contains(
-                                    _equipamentoSelecionado,
-                                  ))
-                                _equipamentoSelecionado!,
-                              ...equipmentOptions,
-                            }
-                            .map(
-                              (option) => DropdownMenuItem(
-                                value: option,
-                                child: Text(option),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _equipamentoSelecionado = val;
-                      });
-                    },
-                  ),
-
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey('equip_${ex.id}_$_equipamentoSelecionado'),
+                      isExpanded: true,
+                      initialValue: _equipamentoSelecionado,
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      dropdownColor: context.cardColor,
+                      items: {
+                        if (_equipamentoSelecionado != null &&
+                            !equipmentOptions.contains(
+                              _equipamentoSelecionado,
+                            ))
+                          _equipamentoSelecionado!,
+                        ...equipmentOptions,
+                      }
+                          .map(
+                            (option) => DropdownMenuItem(
+                              value: option,
+                              child: Text(option),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _equipamentoSelecionado = val;
+                        });
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 80),
                 ],
               ),
             ),
 
             // ── Botões de ação ─────────────────────────────────
-            WorkoutActionBar(
-              isLast: _isLast,
-              resting: resting,
-              hasSets: _setsLogged.isNotEmpty,
-              onSkip: _pularExercicio,
-              onSalvarSerie: _salvarSerie,
-              onProximo: _proximoExercicio,
-            ),
+            if (ex.trainingMode == 'calistenia')
+              SafeArea(
+                  child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(children: [
+                        TextButton(
+                            onPressed: _pularExercicio,
+                            child: const Text('Pular')),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: FilledButton(
+                                onPressed: _setsLogged.isEmpty
+                                    ? null
+                                    : _proximoExercicio,
+                                child: Text(_isLast
+                                    ? 'Finalizar treino'
+                                    : 'Próximo exercício'))),
+                      ])))
+            else
+              WorkoutActionBar(
+                isLast: _isLast,
+                resting: resting,
+                hasSets: _setsLogged.isNotEmpty,
+                onSkip: _pularExercicio,
+                onSalvarSerie: _salvarSerie,
+                onProximo: _proximoExercicio,
+              ),
           ],
         ),
       ),
@@ -2961,7 +3026,20 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     final uri = Uri.tryParse(url.trim());
     if (uri == null) return;
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (SocialVideo.parse(url) != null) {
+        await ref.read(workoutMusicProvider.notifier).stop();
+        if (!mounted) return;
+        await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('Vídeo de referência')),
+                    body: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: SocialVideoCard(url: url)))));
+      } else {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     } catch (_) {
       // Falha silenciosa ou log
     }

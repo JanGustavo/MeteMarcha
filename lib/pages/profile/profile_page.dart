@@ -1,3 +1,7 @@
+import '../consistency/consistency_page.dart';
+import '../../core/media/photo_capture.dart';
+import '../../core/providers/training_focus_provider.dart';
+import '../setup/training_focus_page.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -29,6 +33,7 @@ import 'package:gym_tracker/pages/profile/widgets/profile_weight_row.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_achievement_card.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_audio_settings_card.dart';
 import 'package:gym_tracker/pages/profile/widgets/profile_data_backup_card.dart';
+import 'package:gym_tracker/pages/profile/widgets/profile_account_card.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -139,9 +144,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
     final peso = double.tryParse(_pesoCtrl.text.replaceAll(',', '.'));
     final altura = double.tryParse(_alturaCtrl.text);
 
-    await ref
-        .read(profileDaoProvider)
-        .upsertProfile(
+    await ref.read(profileDaoProvider).upsertProfile(
           UserProfilesCompanion(
             nome: Value(_nomeCtrl.text.trim()),
             pesoAtual: Value(peso),
@@ -174,12 +177,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
+      final pickedFile = await pickAppPhoto(
+        context,
         source: source,
         maxWidth: 500,
         maxHeight: 500,
-        imageQuality: 85,
       );
 
       if (pickedFile == null) return;
@@ -190,8 +192,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
       } else {
         final appDir = await getApplicationDocumentsDirectory();
         final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final savedFile = await File(pickedFile.path)
-            .copy('${appDir.path}/$fileName');
+        final savedFile =
+            await File(pickedFile.path).copy('${appDir.path}/$fileName');
         finalPath = savedFile.path;
       }
 
@@ -431,9 +433,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
       );
       for (final c in cardios) {
         final durationMin = (c.duracaoSegundos / 60).toStringAsFixed(1);
-        final dist = c.distanciaKm != null
-            ? c.distanciaKm!.toStringAsFixed(2)
-            : '';
+        final dist =
+            c.distanciaKm != null ? c.distanciaKm!.toStringAsFixed(2) : '';
         final cal = c.calorias != null ? c.calorias.toString() : '';
         final intensity = c.intensidade ?? '';
         buffer.writeln(
@@ -491,29 +492,28 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
     try {
       final db = ref.read(databaseProvider);
 
-      final query =
-          db.select(db.exerciseLogs).join([
-              drift.innerJoin(
-                db.workoutSessions,
-                db.workoutSessions.id.equalsExp(db.exerciseLogs.sessionId),
-              ),
-              drift.leftOuterJoin(
-                db.workoutDays,
-                db.workoutDays.id.equalsExp(db.workoutSessions.dayId),
-              ),
-              drift.innerJoin(
-                db.exercises,
-                db.exercises.id.equalsExp(db.exerciseLogs.exerciseId),
-              ),
-            ])
-            ..where(
-              db.exerciseLogs.concluido.equals(true) &
-                  db.workoutSessions.status.equals('concluido'),
-            )
-            ..orderBy([
-              drift.OrderingTerm.asc(db.exerciseLogs.data),
-              drift.OrderingTerm.asc(db.exerciseLogs.id),
-            ]);
+      final query = db.select(db.exerciseLogs).join([
+        drift.innerJoin(
+          db.workoutSessions,
+          db.workoutSessions.id.equalsExp(db.exerciseLogs.sessionId),
+        ),
+        drift.leftOuterJoin(
+          db.workoutDays,
+          db.workoutDays.id.equalsExp(db.workoutSessions.dayId),
+        ),
+        drift.innerJoin(
+          db.exercises,
+          db.exercises.id.equalsExp(db.exerciseLogs.exerciseId),
+        ),
+      ])
+        ..where(
+          db.exerciseLogs.concluido.equals(true) &
+              db.workoutSessions.status.equals('concluido'),
+        )
+        ..orderBy([
+          drift.OrderingTerm.asc(db.exerciseLogs.data),
+          drift.OrderingTerm.asc(db.exerciseLogs.id),
+        ]);
 
       final rows = await query.get();
 
@@ -543,9 +543,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
         final ladoStr = log.lado;
         final equipStr = log.equipamento ?? exercise.equipamento;
         final obsStr = log.observacoes ?? '';
-        final workoutName = day != null
-            ? 'Treino ${day.letra} - ${day.nome}'
-            : 'Treino Avulso';
+        final workoutName =
+            day != null ? 'Treino ${day.letra} - ${day.nome}' : 'Treino Avulso';
 
         buffer.writeln(
           '${log.id},'
@@ -709,15 +708,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
 
         // Verifica se há splits e sessões
         final splits = await ref.read(workoutDaoProvider).watchSplits().first;
-        final sessions = await ref
-            .read(workoutDaoProvider)
-            .watchCompletedSessions()
-            .first;
+        final sessions =
+            await ref.read(workoutDaoProvider).watchCompletedSessions().first;
 
         if (splits.isEmpty && sessions.isNotEmpty) {
-          await ref
-              .read(workoutDaoProvider)
-              .insertSplit(
+          await ref.read(workoutDaoProvider).insertSplit(
                 WorkoutSplitsCompanion.insert(
                   nome: 'Meu Treino',
                   tipo: 'CUSTOM',
@@ -748,13 +743,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
     final weeklyWeightsAsync = ref.watch(weeklyWeightsProvider);
     final evolution = ref.watch(evolutionProvider);
     final firstUseDate = ref.watch(firstUseDateProvider);
-    final weeklySchedule = ref.watch(weeklyScheduleProvider).value ?? [];
-    final scheduledWorkoutsCount = weeklySchedule
-        .where((s) => s.dayId != null)
-        .length;
-    final weeklyTarget = scheduledWorkoutsCount > 0
-        ? scheduledWorkoutsCount
-        : 1;
 
     return SafeArea(
       child: CustomScrollView(
@@ -769,6 +757,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
               ),
             ),
           ),
+
+          const SliverToBoxAdapter(child: ConsistencyProfileShowcase()),
 
           // ── Stats Row ────────────────────────────────────────
           SliverToBoxAdapter(
@@ -790,7 +780,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                               const StreakBadge(style: StreakStyle.profile),
                               const SizedBox(height: 4),
                               Text(
-                                'Meta: $weeklyTarget ${weeklyTarget == 1 ? "treino" : "treinos"}/sem',
+                                'Uma semana ativa por vez',
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: context.onSurface,
@@ -1173,6 +1163,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
               ),
             ),
 
+          const SliverToBoxAdapter(child: ProfileAccountCard()),
+          SliverToBoxAdapter(
+              child: ListTile(
+                  leading: const Icon(Icons.tune),
+                  title: const Text('Foco do treino'),
+                  subtitle: Text(ref.watch(trainingFocusProvider).valueOrNull ==
+                          'calistenia'
+                      ? 'Calistenia'
+                      : 'Musculação'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              const TrainingFocusPage(editing: true))))),
+
           // ── Alerta de Mensalidade ───────────────────────────────────────────
           const SliverToBoxAdapter(child: ProfileMembershipCard()),
 
@@ -1257,10 +1263,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                                 IconButton(
                                   onPressed: currentGoal > 10
                                       ? () => ref
-                                            .read(
-                                              weeklyCardioGoalProvider.notifier,
-                                            )
-                                            .updateGoal(currentGoal - 10)
+                                          .read(
+                                            weeklyCardioGoalProvider.notifier,
+                                          )
+                                          .updateGoal(currentGoal - 10)
                                       : null,
                                   icon: const Icon(
                                     Icons.remove_circle_outline_rounded,
@@ -1436,22 +1442,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                           child: OutlinedButton.icon(
                             onPressed: () async {
                               final profileDao = ref.read(profileDaoProvider);
-                              final last = await profileDao
-                                  .getLatestMeasurement();
+                              final last =
+                                  await profileDao.getLatestMeasurement();
                               int syncedCount = 0;
 
                               if (last != null && last.peso != null) {
-                                final date =
-                                    DateTime.tryParse(last.data) ??
+                                final date = DateTime.tryParse(last.data) ??
                                     DateTime.now();
                                 final success = await HealthConnectService
                                     .instance
                                     .syncBodyMeasurement(
-                                      weightKg: last.peso!,
-                                      bodyFatPercent: last.gorduraPercentual,
-                                      bmi: last.imc,
-                                      dateTime: date,
-                                    );
+                                  weightKg: last.peso!,
+                                  bodyFatPercent: last.gorduraPercentual,
+                                  bmi: last.imc,
+                                  dateTime: date,
+                                );
                                 if (success) syncedCount++;
                               }
 
@@ -1493,7 +1498,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
               child: Text(
                 'HISTÓRICO SEMANAL',
-                style: Theme.of(context).textTheme.bodySmall
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
                     ?.copyWith(letterSpacing: 1.5, fontWeight: FontWeight.w600),
               ),
             ),

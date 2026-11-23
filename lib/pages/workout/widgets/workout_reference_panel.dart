@@ -55,7 +55,7 @@ class _AddReferencePanelState extends State<WorkoutReferencePanel>
       if (text != null &&
           (text.contains('youtube.com') ||
               text.contains('youtu.be') ||
-              text.contains('tiktok.com'))) {
+              text.contains('tiktok.com') || text.contains('instagram.com') || text.contains('kwai.com'))) {
         if (mounted) {
           setState(() {
             _detectedClipboardLink = text.trim();

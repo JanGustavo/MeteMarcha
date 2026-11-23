@@ -1,3 +1,10 @@
+import '../consistency/consistency_page.dart';
+import '../../core/media/reference_video_page.dart';
+import 'widgets/workout_split_selector.dart';
+import '../../core/media/reference_image.dart';
+import '../../core/providers/training_focus_provider.dart';
+import '../setup/training_focus_page.dart';
+import '../squads/squads_page.dart';
 // lib/pages/home/home_page.dart
 
 import 'package:flutter/material.dart';
@@ -33,8 +40,6 @@ import '../../core/services/ota_update_service.dart';
 import '../cardio/cardio_timer_page.dart';
 import '../cardio/cardio_guide_page.dart';
 
-
-
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -54,6 +59,18 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final focus = ref.watch(trainingFocusProvider);
+    if (focus.isLoading)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (focus.hasError)
+      return Scaffold(
+          body: Center(
+              child: TextButton(
+                  onPressed: () =>
+                      ref.read(trainingFocusProvider.notifier).load(),
+                  child:
+                      const Text('Tentar carregar preferências novamente'))));
+    if (focus.valueOrNull == null) return const TrainingFocusPage();
     ref.watch(foregroundSessionControllerProvider);
     ref.watch(widgetSyncControllerProvider);
     final splitsAsync = ref.watch(splitsProvider);
@@ -65,14 +82,16 @@ class _HomePageState extends ConsumerState<HomePage> {
           return const SplitSelectionPage(isOnboarding: true);
         }
         return Scaffold(
-          body: IndexedStack(
+          body: ConsistencyHost(
+              child: IndexedStack(
             index: currentTab,
             children: const [
               _TreinoTab(),
               ProgressPage(),
+              SquadsPage(),
               ProfilePage(),
             ],
-          ),
+          )),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: currentTab,
             onTap: (index) => ref.read(homeTabProvider.notifier).state = index,
@@ -86,9 +105,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 label: 'Progresso',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.person_rounded),
-                label: 'Perfil',
-              ),
+                  icon: Icon(Icons.groups_rounded), label: 'Squads'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.person_rounded), label: 'Perfil'),
             ],
           ),
         );
@@ -108,7 +127,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 class _TreinoTab extends ConsumerWidget {
   const _TreinoTab();
 
-  void _confirmDeleteSplit(BuildContext context, WidgetRef ref, WorkoutSplit split) {
+  void _confirmDeleteSplit(
+      BuildContext context, WidgetRef ref, WorkoutSplit split) {
     final displayName = split.nome.isNotEmpty ? split.nome : split.tipo;
     showDialog(
       context: context,
@@ -116,7 +136,7 @@ class _TreinoTab extends ConsumerWidget {
         backgroundColor: context.cardColor,
         title: const Text('Excluir treino?'),
         content: Text(
-          'Deseja excluir permanentemente a rotina "$displayName" e todo o histórico de execuções vinculado a ela?',
+          'Deseja excluir permanentemente a rotina "$displayName"? O histórico de execuções será preservado.',
         ),
         actions: [
           TextButton(
@@ -139,12 +159,15 @@ class _TreinoTab extends ConsumerWidget {
     );
   }
 
-  Future<void> _exportSplit(BuildContext context, WidgetRef ref, WorkoutSplit split) async {
+  Future<void> _exportSplit(
+      BuildContext context, WidgetRef ref, WorkoutSplit split) async {
     try {
-      final splitJson = await ref.read(workoutDaoProvider).exportWorkoutSplit(split.id);
+      final splitJson =
+          await ref.read(workoutDaoProvider).exportWorkoutSplit(split.id);
       final jsonStr = jsonEncode(splitJson);
       final displayName = split.nome.isNotEmpty ? split.nome : split.tipo;
-      final fileName = '${displayName.replaceAll(RegExp(r'[^\w\s\-]'), '').replaceAll(' ', '_')}.json';
+      final fileName =
+          '${displayName.replaceAll(RegExp(r'[^\w\s\-]'), '').replaceAll(' ', '_')}.json';
 
       if (kIsWeb) {
         // Na Web, fazemos o download direto do arquivo JSON no navegador
@@ -160,12 +183,14 @@ class _TreinoTab extends ConsumerWidget {
 
       // No Celular, usamos o compartilhamento nativo do sistema
       final tempDir = await getTemporaryDirectory();
-      final file = await File('${tempDir.path}/$fileName').writeAsString(jsonStr);
+      final file =
+          await File('${tempDir.path}/$fileName').writeAsString(jsonStr);
 
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path)],
-          text: 'Fiz a exportação do meu treino "$displayName" do app MeteMarcha!',
+          text:
+              'Fiz a exportação do meu treino "$displayName" do app MeteMarcha!',
         ),
       );
     } catch (e) {
@@ -198,8 +223,11 @@ class _TreinoTab extends ConsumerWidget {
       final data = jsonDecode(jsonContent) as Map<String, dynamic>;
 
       // Validação básica do formato
-      if (data['version'] == null || data['nome'] == null || data['days'] == null) {
-        throw const FormatException('Arquivo de treino inválido ou incompatível.');
+      if (data['version'] == null ||
+          data['nome'] == null ||
+          data['days'] == null) {
+        throw const FormatException(
+            'Arquivo de treino inválido ou incompatível.');
       }
 
       final workoutDao = ref.read(workoutDaoProvider);
@@ -222,7 +250,8 @@ class _TreinoTab extends ConsumerWidget {
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary),
                 child: const Text('Ativar'),
               ),
             ],
@@ -238,7 +267,8 @@ class _TreinoTab extends ConsumerWidget {
         if (!context.mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Rotina de treino importada com sucesso!')),
+          const SnackBar(
+              content: Text('Rotina de treino importada com sucesso!')),
         );
       }
     } catch (e) {
@@ -250,8 +280,10 @@ class _TreinoTab extends ConsumerWidget {
     }
   }
 
-  void _renameSplitDialog(BuildContext context, WidgetRef ref, WorkoutSplit split) {
-    final controller = TextEditingController(text: split.nome.isNotEmpty ? split.nome : split.tipo);
+  void _renameSplitDialog(
+      BuildContext context, WidgetRef ref, WorkoutSplit split) {
+    final controller = TextEditingController(
+        text: split.nome.isNotEmpty ? split.nome : split.tipo);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -276,7 +308,9 @@ class _TreinoTab extends ConsumerWidget {
               if (newName.isEmpty) return;
 
               final db = ref.read(databaseProvider);
-              await (db.update(db.workoutSplits)..where((s) => s.id.equals(split.id))).write(
+              await (db.update(db.workoutSplits)
+                    ..where((s) => s.id.equals(split.id)))
+                  .write(
                 WorkoutSplitsCompanion(nome: Value(newName)),
               );
 
@@ -292,7 +326,8 @@ class _TreinoTab extends ConsumerWidget {
     );
   }
 
-  void _showSplitOptions(BuildContext context, WidgetRef ref, WorkoutSplit split) {
+  void _showSplitOptions(
+      BuildContext context, WidgetRef ref, WorkoutSplit split) {
     showModalBottomSheet(
       context: context,
       backgroundColor: context.cardColor,
@@ -319,7 +354,8 @@ class _TreinoTab extends ConsumerWidget {
               ),
               const Divider(height: 24),
               ListTile(
-                leading: const Icon(Icons.edit_rounded, color: AppColors.primaryLight),
+                leading: const Icon(Icons.edit_rounded,
+                    color: AppColors.primaryLight),
                 title: const Text('Renomear Treino'),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -327,7 +363,8 @@ class _TreinoTab extends ConsumerWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.share_rounded, color: AppColors.primaryLight),
+                leading: const Icon(Icons.share_rounded,
+                    color: AppColors.primaryLight),
                 title: const Text('Compartilhar Treino'),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -335,7 +372,8 @@ class _TreinoTab extends ConsumerWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.primary),
+                leading: const Icon(Icons.delete_outline_rounded,
+                    color: AppColors.primary),
                 title: const Text('Excluir Treino'),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -365,23 +403,26 @@ class _TreinoTab extends ConsumerWidget {
     if (membership.enabled && !triggered && !warningSnoozed) {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final due = DateTime(membership.nextDueDate.year, membership.nextDueDate.month, membership.nextDueDate.day);
+      final due = DateTime(membership.nextDueDate.year,
+          membership.nextDueDate.month, membership.nextDueDate.day);
       final difference = due.difference(today).inDays;
       if (difference <= 3) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (ref.read(membershipToastTriggeredProvider)) return;
           ref.read(membershipToastTriggeredProvider.notifier).state = true;
-          
+
           final formattedValue = membership.value.toStringAsFixed(2);
           final String msg;
           if (difference < 0) {
-            msg = 'Mensalidade de R\$ $formattedValue está atrasada há ${-difference} dias! ⚠️';
+            msg =
+                'Mensalidade de R\$ $formattedValue está atrasada há ${-difference} dias! ⚠️';
           } else if (difference == 0) {
             msg = 'Mensalidade de R\$ $formattedValue vence hoje! 💳';
           } else {
-            msg = 'Mensalidade de R\$ $formattedValue vence em $difference dias! 📅';
+            msg =
+                'Mensalidade de R\$ $formattedValue vence em $difference dias! 📅';
           }
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(msg),
@@ -433,9 +474,10 @@ class _TreinoTab extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             const StreakBadge(style: StreakStyle.appBar),
+            const RewardInboxButton(),
           ],
         ),
-          actions: [
+        actions: [
           IconButton(
             icon: const Icon(Icons.tune_rounded),
             tooltip: 'Configurar Treinos',
@@ -463,129 +505,150 @@ class _TreinoTab extends ConsumerWidget {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-             // ── Alerta de Mensalidade (Vencimento) ──────────────────────
-             if (membership.enabled && !ref.watch(membershipWarningSnoozedProvider)) (() {
-               final now = DateTime.now();
-               final today = DateTime(now.year, now.month, now.day);
-               final due = DateTime(membership.nextDueDate.year, membership.nextDueDate.month, membership.nextDueDate.day);
-               final difference = due.difference(today).inDays;
-               
-               if (difference > 3) return const SizedBox.shrink();
-               
-               final formattedValue = membership.value.toStringAsFixed(2);
-               final isOverdue = difference < 0;
-               final isToday = difference == 0;
-               
-               final String text;
-               if (isOverdue) {
-                 text = 'Sua mensalidade de R\$ $formattedValue está atrasada há ${-difference} ${-difference == 1 ? "dia" : "dias"}!';
-               } else if (isToday) {
-                 text = 'Sua mensalidade de R\$ $formattedValue vence hoje!';
-               } else {
-                 text = 'Sua mensalidade de R\$ $formattedValue vence em $difference ${difference == 1 ? "dia" : "dias"}.';
-               }
-               
-               return Padding(
-                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                 child: Container(
-                   decoration: BoxDecoration(
-                     gradient: const LinearGradient(
-                       colors: [Colors.amber, Colors.orangeAccent],
-                       begin: Alignment.topLeft,
-                       end: Alignment.bottomRight,
-                     ),
-                     borderRadius: BorderRadius.circular(16),
-                     boxShadow: [
-                       BoxShadow(
-                         color: Colors.amber.withValues(alpha: 0.3),
-                         blurRadius: 8,
-                         offset: const Offset(0, 4),
-                       ),
-                     ],
-                   ),
-                   child: Padding(
-                     padding: const EdgeInsets.all(16.0),
-                     child: Row(
-                       children: [
-                         const Icon(
-                           Icons.warning_amber_rounded,
-                           color: Colors.white,
-                           size: 28,
-                         ),
-                         const SizedBox(width: 12),
-                         Expanded(
-                           child: Column(
-                             crossAxisAlignment: CrossAxisAlignment.start,
-                             children: [
-                               Text(
-                                 isOverdue ? 'MENSALIDADE ATRASADA ⚠️' : 'ALERTA DE VENCIMENTO 💳',
-                                 style: const TextStyle(
-                                   color: Colors.white,
-                                   fontSize: 10,
-                                   fontWeight: FontWeight.w900,
-                                   letterSpacing: 1.2,
-                                 ),
-                               ),
-                               const SizedBox(height: 4),
-                               Text(
-                                 text,
-                                 style: const TextStyle(
-                                   color: Colors.white,
-                                   fontSize: 13,
-                                   fontWeight: FontWeight.bold,
-                                   height: 1.3,
-                                 ),
-                               ),
-                             ],
-                           ),
-                         ),
-                         const SizedBox(width: 8),
-                         TextButton(
-                           onPressed: () {
-                             AudioService().playClick();
-                             ref.read(membershipSettingsProvider.notifier).markAsPaid();
-                             ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                             ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(
-                                 content: Text('Mensalidade registrada como paga!'),
-                                 backgroundColor: Colors.green,
-                               ),
-                             );
-                           },
-                           style: TextButton.styleFrom(
-                             backgroundColor: Colors.white,
-                             foregroundColor: Colors.orange.shade900,
-                             shape: RoundedRectangleBorder(
-                               borderRadius: BorderRadius.circular(12),
-                             ),
-                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                           ),
-                           child: const Text(
-                             'PAGO',
-                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                           ),
-                         ),
-                         const SizedBox(width: 4),
-                         IconButton(
-                           icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
-                           onPressed: () {
-                             AudioService().playClick();
-                             ref.read(membershipWarningSnoozedProvider.notifier).state = true;
-                             ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                             ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(
-                                 content: Text('Aviso ocultado temporariamente.'),
-                                 duration: Duration(seconds: 3),
-                               ),
-                             );
-                           },
-                         ),
-                       ],
-                     ),
-                   ),
-                 ),
-               );
-             }()) else const SizedBox.shrink(),
+            // ── Alerta de Mensalidade (Vencimento) ──────────────────────
+            if (membership.enabled &&
+                !ref.watch(membershipWarningSnoozedProvider))
+              (() {
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+                final due = DateTime(membership.nextDueDate.year,
+                    membership.nextDueDate.month, membership.nextDueDate.day);
+                final difference = due.difference(today).inDays;
+
+                if (difference > 3) return const SizedBox.shrink();
+
+                final formattedValue = membership.value.toStringAsFixed(2);
+                final isOverdue = difference < 0;
+                final isToday = difference == 0;
+
+                final String text;
+                if (isOverdue) {
+                  text =
+                      'Sua mensalidade de R\$ $formattedValue está atrasada há ${-difference} ${-difference == 1 ? "dia" : "dias"}!';
+                } else if (isToday) {
+                  text = 'Sua mensalidade de R\$ $formattedValue vence hoje!';
+                } else {
+                  text =
+                      'Sua mensalidade de R\$ $formattedValue vence em $difference ${difference == 1 ? "dia" : "dias"}.';
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Colors.amber, Colors.orangeAccent],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isOverdue
+                                      ? 'MENSALIDADE ATRASADA ⚠️'
+                                      : 'ALERTA DE VENCIMENTO 💳',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  text,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () {
+                              AudioService().playClick();
+                              ref
+                                  .read(membershipSettingsProvider.notifier)
+                                  .markAsPaid();
+                              ScaffoldMessenger.of(context)
+                                  .hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Mensalidade registrada como paga!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.orange.shade900,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                            ),
+                            child: const Text(
+                              'PAGO',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded,
+                                color: Colors.white70, size: 20),
+                            onPressed: () {
+                              AudioService().playClick();
+                              ref
+                                  .read(
+                                      membershipWarningSnoozedProvider.notifier)
+                                  .state = true;
+                              ScaffoldMessenger.of(context)
+                                  .hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Aviso ocultado temporariamente.'),
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }())
+            else
+              const SizedBox.shrink(),
 
             // ── Planejamento Semanal (Notificações) ────────────────────
             const WeeklyScheduleBanner(),
@@ -633,7 +696,8 @@ class _TreinoTab extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryLight.withValues(alpha: 0.12),
+                            color:
+                                AppColors.primaryLight.withValues(alpha: 0.12),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -652,7 +716,8 @@ class _TreinoTab extends ConsumerWidget {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w900,
-                                  color: context.onSurface.withValues(alpha: 0.6),
+                                  color:
+                                      context.onSurface.withValues(alpha: 0.6),
                                   letterSpacing: 1.2,
                                 ),
                               ),
@@ -662,12 +727,16 @@ class _TreinoTab extends ConsumerWidget {
                                   if (cardios.isEmpty) {
                                     return Text(
                                       'Nenhum cárdio registrado recentemente.',
-                                      style: TextStyle(fontSize: 12, color: context.onSurface),
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: context.onSurface),
                                     );
                                   }
                                   final last = cardios.first;
-                                  final dt = DateTime.tryParse(last.data) ?? DateTime.now();
-                                  final formattedDate = DateFormat('dd/MM').format(dt);
+                                  final dt = DateTime.tryParse(last.data) ??
+                                      DateTime.now();
+                                  final formattedDate =
+                                      DateFormat('dd/MM').format(dt);
                                   final mins = last.duracaoSegundos ~/ 60;
                                   return Text(
                                     'Último: ${last.tipo} (${mins}min) em $formattedDate',
@@ -703,7 +772,8 @@ class _TreinoTab extends ConsumerWidget {
                             icon: const Icon(Icons.menu_book_rounded, size: 18),
                             label: const Text('GUIA DE CÁRDIO'),
                             style: OutlinedButton.styleFrom(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
@@ -723,7 +793,8 @@ class _TreinoTab extends ConsumerWidget {
                             icon: const Icon(Icons.timer_outlined, size: 18),
                             label: const Text('INICIAR'),
                             style: FilledButton.styleFrom(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
@@ -754,7 +825,7 @@ class _TreinoTab extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        '(Segure para opções)',
+                        'Use ⋯ para editar ou excluir',
                         style: TextStyle(
                           color: context.onSurface.withValues(alpha: 0.5),
                           fontSize: 10,
@@ -773,42 +844,43 @@ class _TreinoTab extends ConsumerWidget {
                         children: [
                           ...splits.map((split) {
                             final isSelected = activeSplit?.id == split.id;
-                            return GestureDetector(
-                              onLongPress: () => _showSplitOptions(context, ref, split),
-                              child: ChoiceChip(
-                                label: Text(split.nome.isNotEmpty ? split.nome : split.tipo),
+                            return WorkoutSplitSelector(
+                                name: split.nome.isNotEmpty
+                                    ? split.nome
+                                    : split.tipo,
                                 selected: isSelected,
-                                onSelected: (selected) {
-                                  if (selected) {
-                                    ref
-                                        .read(workoutDaoProvider)
-                                        .setActiveSplit(split.id);
-                                  }
-                                },
-                              ),
-                            );
+                                onSelect: () => ref
+                                    .read(workoutDaoProvider)
+                                    .setActiveSplit(split.id),
+                                onOptions: () =>
+                                    _showSplitOptions(context, ref, split));
                           }),
                           ActionChip(
-                            avatar: const Icon(Icons.add_rounded, size: 16, color: AppColors.primaryLight),
+                            avatar: const Icon(Icons.add_rounded,
+                                size: 16, color: AppColors.primaryLight),
                             label: const Text(
                               'ADICIONAR',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                             onPressed: () {
                               AudioService().playClick();
                               Navigator.of(context).push(
                                 PremiumPageRoute(
-                                  page: const SplitSelectionPage(isOnboarding: false),
+                                  page: const SplitSelectionPage(
+                                      isOnboarding: false),
                                   transitionType: TransitionType.slideRight,
                                 ),
                               );
                             },
                           ),
                           ActionChip(
-                            avatar: const Icon(Icons.download_rounded, size: 16, color: AppColors.primaryLight),
+                            avatar: const Icon(Icons.download_rounded,
+                                size: 16, color: AppColors.primaryLight),
                             label: const Text(
                               'IMPORTAR',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                             onPressed: () => _importSplit(context, ref),
                           ),
@@ -847,10 +919,14 @@ class _TreinoTab extends ConsumerWidget {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryLight),
+                    icon: const Icon(Icons.edit_rounded,
+                        size: 14, color: AppColors.primaryLight),
                     label: const Text(
                       'CONFIGURAR',
-                      style: TextStyle(fontSize: 12, color: AppColors.primaryLight, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primaryLight,
+                          fontWeight: FontWeight.bold),
                     ),
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
@@ -955,8 +1031,7 @@ class _ActiveSessionCard extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Iniciado em: ${WeekUtils.formatDate(session.data)}',
-                  style:
-                      TextStyle(color: context.onSurface, fontSize: 12),
+                  style: TextStyle(color: context.onSurface, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -1049,28 +1124,66 @@ class _DayListTile extends ConsumerWidget {
           child: ListTile(
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            leading: CircleAvatar(
-              backgroundColor: AppColors.getWorkoutColor(day.letra),
-              foregroundColor: Colors.white,
-              child: Text(
-                day.letra,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
+            leading: day.coverImage == null
+                ? CircleAvatar(
+                    backgroundColor: AppColors.getWorkoutColor(day.letra),
+                    foregroundColor: Colors.white,
+                    child: Text(day.letra))
+                : SizedBox(
+                    width: 64,
+                    child:
+                        ReferenceImage(encoded: day.coverImage!, height: 64)),
             title: Text(
               'Dia ${day.letra} - ${day.nome}',
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                preview,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: context.onSurface),
-              ),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(preview,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            TextStyle(fontSize: 12, color: context.onSurface)),
+                    if (exercises.any((e) => e.link?.isNotEmpty == true))
+                      Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Row(children: [
+                            const Icon(Icons.play_circle_outline, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                                '${exercises.where((e) => e.link?.isNotEmpty == true).length} vídeos de execução',
+                                style: const TextStyle(fontSize: 12)),
+                          ])),
+                  ]),
             ),
-            trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+            trailing: PopupMenuButton<String>(
+                tooltip: 'Imagem do dia ${day.letra}',
+                onSelected: (action) async {
+                  try {
+                    final image =
+                        action == 'remove' ? null : await pickReferenceImage();
+                    if (action != 'remove' && image == null) return;
+                    final db = ref.read(databaseProvider);
+                    await (db.update(db.workoutDays)
+                          ..where((d) => d.id.equals(day.id)))
+                        .write(WorkoutDaysCompanion(coverImage: Value(image)));
+                  } catch (e) {
+                    if (context.mounted)
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
+                },
+                itemBuilder: (_) => [
+                      const PopupMenuItem(
+                          value: 'image',
+                          child: Text('Escolher imagem para este dia')),
+                      if (day.coverImage != null)
+                        const PopupMenuItem(
+                            value: 'remove', child: Text('Remover imagem'))
+                    ]),
             onTap: () => _showDayExercises(context, ref, exercises),
           ),
         );
@@ -1117,10 +1230,13 @@ class _DayListTile extends ConsumerWidget {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryLight),
+                    icon: const Icon(Icons.edit_rounded,
+                        size: 14, color: AppColors.primaryLight),
                     label: const Text(
                       'EDITAR',
-                      style: TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: AppColors.primaryLight,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -1148,19 +1264,29 @@ class _DayListTile extends ConsumerWidget {
                         child: Row(
                           children: [
                             Icon(Icons.circle,
-                                size: 6, color: AppColors.getWorkoutColor(day.letra)),
+                                size: 6,
+                                color: AppColors.getWorkoutColor(day.letra)),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(
-                                ex.nome,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            Text(
-                              '${ex.grupoMuscular} \u00b7 ${ex.equipamento}${ex.volume != null && ex.volume!.isNotEmpty ? ' \u00b7 ${ex.volume}' : ''}',
-                              style: TextStyle(
-                                  color: context.onSurface, fontSize: 11),
-                            ),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                  Text(ex.nome,
+                                      style: const TextStyle(fontSize: 14)),
+                                  Text(
+                                      '${ex.grupoMuscular} · ${ex.equipamento}${ex.volume != null ? ' · ${ex.volume}' : ''}',
+                                      style: TextStyle(
+                                          color: context.onSurface,
+                                          fontSize: 11)),
+                                ])),
+                            if (ex.link?.isNotEmpty == true)
+                              IconButton(
+                                  tooltip: 'Ver execução de ${ex.nome}',
+                                  onPressed: () => openReferenceVideo(
+                                      context, ex.link!,
+                                      title: ex.nome),
+                                  icon: const Icon(Icons.play_circle_outline)),
                           ],
                         ),
                       );
@@ -1192,15 +1318,14 @@ class _DayListTile extends ConsumerWidget {
                           }
 
                           // Cria uma nova sessão de treino
-                          final sessionId = await ref
-                              .read(workoutDaoProvider)
-                              .insertSession(
-                                WorkoutSessionsCompanion.insert(
-                                  dayId: Value(day.id),
-                                  data: DateTime.now().toIso8601String(),
-                                  status: const Value('em_andamento'),
-                                ),
-                              );
+                          final sessionId =
+                              await ref.read(workoutDaoProvider).insertSession(
+                                    WorkoutSessionsCompanion.insert(
+                                      dayId: Value(day.id),
+                                      data: DateTime.now().toIso8601String(),
+                                      status: const Value('em_andamento'),
+                                    ),
+                                  );
 
                           // Abre o treino
                           if (context.mounted) {
@@ -1248,13 +1373,14 @@ class _DayListTile extends ConsumerWidget {
               await ref.read(workoutDaoProvider).deleteSession(active.id);
               if (ctx.mounted) Navigator.pop(ctx);
               // Inicia novo treino
-              final sessionId = await ref.read(workoutDaoProvider).insertSession(
-                    WorkoutSessionsCompanion.insert(
-                      dayId: Value(day.id),
-                      data: DateTime.now().toIso8601String(),
-                      status: const Value('em_andamento'),
-                    ),
-                  );
+              final sessionId =
+                  await ref.read(workoutDaoProvider).insertSession(
+                        WorkoutSessionsCompanion.insert(
+                          dayId: Value(day.id),
+                          data: DateTime.now().toIso8601String(),
+                          status: const Value('em_andamento'),
+                        ),
+                      );
               // ignore: use_build_context_synchronously
               if (context.mounted) {
                 AudioService().playClick();
@@ -1270,7 +1396,8 @@ class _DayListTile extends ConsumerWidget {
                 );
               }
             },
-            style: TextButton.styleFrom(foregroundColor: AppColors.primaryLight),
+            style:
+                TextButton.styleFrom(foregroundColor: AppColors.primaryLight),
             child: const Text('CANCELAR ANTERIOR'),
           ),
         ],
@@ -1332,8 +1459,10 @@ class ConsistencyCalendar extends ConsumerWidget {
                   final day = monday.add(Duration(days: dIndex));
                   final dayDate = DateTime(day.year, day.month, day.day);
                   final isTrained = trainedDates.contains(dayDate);
-                  final isToday = dayDate == DateTime(now.year, now.month, now.day);
-                  final isFuture = dayDate.isAfter(DateTime(now.year, now.month, now.day));
+                  final isToday =
+                      dayDate == DateTime(now.year, now.month, now.day);
+                  final isFuture =
+                      dayDate.isAfter(DateTime(now.year, now.month, now.day));
 
                   if (isTrained) {
                     trainedInLast4Weeks++;
@@ -1388,7 +1517,8 @@ class ConsistencyCalendar extends ConsumerWidget {
                           boxShadow: isTrained
                               ? [
                                   BoxShadow(
-                                    color: Colors.greenAccent.withValues(alpha: 0.2),
+                                    color: Colors.greenAccent
+                                        .withValues(alpha: 0.2),
                                     blurRadius: 4,
                                     spreadRadius: 1,
                                   )
@@ -1466,10 +1596,14 @@ class ConsistencyCalendar extends ConsumerWidget {
                     ),
                     if (streak > 0)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Colors.orangeAccent, Colors.deepOrangeAccent],
+                            colors: [
+                              Colors.orangeAccent,
+                              Colors.deepOrangeAccent
+                            ],
                           ),
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -1488,7 +1622,15 @@ class ConsistencyCalendar extends ConsumerWidget {
                 Row(
                   children: [
                     const SizedBox(width: 32),
-                    ...['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((day) => Expanded(
+                    ...[
+                      'S',
+                      'T',
+                      'Q',
+                      'Q',
+                      'S',
+                      'S',
+                      'D'
+                    ].map((day) => Expanded(
                           child: Center(
                             child: Text(
                               day,

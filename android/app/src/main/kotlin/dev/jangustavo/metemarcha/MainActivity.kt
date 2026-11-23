@@ -6,10 +6,21 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterFragmentActivity() {
+    private var inviteChannel: MethodChannel? = null
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.dataString?.let { inviteChannel?.invokeMethod("invite", it) }
+    }
+
     private val CHANNEL = "dev.jangustavo.metemarcha/app_launcher"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        inviteChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.jangustavo.metemarcha/invites")
+        inviteChannel?.setMethodCallHandler { call, result ->
+            if(call.method == "initialLink") { result.success(intent?.dataString) } else { result.notImplemented() }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "launchApp") {
                 val packageName = call.argument<String>("packageName")

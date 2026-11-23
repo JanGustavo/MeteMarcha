@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:math';
 import '../../core/theme/app_theme.dart';
-import '../home/home_page.dart';
+import '../account/account_gate.dart';
 
 class SplashPage extends StatelessWidget {
   const SplashPage({super.key});
@@ -170,7 +170,8 @@ class SplashPage extends StatelessWidget {
                         onPressed: () {
                           if (!kIsWeb) HapticFeedback.vibrate();
                           Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(builder: (_) => const HomePage()),
+                            MaterialPageRoute(
+                                builder: (_) => const AccountGate()),
                           );
                         },
                         style: ElevatedButton.styleFrom(

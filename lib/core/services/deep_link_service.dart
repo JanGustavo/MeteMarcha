@@ -32,7 +32,7 @@ class DeepLinkService {
           globalProviderContainer.read(homeTabProvider.notifier).state = 0; // Aba de Treino
         }
       } else if (uri.host == 'streak' || uri.path == 'streak') {
-        globalProviderContainer.read(homeTabProvider.notifier).state = 2; // Aba de Perfil
+        globalProviderContainer.read(homeTabProvider.notifier).state = 3; // Aba de Perfil
       }
     }
   }

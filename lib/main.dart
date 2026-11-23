@@ -1,3 +1,4 @@
+import 'core/services/squad_invite_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -25,13 +26,14 @@ void overlayMain() {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
-  
+
   globalProviderContainer = ProviderContainer();
 
   // Inicializa o serviço de notificações, o foreground service e os links de widgets
   await NotificationService().init();
   ForegroundTaskService.init();
   DeepLinkService.init();
+  await SquadInviteService.init();
 
   runApp(const MyApp());
 }

@@ -22,6 +22,8 @@ type storyRow struct {
 	AuthorName string
 	GroupID    string
 	MediaID    string
+	Report     string
+	VideoURL   string
 	Caption    string
 	CreatedAt  time.Time
 	TrackID    sql.NullString
@@ -33,7 +35,7 @@ type storyRow struct {
 
 const selectStory = `
 SELECT s.seq, s.id, s.author_id, u.display_name, s.group_id, s.photo_media_id, s.caption, s.created_at,
-       s.track_id, t.title, t.artist, s.track_start_ms, s.track_duration_ms
+       s.track_id, t.title, t.artist, s.track_start_ms, s.track_duration_ms, s.workout_report, s.video_url
   FROM stories s
   JOIN users u ON u.id = s.author_id
   LEFT JOIN tracks t ON t.id = s.track_id `
@@ -44,15 +46,15 @@ func scanStory(sc rowScanner) (storyRow, error) {
 	var r storyRow
 	var created int64
 	err := sc.Scan(&r.Seq, &r.ID, &r.AuthorID, &r.AuthorName, &r.GroupID, &r.MediaID, &r.Caption, &created,
-		&r.TrackID, &r.TrackTitle, &r.TrackArtst, &r.StartMS, &r.DurationMS)
+		&r.TrackID, &r.TrackTitle, &r.TrackArtst, &r.StartMS, &r.DurationMS, &r.Report, &r.VideoURL)
 	r.CreatedAt = platform.FromUnix(created)
 	return r, err
 }
 
 type newStory struct {
-	ID, AuthorID, GroupID, MediaID, Caption, RequestID string
-	Clip                                               *clip
-	CreatedAt                                          time.Time
+	ID, AuthorID, GroupID, MediaID, Caption, RequestID, Report, VideoURL string
+	Clip                                                                 *clip
+	CreatedAt                                                            time.Time
 }
 
 // insert grava o story. Se (autor, request_id) já existir, a restrição UNIQUE
@@ -64,9 +66,9 @@ func (s *Store) insert(ctx context.Context, n newStory) error {
 	}
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO stories (id, author_id, group_id, photo_media_id, caption, track_id, track_start_ms,
-		                      track_duration_ms, client_request_id, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		n.ID, n.AuthorID, n.GroupID, n.MediaID, n.Caption, trackID, start, dur, n.RequestID, platform.Unix(n.CreatedAt))
+		                      track_duration_ms, client_request_id, created_at, workout_report, video_url)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		n.ID, n.AuthorID, n.GroupID, n.MediaID, n.Caption, trackID, start, dur, n.RequestID, platform.Unix(n.CreatedAt), n.Report, n.VideoURL)
 	return err
 }
 

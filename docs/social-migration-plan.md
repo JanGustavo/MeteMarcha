@@ -91,6 +91,31 @@ domínio, acesso à máquina, arquivos de música autorizados e estratégia de b
 
 ## Estado em novembro de 2026
 
-O backend piloto da etapa 1 está em PR separado e ainda não foi implantado. A
-etapa 2 começa nesta branch. Os itens posteriores são escopo aceito do produto,
-mas ainda não são funcionalidades implementadas.
+O backend piloto está implantado na VPS e atende a integração de contas, squads,
+stories, músicas e relatórios do aplicativo. A seção abaixo registra a expansão
+da versão 2.11. Os demais itens deste plano devem ser avaliados individualmente;
+o escopo aceito não significa que todas as etapas estejam concluídas.
+
+## Primeiro uso e referências (2.11)
+
+O foco continua sendo uma preferência. A seleção de uma nova divisão permite
+alternar entre musculação e calistenia sem mudar esse foco ou excluir rotinas.
+O menu de opções de cada divisão tem sua própria área de toque e mantém editar,
+compartilhar e excluir. O JSON nativo exportado é aceito pelo importador e inclui
+capas dos dias, imagens dos exercícios e links de referência.
+
+Os links de YouTube e TikTok são normalizados para seus players de incorporação.
+Instagram usa o endereço público de embed; Kwai e links curtos de TikTok são
+exibidos pela página da plataforma no WebView. Conteúdo privado, bloqueio de
+incorporação e exigência de login podem impedir a reprodução; o link original
+permanece acessível. O app não baixa nem redistribui o vídeo dessas plataformas.
+Fontes: [YouTube](https://developers.google.com/youtube/player_parameters),
+[TikTok](https://developers.tiktok.com/docs/en/embed-player).
+
+Stories podem carregar um `video_url` opcional (migração 0008); sem foto, o app
+cria uma capa própria. A autorização e a validade do story são preservadas.
+A música começa no story aberto, respeita mudo/volume salvos e usa o canal de
+mídia. Publicações fora da visualização ativa não iniciam áudio automaticamente.
+
+A migração local 15 acrescenta imagens opcionais aos dias e exercícios. Imagens
+escolhidas da galeria são limitadas a 256 KB e incluídas na divisão compartilhada.
