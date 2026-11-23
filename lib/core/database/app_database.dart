@@ -24,6 +24,8 @@ part 'app_database.g.dart';
 /// O peso e as repetições ficam no ExerciseLog para preservar histórico.
 @DataClassName('Exercise')
 class Exercises extends Table {
+  TextColumn get trainingMode => text().withDefault(const Constant('musculacao'))();
+  TextColumn get measurementType => text().withDefault(const Constant('reps'))();
   TextColumn get referenceImage => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
 
@@ -123,6 +125,7 @@ class WorkoutSessions extends Table {
 /// O usuário escolhe no momento da execução.
 @DataClassName('ExerciseLog')
 class ExerciseLogs extends Table {
+  TextColumn get trainingMetrics => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
 
   IntColumn get exerciseId => integer().references(Exercises, #id)();
@@ -757,6 +760,8 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
           'volume': ex.volume,
           'observacoes': ex.observacoes,
           'referenceImage': ex.referenceImage,
+          'trainingMode': ex.trainingMode,
+          'measurementType': ex.measurementType,
         });
       }
       daysJson.add({
@@ -808,6 +813,8 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
         for (var i = 0; i < exercises.length; i++) {
           final exData = catalog.enrich(Map<String, dynamic>.from(exercises[i]));
           final exNome = exData['nome'] ?? '';
+          final requestedMode = exData['trainingMode']=='calistenia' || (exData['trainingMode']==null && (data['focus']=='calistenia' || data['modalidade']=='calistenia')) ? 'calistenia' : 'musculacao';
+          final requestedMeasure = ['reps','seconds','meters'].contains(exData['measurementType']) ? exData['measurementType'] as String : 'reps';
           if (exNome.isEmpty) continue;
 
           // Verificar se o exercício já existe pelo nome exato (case insensitive)
@@ -820,6 +827,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
             existingEx=null;
           }
           if(existingEx!=null && exData['referenceImage']!=null && existingEx.referenceImage!=exData['referenceImage']) existingEx=null;
+          if(existingEx!=null && (existingEx.trainingMode!=requestedMode || existingEx.measurementType!=requestedMeasure))existingEx=null;
           if(existingEx!=null && exData['link']!=null && existingEx.link!=exData['link']) existingEx=null;
           int exId;
           if (existingEx != null) {
@@ -828,6 +836,8 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
             exId = await into(db.exercises).insert(
               ExercisesCompanion.insert(
                 nome: exNome,
+                trainingMode: Value(requestedMode),
+                measurementType: Value(requestedMeasure),
                 grupoMuscular: exData['grupoMuscular'] ?? 'Geral',
                 link: Value(exData['link']),
                 referenceImage: Value(exData['referenceImage'] as String?),
@@ -969,6 +979,7 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
     double max1RM = 0.0;
     for (final row in rows) {
       final log = row.readTable(exerciseLogs);
+      if(log.trainingMetrics!=null)continue;
       final oneRM = log.repeticoes == 1
           ? log.peso
           : log.peso * (1 + log.repeticoes / 30.0);
@@ -996,6 +1007,7 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
     ExerciseLog? bestLog;
     for (final row in rows) {
       final log = row.readTable(exerciseLogs);
+      if(log.trainingMetrics!=null)continue;
       final oneRM = log.repeticoes == 1
           ? log.peso
           : log.peso * (1 + log.repeticoes / 30.0);
@@ -1016,6 +1028,7 @@ class LogDao extends DatabaseAccessor<AppDatabase> with _$LogDaoMixin {
     ExerciseLog log, {
     bool isUnilateral = false,
   }) {
+    if(log.trainingMetrics!=null)return 0;
     final base = log.peso * log.repeticoes;
     return (isUnilateral && log.lado == 'ambos') ? base * 2 : base;
   }
@@ -1139,7 +1152,7 @@ class AppDatabase extends _$AppDatabase {
   late final ProfileDao profileDao = ProfileDao(this);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1148,6 +1161,7 @@ class AppDatabase extends _$AppDatabase {
           await _seedDatabase(this);
         },
         onUpgrade: (m, from, to) async {
+          if(from < 16) {await m.addColumn(exercises,exercises.trainingMode);await m.addColumn(exercises,exercises.measurementType);await m.addColumn(exerciseLogs,exerciseLogs.trainingMetrics);}
           if(from < 15) {await m.addColumn(exercises,exercises.referenceImage);await m.addColumn(workoutDays,workoutDays.coverImage);}
 
           if (from < 3) {

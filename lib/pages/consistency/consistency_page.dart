@@ -1,3 +1,4 @@
+import 'cloud_rewards_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/consistency/consistency_provider.dart';
@@ -125,6 +126,7 @@ class ConsistencyPage extends ConsumerWidget {
                                                     ]))));
                                   }),
                               ])),
+                  const CloudRewardsCard(),
                   const SizedBox(height: 28),
                   Text('Suas conquistas',
                       style: Theme.of(context).textTheme.titleLarge),

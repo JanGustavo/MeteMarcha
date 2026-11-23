@@ -1,3 +1,4 @@
+import 'widgets/calisthenics_progress_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym_tracker/core/providers/providers.dart';
@@ -49,12 +50,13 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
   @override
   Widget build(BuildContext context) {
     final weeklyWeights = ref.watch(weeklyWeightsProvider);
-    final completedLogsAsync = ref.watch(allCompletedLogsProvider);
+    final completedLogsAsync = ref.watch(allCompletedLogsProvider).whenData(
+        (logs) => logs.where((l) => l.trainingMetrics == null).toList());
     final exercisesAsync = ref.watch(allExercisesProvider);
     final profileAsync = ref.watch(profileProvider);
 
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Progresso 📈'),
@@ -67,6 +69,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
               Tab(text: 'METAS & VOL'),
               Tab(text: 'MEDIDAS'),
               Tab(text: 'CÁRDIO'),
+              Tab(text: 'CALISTENIA'),
             ],
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primaryLight,
@@ -93,7 +96,8 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                           weeklyWeights.when(
                             data: (weights) => weights.length < 2
                                 ? const ProgressEmptyChart(
-                                    msg: 'Registre seu peso pelo menos 2 semanas\npara ver o gráfico.',
+                                    msg:
+                                        'Registre seu peso pelo menos 2 semanas\npara ver o gráfico.',
                                   )
                                 : WeightChart(weights: weights),
                             loading: () => const ProgressChartPlaceholder(),
@@ -112,9 +116,9 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                       child: Text(
                         'FREQUÊNCIA MENSAL',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          letterSpacing: 1.5,
-                          fontWeight: FontWeight.w600,
-                        ),
+                              letterSpacing: 1.5,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
                     ),
                   ),
@@ -168,12 +172,10 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
                               const ProgressSectionLabel('EVOLUÇÃO DE CARGAS'),
                               const SizedBox(height: 12),
                               DropdownButtonFormField<int>(
-                                initialValue:
-                                    exercises.any(
-                                      (e) =>
-                                          e.id ==
-                                          _selectedExerciseIdForEvolution,
-                                    )
+                                initialValue: exercises.any(
+                                  (e) =>
+                                      e.id == _selectedExerciseIdForEvolution,
+                                )
                                     ? _selectedExerciseIdForEvolution
                                     : null,
                                 isExpanded: true,
@@ -313,6 +315,7 @@ class _ProgressPageState extends ConsumerState<ProgressPage> {
             // Tab 4: Medidas Corporais
             const BodyMeasurementsTab(),
             const CardioTab(),
+            const CalisthenicsProgressTab(),
           ],
         ),
       ),

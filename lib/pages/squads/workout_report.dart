@@ -1,3 +1,4 @@
+import '../../core/calisthenics/calisthenics_metrics.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'dart:ui' show FontFeature;
 import 'dart:ui' as ui;
@@ -34,6 +35,9 @@ Future<Map<String, dynamic>> snapshotWorkout(
           'exercise': exercises[l.exerciseId] ?? 'Exercício',
           'number': l.serie,
           'weight_kg': l.peso,
+          if (l.trainingMetrics != null)
+            'calisthenics':
+                CalisthenicsMetrics.decode(l.trainingMetrics)?.toJson(),
           'reps': l.repeticoes,
           'side': l.lado,
           'completed': l.concluido,
@@ -215,7 +219,7 @@ class WorkoutReportPage extends StatelessWidget {
                                     style: TextStyle(
                                         fontSize: 11, letterSpacing: 1))),
                             Expanded(
-                                child: Text('REPS',
+                                child: Text('EXECUÇÃO',
                                     textAlign: TextAlign.right,
                                     style: TextStyle(
                                         fontSize: 11, letterSpacing: 1)))
@@ -238,7 +242,16 @@ class WorkoutReportPage extends StatelessWidget {
                                         Expanded(
                                             child: Text(
                                                 row['completed'] == true
-                                                    ? '${reportNumber(row['weight_kg'])} kg'
+                                                    ? (row['calisthenics'] !=
+                                                            null
+                                                        ? CalisthenicsMetrics.fromJson(Map<
+                                                                        String,
+                                                                        dynamic>.from(
+                                                                    row[
+                                                                        'calisthenics']))
+                                                                ?.loadLabel ??
+                                                            '—'
+                                                        : '${reportNumber(row['weight_kg'])} kg')
                                                     : '—',
                                                 style: const TextStyle(
                                                     fontFeatures: [
@@ -248,7 +261,16 @@ class WorkoutReportPage extends StatelessWidget {
                                         Expanded(
                                             child: Text(
                                                 row['completed'] == true
-                                                    ? '${row['reps']}'
+                                                    ? (row['calisthenics'] !=
+                                                            null
+                                                        ? CalisthenicsMetrics.fromJson(Map<
+                                                                        String,
+                                                                        dynamic>.from(
+                                                                    row[
+                                                                        'calisthenics']))
+                                                                ?.amount ??
+                                                            '—'
+                                                        : '${row['reps']}')
                                                     : 'Pulada',
                                                 textAlign: TextAlign.right,
                                                 style: const TextStyle(

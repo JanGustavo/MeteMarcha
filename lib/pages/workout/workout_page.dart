@@ -1,3 +1,4 @@
+import 'widgets/calisthenics_panel.dart';
 import '../../core/media/social_video_card.dart';
 import '../../core/media/social_video.dart';
 import '../../core/media/reference_image.dart';
@@ -1937,8 +1938,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                     icon: Icons.flash_on_rounded,
                                     iconColor: Colors.greenAccent,
                                     label: 'Volume Total',
-                                    value:
-                                        '${totalVolume.toStringAsFixed(0)} kg',
+                                    value: (totalVolume > 0
+                                        ? '${totalVolume.toStringAsFixed(0)} kg'
+                                        : '—'),
                                     extra: volumeCompareWidget,
                                   ),
                                 ),
@@ -2585,7 +2587,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         icon: Icons.timer_rounded,
                         color: AppColors.info,
                       ),
-                      if (_max1RM > 0)
+                      if (_max1RM > 0 && ex.trainingMode != 'calistenia')
                         GestureDetector(
                           onTap: () => _showPrDetailsDialog(context),
                           child: WorkoutBadgeTag(
@@ -2713,180 +2715,172 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     ),
                   ],
 
-                  // ── Desempenho anterior ────────────────────────
-                  if (_prevLogs.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    WorkoutPreviousPerformance(logs: _prevLogs, exercise: ex),
-                  ],
-
-                  // ── Séries já salvas nesta sessão ──────────────
-                  if (_setsLogged.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    WorkoutSetsList(
-                      sets: _setsLogged,
-                      exercise: ex,
-                      onTapSeries: _showEditDeleteSeriesDialog,
-                    ),
-                  ],
-
-                  // ── Inputs ────────────────────────────────────
-                  const SizedBox(height: 20),
-                  WorkoutSetInput(
-                    serie: _currentSerie,
-                    pesoCtrl: _pesoCtrl,
-                    repsCtrl: _repsCtrl,
-                    obsCtrl: _obsCtrl,
-                    pesoStep: _getWeightStep(),
-                    onOpenCalculator: _showPlateCalculator,
+                  TextButton.icon(
+                    onPressed: () async {
+                      final updated = ex.copyWith(
+                          trainingMode: ex.trainingMode == 'calistenia'
+                              ? 'musculacao'
+                              : 'calistenia');
+                      await ref
+                          .read(exerciseDaoProvider)
+                          .updateExercise(updated);
+                      if (!mounted) return;
+                      setState(() => _exercises[_currentIndex] = updated);
+                      await _loadExerciseContext();
+                    },
+                    icon: const Icon(Icons.tune),
+                    label: Text(ex.trainingMode == 'calistenia'
+                        ? 'Usar carga e repetições de musculação'
+                        : 'Usar métricas de calistenia'),
                   ),
-                  if (ref.watch(rpeEnabledProvider)) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<double?>(
-                            key: ValueKey('rpe_${ex.id}_$_currentRpe'),
-                            initialValue: _currentRpe,
-                            decoration: const InputDecoration(
-                              labelText: 'RPE (Esforço 1-10)',
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                            dropdownColor: context.cardColor,
-                            style: TextStyle(
-                              color: context.onBackground,
-                              fontSize: 14,
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('Nulo'),
-                              ),
-                              ...[
-                                10.0,
-                                9.5,
-                                9.0,
-                                8.5,
-                                8.0,
-                                7.5,
-                                7.0,
-                                6.5,
-                                6.0,
-                                5.5,
-                                5.0,
-                              ].map(
-                                (val) => DropdownMenuItem(
-                                  value: val,
-                                  child: Text(
-                                    val % 1 == 0
-                                        ? val.toInt().toString()
-                                        : val.toString(),
-                                  ),
-                                ),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              setState(() {
-                                _currentRpe = val;
-                                if (val != null) {
-                                  final calculatedRir = (10.0 - val).round();
-                                  if (calculatedRir >= 0 &&
-                                      calculatedRir <= 5) {
-                                    _currentRir = calculatedRir;
-                                  }
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<int?>(
-                            key: ValueKey('rir_${ex.id}_$_currentRir'),
-                            initialValue: _currentRir,
-                            decoration: const InputDecoration(
-                              labelText: 'RIR (Repetições de Reserva)',
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                            dropdownColor: context.cardColor,
-                            style: TextStyle(
-                              color: context.onBackground,
-                              fontSize: 14,
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('Nulo'),
-                              ),
-                              ...[0, 1, 2, 3, 4, 5].map(
-                                (val) => DropdownMenuItem(
-                                  value: val,
-                                  child: Text(
-                                    val == 0 ? 'Falha (0 RIR)' : '$val RIR',
-                                  ),
-                                ),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              setState(() {
-                                _currentRir = val;
-                                if (val != null) {
-                                  _currentRpe = 10.0 - val;
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  if (ex.trainingMode == 'calistenia')
+                    CalisthenicsPanel(
+                        key: ValueKey('calis-${ex.id}'),
+                        db: ref.read(databaseProvider),
+                        exercise: ex,
+                        sessionId: widget.sessionId,
+                        onSaved: () async {
+                          await _loadExerciseContext();
+                          _startRestTimer(ex.tempoDescansoSegundos);
+                        })
+                  else ...[
+                    // ── Desempenho anterior ────────────────────────
+                    if (_prevLogs.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      WorkoutPreviousPerformance(logs: _prevLogs, exercise: ex),
+                    ],
 
-                  // ── Modo de Execução ──
-                  const SizedBox(height: 16),
-                  Text(
-                    'MODO DE EXECUÇÃO',
-                    style: TextStyle(
-                      color: context.onSurface,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(
-                        value: false,
-                        label: Text('Bilateral'),
-                        icon: Icon(Icons.people_rounded),
-                      ),
-                      ButtonSegment(
-                        value: true,
-                        label: Text('Unilateral'),
-                        icon: Icon(Icons.person_rounded),
+                    // ── Séries já salvas nesta sessão ──────────────
+                    if (_setsLogged.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      WorkoutSetsList(
+                        sets: _setsLogged,
+                        exercise: ex,
+                        onTapSeries: _showEditDeleteSeriesDialog,
                       ),
                     ],
-                    selected: {_executandoUnilateral},
-                    onSelectionChanged: (v) {
-                      setState(() {
-                        _executandoUnilateral = v.first;
-                        if (!_executandoUnilateral) {
-                          _lado = 'ambos'; // Reseta para ambos
-                        }
-                      });
-                    },
-                  ),
 
-                  // ── Lado (apenas se unilateral) ───────────────────
-                  if (_executandoUnilateral) ...[
+                    // ── Inputs ────────────────────────────────────
+                    const SizedBox(height: 20),
+                    WorkoutSetInput(
+                      serie: _currentSerie,
+                      pesoCtrl: _pesoCtrl,
+                      repsCtrl: _repsCtrl,
+                      obsCtrl: _obsCtrl,
+                      pesoStep: _getWeightStep(),
+                      onOpenCalculator: _showPlateCalculator,
+                    ),
+                    if (ref.watch(rpeEnabledProvider)) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<double?>(
+                              key: ValueKey('rpe_${ex.id}_$_currentRpe'),
+                              initialValue: _currentRpe,
+                              decoration: const InputDecoration(
+                                labelText: 'RPE (Esforço 1-10)',
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              dropdownColor: context.cardColor,
+                              style: TextStyle(
+                                color: context.onBackground,
+                                fontSize: 14,
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Nulo'),
+                                ),
+                                ...[
+                                  10.0,
+                                  9.5,
+                                  9.0,
+                                  8.5,
+                                  8.0,
+                                  7.5,
+                                  7.0,
+                                  6.5,
+                                  6.0,
+                                  5.5,
+                                  5.0,
+                                ].map(
+                                  (val) => DropdownMenuItem(
+                                    value: val,
+                                    child: Text(
+                                      val % 1 == 0
+                                          ? val.toInt().toString()
+                                          : val.toString(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                setState(() {
+                                  _currentRpe = val;
+                                  if (val != null) {
+                                    final calculatedRir = (10.0 - val).round();
+                                    if (calculatedRir >= 0 &&
+                                        calculatedRir <= 5) {
+                                      _currentRir = calculatedRir;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<int?>(
+                              key: ValueKey('rir_${ex.id}_$_currentRir'),
+                              initialValue: _currentRir,
+                              decoration: const InputDecoration(
+                                labelText: 'RIR (Repetições de Reserva)',
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              dropdownColor: context.cardColor,
+                              style: TextStyle(
+                                color: context.onBackground,
+                                fontSize: 14,
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Nulo'),
+                                ),
+                                ...[0, 1, 2, 3, 4, 5].map(
+                                  (val) => DropdownMenuItem(
+                                    value: val,
+                                    child: Text(
+                                      val == 0 ? 'Falha (0 RIR)' : '$val RIR',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                setState(() {
+                                  _currentRir = val;
+                                  if (val != null) {
+                                    _currentRpe = 10.0 - val;
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    // ── Modo de Execução ──
                     const SizedBox(height: 16),
                     Text(
-                      'LADO EM EXECUÇÃO',
+                      'MODO DE EXECUÇÃO',
                       style: TextStyle(
                         color: context.onSurface,
                         fontSize: 11,
@@ -2895,77 +2889,133 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SegmentedButton<String>(
+                    SegmentedButton<bool>(
                       segments: const [
-                        ButtonSegment(value: 'ambos', label: Text('Ambos')),
-                        ButtonSegment(value: 'esquerdo', label: Text('Esq.')),
-                        ButtonSegment(value: 'direito', label: Text('Dir.')),
+                        ButtonSegment(
+                          value: false,
+                          label: Text('Bilateral'),
+                          icon: Icon(Icons.people_rounded),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          label: Text('Unilateral'),
+                          icon: Icon(Icons.person_rounded),
+                        ),
                       ],
-                      selected: {_lado},
-                      onSelectionChanged: (v) =>
-                          setState(() => _lado = v.first),
+                      selected: {_executandoUnilateral},
+                      onSelectionChanged: (v) {
+                        setState(() {
+                          _executandoUnilateral = v.first;
+                          if (!_executandoUnilateral) {
+                            _lado = 'ambos'; // Reseta para ambos
+                          }
+                        });
+                      },
                     ),
-                  ],
 
-                  // ── Equipamento Utilizado (Sobrescrever Recomendação) ──
-                  const SizedBox(height: 16),
-                  Text(
-                    'EQUIPAMENTO UTILIZADO',
-                    style: TextStyle(
-                      color: context.onSurface,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('equip_${ex.id}_$_equipamentoSelecionado'),
-                    isExpanded: true,
-                    initialValue: _equipamentoSelecionado,
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                    // ── Lado (apenas se unilateral) ───────────────────
+                    if (_executandoUnilateral) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'LADO EM EXECUÇÃO',
+                        style: TextStyle(
+                          color: context.onSurface,
+                          fontSize: 11,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: 'ambos', label: Text('Ambos')),
+                          ButtonSegment(value: 'esquerdo', label: Text('Esq.')),
+                          ButtonSegment(value: 'direito', label: Text('Dir.')),
+                        ],
+                        selected: {_lado},
+                        onSelectionChanged: (v) =>
+                            setState(() => _lado = v.first),
+                      ),
+                    ],
+
+                    // ── Equipamento Utilizado (Sobrescrever Recomendação) ──
+                    const SizedBox(height: 16),
+                    Text(
+                      'EQUIPAMENTO UTILIZADO',
+                      style: TextStyle(
+                        color: context.onSurface,
+                        fontSize: 11,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    dropdownColor: context.cardColor,
-                    items: {
-                      if (_equipamentoSelecionado != null &&
-                          !equipmentOptions.contains(
-                            _equipamentoSelecionado,
-                          ))
-                        _equipamentoSelecionado!,
-                      ...equipmentOptions,
-                    }
-                        .map(
-                          (option) => DropdownMenuItem(
-                            value: option,
-                            child: Text(option),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _equipamentoSelecionado = val;
-                      });
-                    },
-                  ),
-
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey('equip_${ex.id}_$_equipamentoSelecionado'),
+                      isExpanded: true,
+                      initialValue: _equipamentoSelecionado,
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      dropdownColor: context.cardColor,
+                      items: {
+                        if (_equipamentoSelecionado != null &&
+                            !equipmentOptions.contains(
+                              _equipamentoSelecionado,
+                            ))
+                          _equipamentoSelecionado!,
+                        ...equipmentOptions,
+                      }
+                          .map(
+                            (option) => DropdownMenuItem(
+                              value: option,
+                              child: Text(option),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _equipamentoSelecionado = val;
+                        });
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 80),
                 ],
               ),
             ),
 
             // ── Botões de ação ─────────────────────────────────
-            WorkoutActionBar(
-              isLast: _isLast,
-              resting: resting,
-              hasSets: _setsLogged.isNotEmpty,
-              onSkip: _pularExercicio,
-              onSalvarSerie: _salvarSerie,
-              onProximo: _proximoExercicio,
-            ),
+            if (ex.trainingMode == 'calistenia')
+              SafeArea(
+                  child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(children: [
+                        TextButton(
+                            onPressed: _pularExercicio,
+                            child: const Text('Pular')),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: FilledButton(
+                                onPressed: _setsLogged.isEmpty
+                                    ? null
+                                    : _proximoExercicio,
+                                child: Text(_isLast
+                                    ? 'Finalizar treino'
+                                    : 'Próximo exercício'))),
+                      ])))
+            else
+              WorkoutActionBar(
+                isLast: _isLast,
+                resting: resting,
+                hasSets: _setsLogged.isNotEmpty,
+                onSkip: _pularExercicio,
+                onSalvarSerie: _salvarSerie,
+                onProximo: _proximoExercicio,
+              ),
           ],
         ),
       ),

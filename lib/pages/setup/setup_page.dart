@@ -1209,6 +1209,8 @@ void _showAddExerciseSheet(
   String group = exercise?.grupoMuscular ?? 'Peito';
   String equipment = exercise?.equipamento ?? 'Livre';
   bool unilateral = exercise?.isUnilateral ?? false;
+  String trainingMode = exercise?.trainingMode ?? 'musculacao';
+  String measurementType = exercise?.measurementType ?? 'reps';
 
   showModalBottomSheet(
     context: context,
@@ -1244,6 +1246,38 @@ void _showAddExerciseSheet(
                 decoration:
                     const InputDecoration(labelText: 'Nome do Exerc\u00edcio'),
               ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                  initialValue: trainingMode,
+                  decoration: const InputDecoration(
+                      labelText: 'Como registrar este exercício'),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'musculacao',
+                        child: Text('Musculação · carga e repetições')),
+                    DropdownMenuItem(
+                        value: 'calistenia',
+                        child:
+                            Text('Calistenia · repetições, tempo ou distância'))
+                  ],
+                  onChanged: (value) =>
+                      setModalState(() => trainingMode = value!)),
+              if (trainingMode == 'calistenia') ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                    initialValue: measurementType,
+                    decoration:
+                        const InputDecoration(labelText: 'Métrica padrão'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'reps', child: Text('Repetições')),
+                      DropdownMenuItem(
+                          value: 'seconds', child: Text('Segundos')),
+                      DropdownMenuItem(value: 'meters', child: Text('Metros'))
+                    ],
+                    onChanged: (value) =>
+                        setModalState(() => measurementType = value!)),
+              ],
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -1363,6 +1397,8 @@ void _showAddExerciseSheet(
                           await ref.read(exerciseDaoProvider).insertExercise(
                                 ExercisesCompanion.insert(
                                   nome: name,
+                                  trainingMode: Value(trainingMode),
+                                  measurementType: Value(measurementType),
                                   grupoMuscular: group,
                                   equipamento: Value(equipment),
                                   isUnilateral: Value(unilateral),
@@ -1374,15 +1410,16 @@ void _showAddExerciseSheet(
                               );
                     } else {
                       await ref.read(exerciseDaoProvider).updateExercise(
-                            Exercise(
-                              id: exercise.id,
+                            exercise.copyWith(
+                              trainingMode: trainingMode,
+                              measurementType: measurementType,
                               nome: name,
                               grupoMuscular: group,
                               equipamento: equipment,
                               isUnilateral: unilateral,
                               tempoDescansoSegundos: rest,
-                              link: linkVal,
-                              volume: volumeVal,
+                              link: Value(linkVal),
+                              volume: Value(volumeVal),
                               vezesFeito: exercise.vezesFeito,
                             ),
                           );

@@ -14,6 +14,7 @@ import (
 	"github.com/JanGustavo/MeteMarcha/backend/internal/groups"
 	"github.com/JanGustavo/MeteMarcha/backend/internal/media"
 	"github.com/JanGustavo/MeteMarcha/backend/internal/platform"
+	"github.com/JanGustavo/MeteMarcha/backend/internal/showcase"
 	"github.com/JanGustavo/MeteMarcha/backend/internal/stories"
 	"github.com/JanGustavo/MeteMarcha/backend/internal/workoutai"
 	"github.com/JanGustavo/MeteMarcha/backend/migrations"
@@ -66,6 +67,7 @@ func New(cfg platform.Config, now platform.Clock) (*App, error) {
 	authH := auth.NewHandler(authSvc)
 	mux := http.NewServeMux()
 	authH.Register(mux)
+	showcase.NewHandler(db, now).Register(mux, authH.Require)
 	workoutai.NewHandler().Register(mux, authH.Require)
 	groups.NewHandler(groupsSvc).Register(mux, authH.Require)
 	stories.NewHandler(storiesSvc, cfg).Register(mux, authH.Require)

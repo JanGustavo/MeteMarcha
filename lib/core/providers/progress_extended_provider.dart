@@ -100,12 +100,14 @@ final allCompletedLogsProvider = FutureProvider<List<ExerciseLog>>((ref) async {
 });
 
 // Compatibility provider for existing widgets: one completed workout activates a week.
-final streakProvider = Provider<int>((ref) =>
-    ref.watch(weeklyConsistencyProvider).valueOrNull?.current ?? 0);
+final streakProvider = Provider<int>(
+    (ref) => ref.watch(weeklyConsistencyProvider).valueOrNull?.current ?? 0);
 
 // Provedor para calcular a porcentagem de evolução de cargas
 final evolutionProvider = Provider<double>((ref) {
-  final logs = ref.watch(allCompletedLogsProvider).value ?? [];
+  final logs = (ref.watch(allCompletedLogsProvider).value ?? [])
+      .where((l) => l.trainingMetrics == null)
+      .toList();
   if (logs.isEmpty) return 0.0;
 
   // Agrupa os logs por exercício (ordenados por ID/data implicitamente crescente)
@@ -376,6 +378,7 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
   final Map<int, double> maxWeightRecent = {};
 
   for (final log in logs) {
+    if (log.trainingMetrics != null) continue;
     try {
       final logDate = DateTime.parse(log.data);
       if (logDate.isBefore(sevenDaysAgo)) {
@@ -418,6 +421,7 @@ final automaticInsightsProvider = Provider<List<WorkoutInsight>>((ref) {
   final Map<String, double> lastWeekVolume = {};
 
   for (final log in logs) {
+    if (log.trainingMetrics != null) continue;
     final ex = exerciseMap[log.exerciseId];
     if (ex == null) continue;
 

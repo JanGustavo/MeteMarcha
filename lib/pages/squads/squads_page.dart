@@ -1,3 +1,4 @@
+import '../consistency/cloud_rewards_card.dart';
 import '../../core/media/photo_capture.dart';
 import '../../core/media/video_cover.dart';
 import '../../core/services/story_audio_controller.dart';
@@ -309,6 +310,13 @@ class _SquadsPageState extends State<SquadsPage> {
                                                               for (final m
                                                                   in members)
                                                                 ListTile(
+                                                                    onTap: () => showMemberShowcase(
+                                                                        context,
+                                                                        api,
+                                                                        m[
+                                                                            'user_id'],
+                                                                        m[
+                                                                            'display_name']),
                                                                     leading: CircleAvatar(
                                                                         child: Text((m['display_name'] as String).substring(
                                                                             0,

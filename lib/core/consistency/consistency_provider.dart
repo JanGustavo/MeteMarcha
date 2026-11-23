@@ -119,4 +119,19 @@ class RewardController extends StateNotifier<RewardState> {
         if (!state.records.any((r) => r.id == id)) return;
         await _save(state.records, pinned: id);
       });
+  Future<void> restore(List<Map<String, dynamic>> records, String? pinned) =>
+      _run(() async {
+        if (!state.ready) await load();
+        if (!state.ready) throw StateError('Conquistas indisponíveis');
+        final merged = [...state.records];
+        for (final raw in records) {
+          final record = EarnedReward.fromJson(raw);
+          if (!merged.any((r) => r.id == record.id))
+            merged.add(record.viewed());
+        }
+        await _save(merged,
+            pinned: pinned != null && merged.any((r) => r.id == pinned)
+                ? pinned
+                : state.pinned);
+      });
 }

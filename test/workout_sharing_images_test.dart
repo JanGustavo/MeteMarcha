@@ -60,7 +60,7 @@ void main() {
         .importWorkoutSplit(json, preservePrescription: true);
     expect((await db.workoutDao.exportWorkoutSplit(imported))['days'], days);
   });
-  test('migração 14 para 15 preserva a rotina existente', () async {
+  test('migração 14 para 16 preserva a rotina existente', () async {
     final dir = Directory.systemTemp.createTempSync('mm-migration-');
     addTearDown(() => dir.deleteSync(recursive: true));
     final file = File('${dir.path}/db.sqlite');
@@ -71,6 +71,9 @@ void main() {
     final raw = sqlite.sqlite3.open(file.path);
     raw.execute('ALTER TABLE exercises DROP COLUMN reference_image');
     raw.execute('ALTER TABLE workout_days DROP COLUMN cover_image');
+    raw.execute('ALTER TABLE exercises DROP COLUMN training_mode');
+    raw.execute('ALTER TABLE exercises DROP COLUMN measurement_type');
+    raw.execute('ALTER TABLE exercise_logs DROP COLUMN training_metrics');
     raw.execute('PRAGMA user_version=14');
     raw.dispose();
     final upgraded = AppDatabase.forTesting(NativeDatabase(file));

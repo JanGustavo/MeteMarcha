@@ -1,3 +1,4 @@
+import 'routine_builder_page.dart';
 import '../../core/media/exercise_catalog.dart';
 import '../../core/services/squad_service.dart';
 import 'mini_workout_page.dart';
@@ -549,6 +550,20 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                     onPressed: () async {
                       Navigator.pop(ctx); // Fecha o bottom sheet
 
+                      if (tipo == 'CUSTOM') {
+                        if (context.mounted)
+                          await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => RoutineBuilderPage(
+                                      focus: selectedMode ??
+                                          ref
+                                              .read(trainingFocusProvider)
+                                              .valueOrNull ??
+                                          'musculacao',
+                                      onboarding: isOnboarding)));
+                        return;
+                      }
                       // Adiciona o treino selecionado no banco
                       await ref.read(workoutDaoProvider).addSplit(tipo);
                       ref.invalidate(splitsProvider);
@@ -1168,7 +1183,21 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                             throw const FormatException(
                                 'O JSON deve ser um objeto.');
                           }
+                          if (data['focus'] == null &&
+                              data['modalidade'] == null)
+                            data['focus'] = selectedMode ??
+                                ref.read(trainingFocusProvider).valueOrNull ??
+                                'musculacao';
                           final catalog = await ExerciseCatalog.load();
+                          if (data['days'] is! List && data['dias'] is List) {
+                            data['days'] = [
+                              for (final day in data['dias'])
+                                {
+                                  ...Map<String, dynamic>.from(day),
+                                  'exercises': day['exercicios'] ?? []
+                                }
+                            ];
+                          }
                           if (data['days'] is List) {
                             if (!data.containsKey('nome'))
                               throw const FormatException(
@@ -1177,6 +1206,10 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                                 .read(workoutDaoProvider)
                                 .importWorkoutSplit(data,
                                     preservePrescription: true);
+                            if (clearUnused)
+                              await ref
+                                  .read(exerciseDaoProvider)
+                                  .deleteUnusedExercises();
                             await ref
                                 .read(workoutDaoProvider)
                                 .setActiveSplit(splitId);
@@ -1197,169 +1230,8 @@ class _SplitSelectionPageState extends ConsumerState<SplitSelectionPage> {
                                   (_) => false);
                             return;
                           }
-                          if (!data.containsKey('nome') ||
-                              !data.containsKey('dias')) {
-                            throw const FormatException(
-                                'Campos obrigatórios ausentes ("nome" ou "dias").');
-                          }
-
-                          final dias = data['dias'];
-                          if (dias is! List) {
-                            throw const FormatException(
-                                'O campo "dias" deve ser uma lista.');
-                          }
-
-                          Navigator.pop(ctx);
-
-                          final db = ref.read(databaseProvider);
-                          await db.transaction(() async {
-                            if (clearUnused) {
-                              await ref
-                                  .read(exerciseDaoProvider)
-                                  .deleteUnusedExercises();
-                            }
-
-                            final splitId =
-                                await ref.read(workoutDaoProvider).insertSplit(
-                                      WorkoutSplitsCompanion.insert(
-                                        tipo: data['tipo'] ?? 'CUSTOM',
-                                        nome: data['nome'],
-                                        ativo: const Value(false),
-                                      ),
-                                    );
-
-                            final allExercises =
-                                await ref.read(exerciseDaoProvider).getAll();
-
-                            for (final dayObj in dias) {
-                              if (dayObj is! Map<String, dynamic>) continue;
-
-                              final letra = dayObj['letra'] ?? 'A';
-                              final nomeDia = dayObj['nome'] ?? 'Treino';
-                              final dayId =
-                                  await ref.read(workoutDaoProvider).insertDay(
-                                        WorkoutDaysCompanion.insert(
-                                          splitId: splitId,
-                                          letra: letra,
-                                          nome: nomeDia,
-                                        ),
-                                      );
-
-                              final exercisesList = dayObj['exercicios'];
-                              if (exercisesList is! List) continue;
-
-                              for (int i = 0; i < exercisesList.length; i++) {
-                                final rawExercise = exercisesList[i];
-                                if (rawExercise is! Map<String, dynamic>)
-                                  continue;
-                                final exObj = catalog.enrich(rawExercise);
-
-                                final exName =
-                                    exObj['nome']?.toString().trim() ?? '';
-                                if (exName.isEmpty) continue;
-
-                                final normalizedSearchName =
-                                    exName.toLowerCase();
-                                Exercise? foundEx;
-                                for (final e in allExercises) {
-                                  if (e.nome.trim().toLowerCase() ==
-                                      normalizedSearchName) {
-                                    foundEx = e;
-                                    break;
-                                  }
-                                }
-
-                                int exId;
-                                if (foundEx != null &&
-                                    exObj['link'] != null &&
-                                    foundEx.link != exObj['link'])
-                                  foundEx = null;
-                                if (foundEx != null) {
-                                  exId = foundEx.id;
-                                  final jsonObs =
-                                      exObj['observacoes']?.toString().trim();
-                                  if (jsonObs != null &&
-                                      jsonObs.isNotEmpty &&
-                                      (foundEx.observacoes == null ||
-                                          foundEx.observacoes!.isEmpty)) {
-                                    await ref
-                                        .read(exerciseDaoProvider)
-                                        .updateExercise(
-                                          foundEx.copyWith(
-                                            observacoes: Value(jsonObs),
-                                          ),
-                                        );
-                                  }
-                                } else {
-                                  exId = await ref
-                                      .read(exerciseDaoProvider)
-                                      .insertExercise(
-                                        ExercisesCompanion.insert(
-                                          nome: exName,
-                                          grupoMuscular: exObj['grupoMuscular']
-                                                  ?.toString() ??
-                                              'Peito',
-                                          equipamento: Value(
-                                              exObj['equipamento']
-                                                      ?.toString() ??
-                                                  'Livre'),
-                                          isUnilateral: Value(
-                                              exObj['isUnilateral'] as bool? ??
-                                                  false),
-                                          tempoDescansoSegundos: Value(
-                                              exObj['tempoDescansoSegundos']
-                                                      as int? ??
-                                                  90),
-                                          volume: Value(
-                                              exObj['volume']?.toString()),
-                                          link:
-                                              Value(exObj['link']?.toString()),
-                                          observacoes: Value(
-                                              exObj['observacoes']?.toString()),
-                                          vezesFeito: const Value(0),
-                                        ),
-                                      );
-                                }
-
-                                await ref
-                                    .read(exerciseDaoProvider)
-                                    .linkExerciseToDay(
-                                      WorkoutDayExercisesCompanion.insert(
-                                        dayId: dayId,
-                                        exerciseId: exId,
-                                        ordem: i,
-                                      ),
-                                    );
-                              }
-                            }
-
-                            await ref
-                                .read(workoutDaoProvider)
-                                .setActiveSplit(splitId);
-                          });
-
-                          ref.invalidate(splitsProvider);
-                          ref.invalidate(activeSplitProvider);
-                          ref.invalidate(activeSplitDaysProvider);
-
-                          final nav = navigatorKey.currentState;
-                          final rootContext = navigatorKey.currentContext;
-
-                          if (rootContext != null && rootContext.mounted) {
-                            ScaffoldMessenger.of(rootContext).showSnackBar(
-                              SnackBar(
-                                  content: Text(catalog.importSummary(data))),
-                            );
-                          }
-
-                          if (!isOnboarding && context.mounted) {
-                            Navigator.pop(context);
-                          }
-
-                          nav?.push(
-                            MaterialPageRoute(
-                                builder: (_) => const SetupPage(initialTab: 2)),
-                          );
+                          throw const FormatException(
+                              'O treino precisa de nome e uma lista de dias (days ou dias).');
                         } catch (e) {
                           if (context.mounted) {
                             showDialog(

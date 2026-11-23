@@ -2,8 +2,9 @@
 
 A escolha inicial de foco (Academia/Musculação ou Calistenia), a alteração pelo
 perfil e o mini treino por IA com recursos disponíveis foram implementados.
-Os campos de origem da carga, equipamentos pessoais e progressões abaixo ainda
-são proposta para a próxima etapa.
+A versão 2.14 acrescenta unidades por execução, origem da carga, objeto e assistência;
+veja `calisthenics-cloud-migration.md`. O cadastro dedicado de equipamentos pessoais
+e progressões automáticas de variação continuam como expansão.
 
 ## Entrada e navegação
 

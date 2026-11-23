@@ -57,8 +57,17 @@ class _MiniWorkoutPageState extends ConsumerState<MiniWorkoutPage> {
         'text': preferences.text.trim(),
         'equipment': ['Peso Corporal', if (gym) ...equipment]
       });
-      if (mounted)
-        setState(() => workout = Map<String, dynamic>.from(result['workout']));
+      final draft = Map<String, dynamic>.from(result['workout']);
+      draft['focus'] = focus;
+      if (focus == 'calistenia') {
+        for (final day in draft['days']) {
+          for (final exercise in day['exercises']) {
+            exercise['trainingMode'] = 'calistenia';
+            exercise['measurementType'] = 'reps';
+          }
+        }
+      }
+      if (mounted) setState(() => workout = draft);
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
     } finally {

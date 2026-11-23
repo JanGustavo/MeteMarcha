@@ -1,3 +1,4 @@
+import '../../core/calisthenics/calisthenics_metrics.dart';
 // lib/pages/progress/workout_session_detail_page.dart
 
 import 'package:fl_chart/fl_chart.dart';
@@ -10,13 +11,16 @@ import '../../core/providers/progress_extended_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 // Provider para buscar os logs da sessão atual
-final sessionLogsProvider = FutureProvider.family<List<ExerciseLog>, int>((ref, sessionId) async {
+final sessionLogsProvider =
+    FutureProvider.family<List<ExerciseLog>, int>((ref, sessionId) async {
   final logDao = ref.read(logDaoProvider);
   return logDao.getLogsForSession(sessionId);
 });
 
 // Provider para buscar a sessão anterior concluída do mesmo treino (dayId)
-final previousSessionProvider = FutureProvider.family<WorkoutSession?, WorkoutSession>((ref, currentSession) async {
+final previousSessionProvider =
+    FutureProvider.family<WorkoutSession?, WorkoutSession>(
+        (ref, currentSession) async {
   final db = ref.read(databaseProvider);
   if (currentSession.dayId == null) return null;
 
@@ -32,7 +36,9 @@ final previousSessionProvider = FutureProvider.family<WorkoutSession?, WorkoutSe
 });
 
 // Provider para buscar os logs da sessão anterior
-final previousSessionLogsProvider = FutureProvider.family<List<ExerciseLog>, int>((ref, previousSessionId) async {
+final previousSessionLogsProvider =
+    FutureProvider.family<List<ExerciseLog>, int>(
+        (ref, previousSessionId) async {
   final logDao = ref.read(logDaoProvider);
   return logDao.getLogsForSession(previousSessionId);
 });
@@ -46,36 +52,68 @@ class WorkoutSessionDetailPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<WorkoutSessionDetailPage> createState() => _WorkoutSessionDetailPageState();
+  ConsumerState<WorkoutSessionDetailPage> createState() =>
+      _WorkoutSessionDetailPageState();
 }
 
-class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailPage> {
+class _WorkoutSessionDetailPageState
+    extends ConsumerState<WorkoutSessionDetailPage> {
   String _selectedMuscleFilter = 'Tudo';
   int? _expandedExerciseChartId;
 
   Future<void> _deleteSession() async {
-    final confirmed=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:const Text('Excluir esta sessão?'),content:const Text('As séries e o registro deste treino serão removidos do histórico. A rotina e os stories já publicados serão preservados.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancelar')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Excluir sessão'))]));
-    if(confirmed!=true || !mounted) return;
-    try {await ref.read(workoutDaoProvider).deleteSession(widget.session.id);if(mounted)Navigator.pop(context);}
-    catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Não foi possível excluir o treino. Tente novamente.')));}
+    final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+                title: const Text('Excluir esta sessão?'),
+                content: const Text(
+                    'As séries e o registro deste treino serão removidos do histórico. A rotina e os stories já publicados serão preservados.'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancelar')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Excluir sessão'))
+                ]));
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(workoutDaoProvider).deleteSession(widget.session.id);
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content:
+                Text('Não foi possível excluir o treino. Tente novamente.')));
+    }
   }
+
   @override
   Widget build(BuildContext context) {
     final exercisesAsync = ref.watch(allExercisesProvider);
     final daysMapAsync = ref.watch(workoutDaysMapProvider);
     final currentLogsAsync = ref.watch(sessionLogsProvider(widget.session.id));
-    final previousSessionAsync = ref.watch(previousSessionProvider(widget.session));
-    final allCompletedLogsAsync = ref.watch(allCompletedLogsProvider);
+    final previousSessionAsync =
+        ref.watch(previousSessionProvider(widget.session));
+    final allCompletedLogsAsync = ref.watch(allCompletedLogsProvider).whenData(
+        (rows) => rows.where((l) => l.trainingMetrics == null).toList());
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        actions:[IconButton(tooltip:"Excluir sessão de treino",icon:const Icon(Icons.delete_outline),onPressed:()=>_deleteSession())],
+        actions: [
+          IconButton(
+              tooltip: "Excluir sessão de treino",
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _deleteSession())
+        ],
         title: daysMapAsync.when(
           data: (daysMap) {
             final wDay = daysMap[widget.session.dayId];
             return Text(
-              wDay != null ? 'Treino ${wDay.letra} - ${wDay.nome}' : 'Detalhes do Treino',
+              wDay != null
+                  ? 'Treino ${wDay.letra} - ${wDay.nome}'
+                  : 'Detalhes do Treino',
               style: const TextStyle(fontWeight: FontWeight.bold),
             );
           },
@@ -128,7 +166,9 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
               final ex = exerciseMap[log.exerciseId];
               if (ex != null) {
                 final isUnilateral = ex.isUnilateral;
-                final vol = log.peso * log.repeticoes * (isUnilateral && log.lado == 'ambos' ? 2 : 1);
+                final vol = log.peso *
+                    log.repeticoes *
+                    (isUnilateral && log.lado == 'ambos' ? 2 : 1);
                 totalVolume += vol;
                 totalSets++;
                 muscleGroupsTrained.add(ex.grupoMuscular);
@@ -139,7 +179,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
             return previousSessionAsync.when(
               data: (prevSession) {
                 if (prevSession != null) {
-                  final prevLogsAsync = ref.watch(previousSessionLogsProvider(prevSession.id));
+                  final prevLogsAsync =
+                      ref.watch(previousSessionLogsProvider(prevSession.id));
                   return prevLogsAsync.when(
                     data: (prevLogs) {
                       return _buildContent(
@@ -154,7 +195,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                         allCompletedLogsAsync.value ?? [],
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                     error: (_, __) => _buildContent(
                       context,
                       exerciseMap,
@@ -196,10 +238,12 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) => Center(child: Text('Erro ao carregar logs da sessão: $err')),
+          error: (err, _) =>
+              Center(child: Text('Erro ao carregar logs da sessão: $err')),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Erro ao carregar exercícios: $err')),
+        error: (err, _) =>
+            Center(child: Text('Erro ao carregar exercícios: $err')),
       ),
     );
   }
@@ -223,8 +267,10 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
     }
 
     final parsedDate = DateTime.tryParse(widget.session.data) ?? DateTime.now();
-    final formattedDate = '${parsedDate.day.toString().padLeft(2, '0')}/${parsedDate.month.toString().padLeft(2, '0')}/${parsedDate.year}';
-    final formattedTime = '${parsedDate.hour.toString().padLeft(2, '0')}:${parsedDate.minute.toString().padLeft(2, '0')}';
+    final formattedDate =
+        '${parsedDate.day.toString().padLeft(2, '0')}/${parsedDate.month.toString().padLeft(2, '0')}/${parsedDate.year}';
+    final formattedTime =
+        '${parsedDate.hour.toString().padLeft(2, '0')}:${parsedDate.minute.toString().padLeft(2, '0')}';
 
     final durationMin = widget.session.duracaoSegundos != null
         ? '${widget.session.duracaoSegundos! ~/ 60}m'
@@ -257,7 +303,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.calendar_month_rounded, color: AppColors.primaryLight, size: 20),
+                        const Icon(Icons.calendar_month_rounded,
+                            color: AppColors.primaryLight, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           '$formattedDate às $formattedTime',
@@ -270,16 +317,19 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.timer_rounded, color: AppColors.primaryLight, size: 14),
+                          const Icon(Icons.timer_rounded,
+                              color: AppColors.primaryLight, size: 14),
                           const SizedBox(width: 4),
                           Text(
                             durationMin,
@@ -300,9 +350,16 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatItem('Volume Total', '${totalVolume.toStringAsFixed(0)} kg', Icons.fitness_center_rounded),
-                    _buildStatItem('Séries', '$totalSets concluídas', Icons.playlist_add_check_rounded),
-                    _buildStatItem('Músculos', '${muscleGroups.length} grupos', Icons.grid_view_rounded),
+                    _buildStatItem(
+                        'Volume Total',
+                        (totalVolume > 0
+                            ? '${totalVolume.toStringAsFixed(0)} kg'
+                            : '—'),
+                        Icons.fitness_center_rounded),
+                    _buildStatItem('Séries', '$totalSets concluídas',
+                        Icons.playlist_add_check_rounded),
+                    _buildStatItem('Músculos', '${muscleGroups.length} grupos',
+                        Icons.grid_view_rounded),
                   ],
                 ),
               ],
@@ -339,7 +396,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                 final isExpanded = _expandedExerciseChartId == exerciseId;
 
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   color: context.cardColor,
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -365,10 +423,15 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
-                                      _buildBadge(exercise.grupoMuscular, AppColors.getWorkoutColor(exercise.grupoMuscular[0])),
+                                      _buildBadge(
+                                          exercise.grupoMuscular,
+                                          AppColors.getWorkoutColor(
+                                              exercise.grupoMuscular[0])),
                                       const SizedBox(width: 6),
-                                      _buildBadge(exercise.equipamento, AppColors.skip),
-                                      if (exercise.tempoDescansoSegundos > 0) ...[
+                                      _buildBadge(
+                                          exercise.equipamento, AppColors.skip),
+                                      if (exercise.tempoDescansoSegundos >
+                                          0) ...[
                                         const SizedBox(width: 6),
                                         _buildBadge(
                                           'Descanso: ${_formatDescanso(exercise.tempoDescansoSegundos)}',
@@ -382,8 +445,12 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                             ),
                             IconButton(
                               icon: Icon(
-                                isExpanded ? Icons.show_chart_rounded : Icons.insert_chart_outlined_rounded,
-                                color: isExpanded ? AppColors.success : context.onSurface,
+                                isExpanded
+                                    ? Icons.show_chart_rounded
+                                    : Icons.insert_chart_outlined_rounded,
+                                color: isExpanded
+                                    ? AppColors.success
+                                    : context.onSurface,
                               ),
                               tooltip: 'Ver histórico de cargas',
                               onPressed: () {
@@ -398,7 +465,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                             ),
                           ],
                         ),
-                        
+
                         // Gráfico de evolução se estiver expandido
                         if (isExpanded) ...[
                           const SizedBox(height: 16),
@@ -431,13 +498,15 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                             1: FlexColumnWidth(2.5), // Carga Atual
                             2: FlexColumnWidth(3.0), // Comparação Carga
                           },
-                          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                          defaultVerticalAlignment:
+                              TableCellVerticalAlignment.middle,
                           children: [
                             // Header da tabela
                             TableRow(
                               children: [
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
                                   child: Text(
                                     'SÉRIE',
                                     style: TextStyle(
@@ -448,7 +517,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                                   ),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
                                   child: Text(
                                     'CARGA & REPS',
                                     style: TextStyle(
@@ -459,7 +529,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                                   ),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
                                   child: Text(
                                     'VS SEMANA PASSADA',
                                     style: TextStyle(
@@ -476,7 +547,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                               return TableRow(
                                 children: [
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
                                     child: Text(
                                       'S${log.serie}',
                                       style: TextStyle(
@@ -487,41 +559,66 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              '${log.peso.toStringAsFixed(1).replaceAll('.0', '')} kg',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: context.onBackground,
+                                        if (log.trainingMetrics != null)
+                                          Text(CalisthenicsMetrics.decode(
+                                                      log.trainingMetrics)
+                                                  ?.summary ??
+                                              'Métrica indisponível')
+                                        else
+                                          Row(
+                                            children: [
+                                              Text(
+                                                (log.trainingMetrics != null
+                                                    ? CalisthenicsMetrics.decode(
+                                                                log.trainingMetrics)
+                                                            ?.loadLabel ??
+                                                        '—'
+                                                    : '${log.peso.toStringAsFixed(1).replaceAll('.0', '')} kg'),
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: context.onBackground,
+                                                ),
                                               ),
-                                            ),
-                                            Text(' × ', style: TextStyle(color: context.onSurface)),
-                                            Text(
-                                              '${log.repeticoes}',
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.primaryLight,
+                                              Text(' × ',
+                                                  style: TextStyle(
+                                                      color:
+                                                          context.onSurface)),
+                                              Text(
+                                                (log.trainingMetrics != null
+                                                    ? CalisthenicsMetrics.decode(
+                                                                log.trainingMetrics)
+                                                            ?.amount ??
+                                                        '—'
+                                                    : '${log.repeticoes}'),
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.primaryLight,
+                                                ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        if (log.rpe != null || log.rir != null) ...[
+                                            ],
+                                          ),
+                                        if (log.rpe != null ||
+                                            log.rir != null) ...[
                                           const SizedBox(height: 2),
                                           Text(
                                             [
-                                              if (log.rpe != null) 'RPE ${log.rpe!.toStringAsFixed(1).replaceAll('.0', '')}',
-                                              if (log.rir != null) 'RIR ${log.rir}'
+                                              if (log.rpe != null)
+                                                'RPE ${log.rpe!.toStringAsFixed(1).replaceAll('.0', '')}',
+                                              if (log.rir != null)
+                                                'RIR ${log.rir}'
                                             ].join(' | '),
                                             style: TextStyle(
                                               fontSize: 10,
-                                              color: context.onSurface.withValues(alpha: 0.7),
+                                              color: context.onSurface
+                                                  .withValues(alpha: 0.7),
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -530,7 +627,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
                                     child: _buildComparisonCell(log, prevLog),
                                   ),
                                 ],
@@ -635,10 +733,25 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
   }
 
   Widget _buildComparisonCell(ExerciseLog current, ExerciseLog? previous) {
+    if (current.trainingMetrics != null || previous?.trainingMetrics != null) {
+      final now = CalisthenicsMetrics.decode(current.trainingMetrics),
+          before = CalisthenicsMetrics.decode(previous?.trainingMetrics);
+      if (now == null ||
+          before == null ||
+          now.comparisonKey != before.comparisonKey)
+        return const Text('Sem base equivalente');
+      final difference = now.value - before.value;
+      return Text(
+          '${difference > 0 ? '+' : ''}${difference == difference.roundToDouble() ? difference.toInt() : difference} ${now.unit}');
+    }
+
     if (previous == null) {
       return Text(
         'Primeiro registro',
-        style: TextStyle(fontSize: 12, color: context.onSurface, fontStyle: FontStyle.italic),
+        style: TextStyle(
+            fontSize: 12,
+            color: context.onSurface,
+            fontStyle: FontStyle.italic),
       );
     }
 
@@ -653,10 +766,14 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.arrow_upward_rounded, color: AppColors.success, size: 12),
+            const Icon(Icons.arrow_upward_rounded,
+                color: AppColors.success, size: 12),
             Text(
               '+${diffWeight.toStringAsFixed(1).replaceAll('.0', '')}kg',
-              style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: AppColors.success,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -666,10 +783,14 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.arrow_downward_rounded, color: AppColors.warning, size: 12),
+            const Icon(Icons.arrow_downward_rounded,
+                color: AppColors.warning, size: 12),
             Text(
               '${diffWeight.toStringAsFixed(1).replaceAll('.0', '')}kg',
-              style: const TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: AppColors.warning,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -686,7 +807,10 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
             const Icon(Icons.add_rounded, color: AppColors.success, size: 12),
             Text(
               '$diffReps rep${diffReps > 1 ? 's' : ''}',
-              style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: AppColors.success,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -697,10 +821,14 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
           mainAxisSize: MainAxisSize.min,
           children: [
             if (items.isNotEmpty) const SizedBox(width: 6),
-            const Icon(Icons.remove_rounded, color: AppColors.warning, size: 12),
+            const Icon(Icons.remove_rounded,
+                color: AppColors.warning, size: 12),
             Text(
               '${diffReps.abs()} rep${diffReps.abs() > 1 ? 's' : ''}',
-              style: const TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: AppColors.warning,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -803,10 +931,14 @@ class _LoadEvolutionChart extends StatelessWidget {
                   final sId = sortedSessions[idx];
                   final weight = maxWeightPerSession[sId];
                   final date = sessionDates[sId]!;
-                  final dateStr = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+                  final dateStr =
+                      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
                   return LineTooltipItem(
                     '$weight kg\n$dateStr',
-                    TextStyle(color: context.onBackground, fontWeight: FontWeight.bold, fontSize: 10),
+                    TextStyle(
+                        color: context.onBackground,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10),
                   );
                 }).toList();
               },
@@ -815,11 +947,14 @@ class _LoadEvolutionChart extends StatelessWidget {
           gridData: FlGridData(
             drawHorizontalLine: true,
             drawVerticalLine: false,
-            getDrawingHorizontalLine: (_) => FlLine(color: context.divider, strokeWidth: 1),
+            getDrawingHorizontalLine: (_) =>
+                FlLine(color: context.divider, strokeWidth: 1),
           ),
           titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -828,7 +963,8 @@ class _LoadEvolutionChart extends StatelessWidget {
                 getTitlesWidget: (v, _) {
                   if (v != v.toInt().toDouble()) return const SizedBox();
                   final idx = v.toInt();
-                  if (idx < 0 || idx >= sortedSessions.length) return const SizedBox();
+                  if (idx < 0 || idx >= sortedSessions.length)
+                    return const SizedBox();
                   final sId = sortedSessions[idx];
                   final date = sessionDates[sId]!;
                   return Text(
@@ -842,7 +978,8 @@ class _LoadEvolutionChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 32,
-                getTitlesWidget: (v, _) => Text(v.toStringAsFixed(0), style: TextStyle(color: context.onSurface, fontSize: 9)),
+                getTitlesWidget: (v, _) => Text(v.toStringAsFixed(0),
+                    style: TextStyle(color: context.onSurface, fontSize: 9)),
               ),
             ),
           ),
@@ -854,7 +991,8 @@ class _LoadEvolutionChart extends StatelessWidget {
               color: AppColors.success,
               barWidth: 2,
               dotData: const FlDotData(show: true),
-              belowBarData: BarAreaData(show: true, color: AppColors.success.withValues(alpha: 0.06)),
+              belowBarData: BarAreaData(
+                  show: true, color: AppColors.success.withValues(alpha: 0.06)),
             ),
           ],
         ),
